@@ -33,7 +33,8 @@ setup(
     packages=find_packages("src"),
     install_requires=[
         "six",
-        "numpy<1.12",
+        "numpy",
+        "scipy",
     ],
     extras_require=dict(
         dask=["dask[array]"],

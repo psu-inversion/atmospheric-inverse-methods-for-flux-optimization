@@ -35,6 +35,14 @@ inversion.optimal_interpolation module
     :undoc-members:
     :show-inheritance:
 
+inversion.variational module
+----------------------------
+
+.. automodule:: inversion.variational
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 Module contents
 ---------------
