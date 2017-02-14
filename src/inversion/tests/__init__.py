@@ -3,6 +3,7 @@
 Includes tests using random data, analytic solutions, and checks that
 different methods agree for simple problems.
 """
+import fractions
 import unittest
 
 import numpy as np
@@ -13,10 +14,10 @@ import inversion.noise
 import inversion.correlations
 
 
-class TestOISimple(unittest.TestCase):
+class TestOISimple(unittest2.TestCase):
     """Test simple OI."""
 
-    def test_direct(self):
+    def test_scalar_equal_variance(self):
         """Test a direct measurement of a scalar state."""
         bg = np.atleast_1d(2.)
         bg_cov = np.atleast_2d(1.)
@@ -31,6 +32,115 @@ class TestOISimple(unittest.TestCase):
 
         self.assertAlmostEqual(post, 2.5)
         self.assertAlmostEqual(post_cov, .5)
+
+    def test_scalar_unequal_variance(self):
+        """Test the a direct measurement fo a scalar state.
+
+        Variances not equal.
+        """
+        bg = np.atleast_1d(15.)
+        bg_cov = np.atleast_2d(2.)
+
+        obs = np.atleast_1d(14.)
+        obs_cov = np.atleast_2d(1.)
+
+        obs_op = np.atleast_2d(1.)
+
+        post, post_cov = inversion.optimal_interpolation.simple(
+            bg, bg_cov, obs, obs_cov, obs_op)
+
+        self.assertTrue(np.allclose(
+            post, np.float128(14 + fractions.Fraction(1, 3))))
+
+    def test_homework_one(self):
+        """Verify that this can reproduce the answers to HW1.
+
+        Make sure the answers here are within roundoff of the analytic
+        solutions.
+
+        """
+        bg = np.array((18., 15., 22.))
+        bg_var = np.array((2., 2., 2.))
+        bg_corr = np.array(((1, .5, .25),
+                            (.5, 1, .5),
+                            (.25, .5, 1)))
+
+        obs = np.array((19., 14.))
+        obs_var = np.array((1., 1.))
+
+        obs_op = np.array(((1., 0., 0.),
+                           (0., 1., 0.)))
+
+        bg_std = np.sqrt(bg_var)
+        bg_cov = np.diag(bg_std).dot(bg_corr.dot(np.diag(bg_std)))
+
+        obs_std = np.sqrt(obs_var)
+        # Assume no correlations between observations.
+        obs_cov = np.diag(obs_var)
+
+        with self.subTest(problem=3):
+            state_college_index = 1
+            post, post_cov = inversion.optimal_interpolation.simple(
+                bg[state_college_index], bg_cov[state_college_index, state_college_index],
+                obs[state_college_index], obs_cov[state_college_index, state_college_index],
+                obs_op[state_college_index, state_college_index])
+
+            self.assertTrue(np.allclose(
+                post, np.asanyarray(14 + fractions.Fraction(1, 3), dtype=np.float128)))
+
+        with self.subTest(problem=4):
+            state_college_index = 1
+
+            post, post_cov = inversion.optimal_interpolation.simple(
+                bg, bg_cov,
+                obs[state_college_index], obs_cov[state_college_index, state_college_index],
+                obs_op[state_college_index, :])
+
+            self.assertTrue(np.allclose(
+                post, np.asanyarray((17 + fractions.Fraction(2, 3),
+                                     14 + fractions.Fraction(1, 3),
+                                     21 + fractions.Fraction(2, 3)),
+                                    dtype=np.float128)))
+
+        with self.subTest(problem=5):
+            pittsburgh_index = 0
+
+            post, post_cov = inversion.optimal_interpolation.simple(
+                bg, bg_cov,
+                obs[pittsburgh_index], obs_cov[pittsburgh_index, pittsburgh_index],
+                obs_op[pittsburgh_index, :])
+
+            self.assertTrue(np.allclose(
+                post,
+                np.asanyarray((18 + fractions.Fraction(2, 3),
+                               15 + fractions.Fraction(1, 3),
+                               22 + fractions.Fraction(1, 6)),
+                              np.float128)))
+
+        with self.subTest(problem=7):
+            state_college_index = 1
+
+            post, post_cov = inversion.optimal_interpolation.simple(
+                bg, bg_cov,
+                obs[state_college_index], 2 * obs_cov[state_college_index, state_college_index] * 2,
+                obs_op[state_college_index, :])
+
+            self.assertTrue(np.allclose(
+                post, np.asanyarray((17 + fractions.Fraction(5, 6),
+                                     14 + fractions.Fraction(2, 3),
+                                     21 + fractions.Fraction(5, 6)),
+                                    dtype=np.float128)))
+
+        with self.subTest(problem=8):
+            post, post_cov = inversion.optimal_interpolation.simple(
+                bg, bg_cov, obs, obs_cov, obs_op)
+
+            self.assertTrue(np.allclose(
+                post, np.asanyarray(
+                    (18 + fractions.Fraction(1, 3),
+                     14 + fractions.Fraction(2, 3),
+                     21 + fractions.Fraction(5, 6)),
+                    dtype=np.float128)))
 
 
 class TestGaussianNoise(unittest.TestCase):

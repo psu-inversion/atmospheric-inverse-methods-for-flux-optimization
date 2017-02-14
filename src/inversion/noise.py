@@ -23,7 +23,8 @@ def gaussian_noise(cov, size=None):
 
     Note
     ----
-    implementation largely copied from :func:`np.random.multivariate_normal`
+    implementation largely copied from
+    :func:`numpy.random.multivariate_normal`
     """
     if size is None:
         shape = []

@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 sys.path.append(os.path.join(
     os.path.abspath(os.path.dirname(__file__)),
     "doc", "source"))
-from conf import version, man_pages
+from conf import man_pages, release
 authors = man_pages[0][3]
 
 with open("README.rst", "r") as in_file:
@@ -14,7 +14,7 @@ with open("README.rst", "r") as in_file:
 
 setup(
     name="inversion",
-    version=version,
+    version=release,
     description="A module for geophysical inversions",
     long_description=ldesc,
     author=authors,

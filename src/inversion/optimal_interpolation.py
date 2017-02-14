@@ -26,6 +26,14 @@ def simple(background, background_covariance,
     analysis_covariance: np.ndarray[N,N]
 
     """
+    background = np.atleast_1d(background)
+    background_covariance = np.atleast_2d(background_covariance)
+
+    observations = np.atleast_1d(observations)
+    observation_covariance = np.atleast_2d(observation_covariance)
+
+    observation_operator = np.atleast_2d(observation_operator)
+
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
     # \Delta\vec{y} = \vec{y} - \vec{y}_b
@@ -49,7 +57,7 @@ def simple(background, background_covariance,
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
     analysis_covariance = (background_covariance -
                            background_covariance.dot(
-                               observation_operator.dot(
+                               observation_operator.T.dot(
                                    np.linalg.solve(
                                        projected_background_covariance +
                                        observation_covariance,
