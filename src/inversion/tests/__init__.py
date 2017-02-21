@@ -17,7 +17,12 @@ import inversion.noise
 import inversion.correlations
 
 ALL_METHODS = (inversion.optimal_interpolation.simple,
-               inversion.variational.simple)
+               inversion.optimal_interpolation.fold_common,
+               inversion.optimal_interpolation.scipy_chol,
+               inversion.variational.simple,
+               inversion.variational.incremental,
+               inversion.variational.incr_chol,
+)
 PRECISE_DTYPE = np.float128
 
 def getname(method):
@@ -47,7 +52,7 @@ class TestSimple(unittest2.TestCase):
                 post, post_cov = method(
                     bg, bg_cov, obs, obs_cov, obs_op)
 
-                self.assertAlmostEqual(post, 2.5)
+                np.testing.assert_allclose(post, 2.5)
                 #self.assertTrue(np.allclose(post_cov, .5))
                 np.testing.assert_allclose(post_cov, .5)
 
