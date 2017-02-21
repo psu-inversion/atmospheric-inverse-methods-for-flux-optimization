@@ -1,1 +1,2 @@
 recursive-include doc *.py *.rst
+recursive-include homework *.py
