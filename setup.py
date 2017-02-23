@@ -38,6 +38,11 @@ setup(
     ],
     extras_require=dict(
         dask=["dask[array]"],
+        homework=[
+            "pandas",
+            "statsmodels",
+            "matplotlib",
+        ],
     ),
     tests_require=[
         "unittest2",

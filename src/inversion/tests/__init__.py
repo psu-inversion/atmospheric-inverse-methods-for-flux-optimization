@@ -15,6 +15,7 @@ import inversion.optimal_interpolation
 import inversion.variational
 import inversion.noise
 import inversion.correlations
+import inversion.integrators
 
 ALL_METHODS = (inversion.optimal_interpolation.simple,
                inversion.optimal_interpolation.fold_common,
