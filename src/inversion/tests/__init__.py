@@ -156,7 +156,7 @@ class TestSimple(unittest2.TestCase):
                     post, post_cov = method(
                         bg, bg_cov,
                         obs[state_college_index],
-                        2 * obs_cov[state_college_index, state_college_index] * 2,
+                        4 * obs_cov[state_college_index, state_college_index],
                         obs_op[state_college_index, :])
 
                     np.testing.assert_allclose(
@@ -178,6 +178,51 @@ class TestSimple(unittest2.TestCase):
                              14 + fractions.Fraction(1, 2),
                              21 + fractions.Fraction(3, 4)),
                             dtype=PRECISE_DTYPE))
+
+    def test_sequential_assimilations(self):
+        """Make sure this follows Bayes' rule."""
+        bg = np.array((18., 15., 22.))
+        bg_var = np.array((2., 2., 2.))
+        bg_corr = np.array(((1, .5, .25),
+                            (.5, 1, .5),
+                            (.25, .5, 1)))
+
+        obs = np.array((19., 14.))
+        obs_var = np.array((1., 1.))
+
+        obs_op = np.array(((1., 0., 0.),
+                           (0., 1., 0.)))
+
+        bg_std = np.sqrt(bg_var)
+        bg_cov = np.diag(bg_std).dot(bg_corr.dot(np.diag(bg_std)))
+
+        obs_std = np.sqrt(obs_var)
+        # Assume no correlations between observations.
+        obs_cov = np.diag(obs_var)
+
+        for method in ALL_METHODS:
+            name = getname(method)
+            if "var" in name.lower():
+                state_rtol = 1e-3
+                cov_rtol = 1e-1
+            else:
+                # The default for assert_allclose
+                cov_rtol = state_rtol = 1e-7
+            with self.subTest(method=name):
+                inter1, inter_cov1 = method(
+                    bg, bg_cov, obs[0], obs_cov[0, 0],
+                    obs_op[0, :])
+                post1, post_cov1 = method(
+                    inter1, inter_cov1, obs[1], obs_cov[1, 1],
+                    obs_op[1, :])
+
+                post2, post_cov2 = method(
+                    bg, bg_cov, obs, obs_cov, obs_op)
+
+                np.testing.assert_allclose(
+                    post1, post2, rtol=state_rtol)
+                np.testing.assert_allclose(
+                    post_cov1, post_cov2, rtol=cov_rtol)
 
 
 class TestGaussianNoise(unittest.TestCase):
@@ -250,3 +295,20 @@ class TestCorrelations(unittest2.TestCase):
                 np.testing.assert_allclose(chol_upper.dot(chol_upper.T),
                                            corr_mat,
                                            rtol=1e-4, atol=1e-4)
+
+
+class TestIntegrators(unittest2.TestCase):
+    """Test the integrators."""
+
+    def test_exp(self):
+        for integrator in (inversion.integrators.forward_euler,
+                           inversion.integrators.scipy_odeint):
+            with self.subTest(integrator=getname(integrator)):
+                solns = integrator(
+                    lambda y, t: y,
+                    1.,
+                    (0, 1),
+                    1e-6)
+
+                np.testing.assert_allclose(solns[1,:],
+                                           np.exp(1.), rtol=1e-5)
