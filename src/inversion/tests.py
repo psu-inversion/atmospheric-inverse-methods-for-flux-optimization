@@ -13,6 +13,7 @@ import unittest2
 
 import inversion.optimal_interpolation
 import inversion.variational
+import inversion.psas
 import inversion.noise
 import inversion.correlations
 import inversion.integrators
@@ -23,6 +24,8 @@ ALL_METHODS = (inversion.optimal_interpolation.simple,
                inversion.variational.simple,
                inversion.variational.incremental,
                inversion.variational.incr_chol,
+               inversion.psas.simple,
+               inversion.psas.fold_common,
 )
 PRECISE_DTYPE = np.float128
 
@@ -202,7 +205,7 @@ class TestSimple(unittest2.TestCase):
 
         for method in ALL_METHODS:
             name = getname(method)
-            if "var" in name.lower():
+            if "var" in name.lower() or "psas" in name.lower():
                 state_rtol = 1e-3
                 cov_rtol = 1e-1
             else:
