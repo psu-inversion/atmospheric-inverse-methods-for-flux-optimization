@@ -96,3 +96,62 @@ class ExponentialSpatialCorrelation(SpatialCorrelationFunction):
         """
         dist = sqrt((x1 - x2)**2 + (y1-y2)**2)
         return exp(-dist/self._length)
+
+
+class TemporalCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
+    """Base class for the common temporal correlations."""
+
+    def __init__(self, length):
+        """Set up the instance.
+
+        Parameters
+        ----------
+        length: float
+            Unitless.
+        """
+        self._length = float(length)
+
+    @abc.abstractmethod
+    def __call__(self, t1, t2):
+        """The correlation between the points.
+
+        Argument order for use with :func:`np.fromfunction`.
+
+        Parameters
+        ----------
+        t1, t2: float
+
+        Returns
+        -------
+        corr: float
+
+        """
+        pass
+
+
+class ExponentialTemporalCorrelation(TemporalCorrelationFunction):
+    """An exponential Temporal correlation structure.
+
+    Should model AR(1) processes fairly well
+
+    Note
+    ----
+    Correlation given by exp(-dist/length)
+    where dist is the distance between the points.
+    """
+
+    def __call__(self, t1, t2):
+        """The correlation between the points.
+
+        Argument order mirrors :func:`np.fromfunction`
+
+        Parameters
+        ----------
+        t1, t2: float
+
+        Returns
+        -------
+        corr: float
+        """
+        dist = abs(t1 - t2)
+        return exp(-dist/self._length)
