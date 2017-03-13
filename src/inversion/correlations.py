@@ -19,14 +19,17 @@ class SpatialCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
         Parameters
         ----------
         length: float
+            Unitless.
         """
         self._length = float(length)
 
     @abc.abstractmethod
-    def __call__(self, x1, y1, x2, y2):
+    def __call__(self, y1, x1, y2, x2):
         """The correlation between the points.
 
-        Argument order mirrors :func:`np.fromfunction`
+        Argument order for use with :func:`np.fromfunction`.  Should
+        be similar to results from :func:`scipy.linalg.kron` when
+        reshaped to a 2D array for separable correlation functions
 
         Parameters
         ----------
@@ -36,6 +39,7 @@ class SpatialCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
         Returns
         -------
         corr: float
+
         """
         pass
 
@@ -49,7 +53,7 @@ class GaussianSpatialCorrelation(SpatialCorrelationFunction):
     distance between the points.
     """
 
-    def __call__(self, x1, y1, x2, y2):
+    def __call__(self, y1, x1, y2, x2):
         """The correlation between the points.
 
         Argument order mirrors :func:`np.fromfunction`
@@ -76,7 +80,7 @@ class ExponentialSpatialCorrelation(SpatialCorrelationFunction):
     where dist is the distance between the points.
     """
 
-    def __call__(self, x1, y1, x2, y2):
+    def __call__(self, y1, x1, y2, x2):
         """The correlation between the points.
 
         Argument order mirrors :func:`np.fromfunction`
