@@ -2,12 +2,13 @@
 
 Includes tests using random data, analytic solutions, and checks that
 different methods agree for simple problems.
+
 """
 import fractions
-import itertools
 import unittest
 
 import numpy as np
+import numpy.linalg as la
 import numpy.testing
 import unittest2
 
@@ -29,7 +30,21 @@ ALL_METHODS = (inversion.optimal_interpolation.simple,
 )
 PRECISE_DTYPE = np.float128
 
+
 def getname(method):
+    """A name for the function.
+
+    A name combining the function name and module.
+
+    Parameters
+    ----------
+    method: callable
+
+    Returns
+    -------
+    name: str
+
+    """
     module = method.__module__
     group = module.split(".")[-1]
     variant = method.__name__
@@ -57,7 +72,6 @@ class TestSimple(unittest2.TestCase):
                     bg, bg_cov, obs, obs_cov, obs_op)
 
                 np.testing.assert_allclose(post, 2.5)
-                #self.assertTrue(np.allclose(post_cov, .5))
                 np.testing.assert_allclose(post_cov, .5)
 
     def test_scalar_unequal_variance(self):
@@ -103,7 +117,8 @@ class TestSimple(unittest2.TestCase):
         bg_std = np.sqrt(bg_var)
         bg_cov = np.diag(bg_std).dot(bg_corr.dot(np.diag(bg_std)))
 
-        obs_std = np.sqrt(obs_var)
+        # obs_std = np.sqrt(obs_var)
+
         # Assume no correlations between observations.
         obs_cov = np.diag(obs_var)
 
@@ -199,7 +214,8 @@ class TestSimple(unittest2.TestCase):
         bg_std = np.sqrt(bg_var)
         bg_cov = np.diag(bg_std).dot(bg_corr.dot(np.diag(bg_std)))
 
-        obs_std = np.sqrt(obs_var)
+        # obs_std = np.sqrt(obs_var)
+
         # Assume no correlations between observations.
         obs_cov = np.diag(obs_var)
 
@@ -299,7 +315,7 @@ class TestCorrelations(unittest2.TestCase):
                 corr_mat = corr.reshape((np.prod(test_size),)*2)
 
                 # test postitive definite
-                chol_upper = np.linalg.cholesky(corr_mat)
+                chol_upper = la.cholesky(corr_mat)
 
                 # test symmetry
                 np.testing.assert_allclose(chol_upper.dot(chol_upper.T),
@@ -347,6 +363,12 @@ class TestIntegrators(unittest2.TestCase):
     """Test the integrators."""
 
     def test_exp(self):
+        """Test that the ingegrators can integrate y'=y for one unit.
+
+        Uses a very small integration step to get similarity from
+        one-step forward Euler.
+
+        """
         for integrator in (inversion.integrators.forward_euler,
                            inversion.integrators.scipy_odeint):
             with self.subTest(integrator=getname(integrator)):
@@ -356,5 +378,5 @@ class TestIntegrators(unittest2.TestCase):
                     (0, 1),
                     1e-6)
 
-                np.testing.assert_allclose(solns[1,:],
+                np.testing.assert_allclose(solns[1, :],
                                            np.exp(1.), rtol=1e-5)

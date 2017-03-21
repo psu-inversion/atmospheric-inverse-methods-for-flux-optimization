@@ -1,11 +1,16 @@
+"""Functions implementing 3D-Var.
+
+Signatures follow the functions in :mod:`inversion.optimal_interpolation`
+"""
 import numpy as np
 import scipy.optimize
 import scipy.linalg
 
+
 def simple(background, background_covariance,
            observations, observation_covariance,
            observation_operator):
-    """Feed everything to scipy's minimizer
+    """Feed everything to scipy's minimizer.
 
     Parameters
     ----------
@@ -242,8 +247,8 @@ def incremental(background, background_covariance,
 
 
 def incr_chol(background, background_covariance,
-                observations, observation_covariance,
-                observation_operator):
+              observations, observation_covariance,
+              observation_operator):
     """Feed everything to scipy's minimizer.
 
     Use the change from the background to try to avoid precision loss.

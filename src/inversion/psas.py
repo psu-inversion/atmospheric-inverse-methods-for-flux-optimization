@@ -75,7 +75,7 @@ def simple(background, background_covariance,
                 test_observation_increment)
 
     def cost_jacobian(test_observation_increment):
-        """Gradient of cost function at `test_observation_increment`
+        """Gradient of cost function at `test_observation_increment`.
 
         Parameters
         ----------
@@ -184,7 +184,7 @@ def fold_common(background, background_covariance,
                 test_observation_increment)
 
     def cost_jacobian(test_observation_increment):
-        """Gradient of cost function at `test_observation_increment`
+        """Gradient of cost function at `test_observation_increment`.
 
         Parameters
         ----------

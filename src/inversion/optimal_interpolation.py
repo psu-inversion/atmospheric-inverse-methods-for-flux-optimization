@@ -129,8 +129,8 @@ def fold_common(background, background_covariance,
 
 
 def scipy_chol(background, background_covariance,
-                observations, observation_covariance,
-                observation_operator):
+               observations, observation_covariance,
+               observation_operator):
     """Simple direct matrix inversion.
 
     Assumes all arrays fit in memory with room to spare.

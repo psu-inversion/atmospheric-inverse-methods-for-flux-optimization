@@ -5,6 +5,7 @@ Some I wrote, some dispatch to other functions
 import numpy as np
 import scipy.integrate
 
+
 def scipy_odeint(func, y0, tseq, dt=None, Dfunc=None):
     """Integrate y to times in `tseq`.
 
@@ -28,6 +29,7 @@ def scipy_odeint(func, y0, tseq, dt=None, Dfunc=None):
     if dt is None:
         dt = 0.0
     return scipy.integrate.odeint(func, y0, tseq, Dfun=Dfunc, h0=dt)
+
 
 def forward_euler(func, y0, tseq, dt, Dfunc=None):
     """Integrate y to times in `tseq`.
@@ -62,5 +64,5 @@ def forward_euler(func, y0, tseq, dt, Dfunc=None):
             curry += deriv * dt
             currt += dt
 
-        sol_seq[i,:] = curry
+        sol_seq[i, :] = curry
     return sol_seq

@@ -10,6 +10,7 @@ from inversion.noise import gaussian_noise
 ASSIMILATION_SPIN_UP = 10
 """How many DA cycles it takes to converge to steady state."""
 
+
 def _make_tuple(*args):
     """Return args as a tuple.
 
@@ -21,6 +22,7 @@ def _make_tuple(*args):
     tuple
     """
     return args
+
 
 def root_mean_squared_difference(arry1, arry2):
     """Root mean square difference of arrays.
@@ -35,6 +37,7 @@ def root_mean_squared_difference(arry1, arry2):
     """
     return np.sqrt(np.mean(np.square(arry1 - arry2)))
 
+
 def identical_twin(model, integrator, initial_state, dt,
                    assimilation_cycle_time, experiment_length,
                    observation_operator, observation_error_covariance,
@@ -43,7 +46,6 @@ def identical_twin(model, integrator, initial_state, dt,
                    nmc_comparison=None,
                    nmc_homogeneous=False,
                    observation_err=False):
-
     """Run an identical twin experiment.
 
     Parameters
@@ -84,7 +86,8 @@ def identical_twin(model, integrator, initial_state, dt,
 
     References
     ----------
-    Parrish and Derber 1992 doi: 10.1175/1520-0493(1992)120<1747:TNMCSS>2.0.CO;2
+    Parrish and Derber 1992
+        doi: 10.1175/1520-0493(1992)120<1747:TNMCSS>2.0.CO;2
     """
     total_cycles = int(np.rint(experiment_length / assimilation_cycle_time))
     dtype = initial_state.dtype
@@ -115,7 +118,6 @@ def identical_twin(model, integrator, initial_state, dt,
     if observation_err:
         observation_background_rmsd = np.empty(total_cycles, dtype=dtype)
         observation_analysis_rmsd = np.empty_like(observation_background_rmsd)
-        
 
     curr_truth = initial_state.copy()
     curr_model = np.zeros_like(initial_state)
@@ -210,5 +212,6 @@ def identical_twin(model, integrator, initial_state, dt,
                   scipy.linalg.toeplitz(lag_covariances))
 
     if observation_err:
-        return result + (observation_background_rmsd, observation_analysis_rmsd)
+        return result + (observation_background_rmsd,
+                         observation_analysis_rmsd)
     return result

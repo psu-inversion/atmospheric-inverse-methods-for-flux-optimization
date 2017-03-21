@@ -23,8 +23,9 @@ interest, so we may take the Taylor series expansion
     h(\vec{x}) \approx h(\vec{x}_0) + H (\vec{x} - \vec{x}_0) +
     O((\vec{x} - \vec{x}_0)^2)
 
-as being a close approximation for :math:`\vec{x}` near :math:`\vec{x}_0`, where
-:math:`H` is the derivative of :math:`h` at :math:`\vec{x}_0`, defined by
+as being a close approximation for :math:`\vec{x}` near
+:math:`\vec{x}_0`, where :math:`H` is the derivative of :math:`h` at
+:math:`\vec{x}_0`, defined by
 
 .. math::
 

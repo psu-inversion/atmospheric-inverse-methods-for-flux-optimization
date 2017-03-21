@@ -180,7 +180,7 @@ class TemporalCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
         pass
 
     def make_matrix(self, nt):
-        """Make a correlation matrix for `nt` times
+        """Make a correlation matrix for `nt` times.
 
         Parameters
         ----------

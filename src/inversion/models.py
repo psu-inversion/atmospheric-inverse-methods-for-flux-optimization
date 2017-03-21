@@ -2,6 +2,7 @@
 
 import numpy as np
 
+
 class Lorenz63:
     """Classic Lorenz '63 model."""
 
@@ -35,6 +36,7 @@ class Lorenz63:
             state[0] * state[1] - self._b * state[2]
         ))
 
+
 class Lorenz96:
     """Lorenz '96 model."""
 
@@ -50,7 +52,7 @@ class Lorenz96:
         self._size = size
 
     def __call__(self, state):
-        """The derivative at `state`
+        """The derivative at `state`.
 
         Parameters
         ----------
