@@ -40,7 +40,7 @@ as being a close approximation for :math:`\vec{x}` near :math:`\vec{x}_0`, where
     The many submodules use a `from module import names` pattern to
     get needed functions. This is to allow a substitution from other
     libraries (:func:`np.exp` instead of :func:`math.exp` for
-    factorization, :func:`dask.array.exp` instead for out-of-core
+    vectorization, :func:`dask.array.exp` instead for out-of-core
     evaluation, ...)
 
 """

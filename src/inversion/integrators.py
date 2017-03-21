@@ -8,12 +8,15 @@ import scipy.integrate
 def scipy_odeint(func, y0, tseq, dt=None, Dfunc=None):
     """Integrate y to times in `tseq`.
 
+    delegates to :func:`scipy.integrate.odeint`
+
     Parameters
     ----------
     func: callable(y, t)
     y0: np.ndarray[N]
     tseq: sequence[M]
        tseq[0] := t0
+    dt: float
     Dfunc: callable(y, t)
       Dfunc[i, j] = d func[i]/ d y[j]
 
@@ -35,6 +38,7 @@ def forward_euler(func, y0, tseq, dt, Dfunc=None):
     y0: np.ndarray[N]
     tseq: sequence[M]
         tseq[0] := t0
+    dt: float
     Dfunc: callable(y, t)
         Dfunc[i, j] = d func[i]/ d y[j]
         ignored
