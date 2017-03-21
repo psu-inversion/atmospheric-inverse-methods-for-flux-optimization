@@ -43,6 +43,9 @@ setup(
             "statsmodels",
             "matplotlib",
         ],
+        examples=[
+            "scipy>=0.16.0",
+        ],
     ),
     tests_require=[
         "unittest2",
