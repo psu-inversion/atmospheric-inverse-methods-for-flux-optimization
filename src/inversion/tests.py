@@ -281,7 +281,7 @@ class TestCorrelations(unittest2.TestCase):
         This is how the integration tests will get background
         covariances, so this needs to work.
         """
-        test_size = (int(.3e2), int(.2e2))
+        test_size = (int(.2e2), int(.3e2))
         for corr_class in (
                 inversion.correlations.SpatialCorrelationFunction
                 .__subclasses__()):
@@ -292,12 +292,48 @@ class TestCorrelations(unittest2.TestCase):
                 corr_mat = corr.reshape((np.prod(test_size),)*2)
 
                 # test postitive definite
-                chol_upper = np.dual.cholesky(corr_mat).T
+                chol_upper = np.linalg.cholesky(corr_mat)
 
                 # test symmetry
                 np.testing.assert_allclose(chol_upper.dot(chol_upper.T),
                                            corr_mat,
                                            rtol=1e-4, atol=1e-4)
+
+    def test_make_matrix(self):
+        """Test that make_matrix gives a positive definite matrix.
+
+        Checks against original value.
+        """
+        # 30x25 Gaussian 10 not close
+        test_nx = 30
+        test_ny = 20
+        test_points = test_ny * test_nx
+
+        for corr_class in (
+                inversion.correlations.SpatialCorrelationFunction.
+                __subclasses__()):
+            for dist in (1, 5, 10, 15):
+                with self.subTest(corr_class=getname(corr_class),
+                                  dist=dist):
+                    corr_fun = corr_class(dist)
+
+                    corr_mat = corr_fun.make_matrix(test_ny, test_nx)
+
+                    # Make sure diagonal elements are ones
+                    np.testing.assert_allclose(np.diag(corr_mat), 1)
+
+                    # check if it matches the original
+                    np.testing.assert_allclose(
+                        corr_mat,
+                        np.fromfunction(
+                            corr_fun, (test_ny, test_nx, test_ny, test_nx)
+                        ).reshape((test_points, test_points)),
+                        # rtol=1e-13: Gaussian 10 and 15 fail
+                        # atol=1e-15: Gaussian 1 and 5 fail
+                        rtol=1e-12, atol=1e-14)
+
+                    # check if it actually is positive definite
+                    chol_lower = np.linalg.cholesky(corr_mat)
 
 
 class TestIntegrators(unittest2.TestCase):
