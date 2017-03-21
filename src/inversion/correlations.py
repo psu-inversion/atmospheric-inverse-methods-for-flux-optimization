@@ -30,8 +30,8 @@ than this are reset to zero.
 """
 
 
-class SpatialCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
-    """Base class for the common spatial correlations."""
+class CorrelationFunction2D(six.with_metaclass(abc.ABCMeta)):
+    """Base class for 2D correlations."""
 
     def __init__(self, length):
         """Set up the instance.
@@ -39,7 +39,7 @@ class SpatialCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
         Parameters
         ----------
         length: float
-            Unitless.
+            Unitless: physical correlation length / grid spacing
         """
         self._length = float(length)
 
@@ -95,8 +95,8 @@ class SpatialCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
         return result
 
 
-class GaussianSpatialCorrelation(SpatialCorrelationFunction):
-    """A gaussian spatial correlation structure.
+class Gaussian2DCorrelation(CorrelationFunction2D):
+    """A 2D gaussian correlation structure.
 
     Note
     ----
@@ -122,8 +122,8 @@ class GaussianSpatialCorrelation(SpatialCorrelationFunction):
         return exp(-dist2 / (2 * self._length ** 2))
 
 
-class ExponentialSpatialCorrelation(SpatialCorrelationFunction):
-    """An exponential spatial correlation structure.
+class Exponential2DCorrelation(CorrelationFunction2D):
+    """A 2D exponential correlation structure.
 
     Note
     ----
@@ -149,8 +149,8 @@ class ExponentialSpatialCorrelation(SpatialCorrelationFunction):
         return exp(-dist/self._length)
 
 
-class TemporalCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
-    """Base class for the common temporal correlations."""
+class CorrelationFunction1D(six.with_metaclass(abc.ABCMeta)):
+    """Base class for 1D correlations."""
 
     def __init__(self, length):
         """Set up the instance.
@@ -158,7 +158,7 @@ class TemporalCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
         Parameters
         ----------
         length: float
-            Unitless.
+            Unitless: physical correlation time / bin dt
         """
         self._length = float(length)
 
@@ -208,8 +208,8 @@ class TemporalCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
         return result
 
 
-class ExponentialTemporalCorrelation(TemporalCorrelationFunction):
-    """An exponential Temporal correlation structure.
+class Exponential1DCorrelation(CorrelationFunction1D):
+    """A 1D exponential correlation structure.
 
     Should model AR(1) processes fairly well
 
@@ -234,3 +234,30 @@ class ExponentialTemporalCorrelation(TemporalCorrelationFunction):
         """
         dist = abs(t1 - t2)
         return exp(-dist/self._length)
+
+
+class Gaussian1DCorrelation(CorrelationFunction1D):
+    """A 1D gaussian correlation structure.
+
+    Note
+    ----
+    Correlation given by exp(-dist**2 / (2 * length**2)) where dist is the
+    distance between the points.
+    """
+
+    def __call__(self, t1, t2):
+        """The correlation between the points.
+
+        Argument order mirrors :func:`np.fromfunction`
+
+        Parameters
+        ----------
+        x1, x2: float
+        y1, y2: float
+
+        Returns
+        -------
+        corr: float
+        """
+        dist2 = (t1 - t2)**2
+        return exp(-dist2 / (2 * self._length ** 2))
