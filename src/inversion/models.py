@@ -68,3 +68,26 @@ class Lorenz96:
         res = xkm1 * (xkp1 - xkm2) - state + self._forcing
 
         return res
+
+
+class ArgsYTWrapper:
+    """Wrap an instance to accept args y, t."""
+
+    def __init__(self, model):
+        """Wrap model to take y, t as args.
+
+        Parameters
+        ----------
+        model: callable
+        """
+        self._model = model
+
+    def __call__(self, y, t):
+        """Call the model with arg `y`.
+
+        Parameters
+        ----------
+        y: np.ndarray
+        t: float
+        """
+        return self._model(y)
