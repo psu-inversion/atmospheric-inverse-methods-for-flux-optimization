@@ -18,52 +18,68 @@ import inversion.noise
 from inversion.noise import gaussian_noise
 
 
-def simple(ensemble, localization_matrix,
-           observations, observation_covariance,
-           observation_operator, assimilator):
-    """Straightforward implementation of a  perturbed obs filter.
+class SimplePerturbedObsFilter:
 
-    Assumes a full covariance matrix can fit in memory twice with room
-    to spare.
 
-    Parameters
-    ----------
-    ensemble: np.ndarray[N, K]
-    localization_matrix: np.ndarray[N, N]
-        Classes in :mod:`inversion.correlations` are an easy way to
-        get this.  Unfortunately, building this here for the 2D
-        correlations requires the domain size, so this takes the matrix.
-    observations: np.ndarray[M]
-    observation_covariance: np.ndarray[M,M]
-    observation_operator: np.ndarray[M,N]
-    assimilator: callable
-        The data assimilation function that will perform the individual
-        assimilations.
+    def __init__(self, assimilator):
+        """Set up using given per-member assimilator.
 
-    Returns
-    -------
-    new_ensemble: np.ndarray[N, K]
-    """
-    ensemble_size = ensemble.shape[-1]
-    perturbations = inversion.ensemble.perturbations(ensemble)
+        Parameters
+        ----------
+        assimilator: callable
+            The data assimilation function that will perform the individual
+            assimilations.
+        """
+        self._assimilator = assimilator
 
-    # If I assume the ROI for observations << localization length and
-    # can somehow get (L * (X @ X.T)) @ H.T in terms of X @ (H @ X).T, I can
-    # reduce the memory footprint.  Until then, I do things this way.
-    background_covariance = (
-        1 / (ensemble_size - 1) *
-        perturbations.dot(perturbations.T) *
-        localization_matrix
-    )
+    def __call__(self, ensemble, localization_matrix,
+                 observations, observation_error_covariance,
+                 observation_operator):
+        """Straightforward implementation of a  perturbed obs filter.
 
-    observation_noise = gaussian_noise(observation_covariance, ensemble_size)
+        Assumes a full covariance matrix can fit in memory twice with room
+        to spare.
 
-    new_ensemble = empty_like(ensemble, order="F")
+        Parameters
+        ----------
+        ensemble: np.ndarray[K, N]
+        localization_matrix: np.ndarray[N, N]
+            Classes in :mod:`inversion.correlations` are an easy way to
+            get this.  Unfortunately, building this here for the 2D
+            correlations requires the domain size, so this takes the matrix.
+        observations: np.ndarray[M]
+        observation_error_covariance: np.ndarray[M,M]
+        observation_operator: np.ndarray[M,N]
 
-    for i in range(ensemble_size):
-        new_ensemble[:, i], _ = assimilator(
-            ensemble[:, i], background_covariance,
-            observations + observation_noise[i, :],
-            observation_covariance, observation_operator)
+        Returns
+        -------
+        new_ensemble: np.ndarray[K, N]
+        """
+        ensemble_size = ensemble.shape[0]
+        perturbations = inversion.ensemble.perturbations(ensemble)
 
-    return new_ensemble
+        # If I assume the ROI for observations << localization length and
+        # can somehow get (L * (X @ X.T)) @ H.T in terms of X @ (H @ X).T, I can
+        # reduce the memory footprint.  Until then, I do things this way.
+        background_covariance = (
+            1 / (ensemble_size - 1) *
+            perturbations.T.dot(perturbations) *
+            localization_matrix
+        )
+
+        observation_noise = gaussian_noise(observation_error_covariance,
+                                           ensemble_size)
+
+        new_ensemble = empty_like(ensemble)
+
+        assimilator = self._assimilator
+        for i in range(ensemble_size):
+            new_ensemble[i, :], _ = assimilator(
+                ensemble[i, :], background_covariance,
+                # The posterior spread should be (I - KH)P^B
+                # Without the observation perturbations, it is instead
+                # (I - KH)P^B(I - KH)
+                observations + observation_noise[i, :],
+                observation_error_covariance, observation_operator)
+
+        return new_ensemble
