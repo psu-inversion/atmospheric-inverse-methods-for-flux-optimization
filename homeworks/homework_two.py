@@ -332,6 +332,9 @@ for col, da_fun in enumerate(
     print("Average Analysis RMSE:", np.mean(analysis_rmse))
 
 # The current implementation improves the RMSE each time through
+import scipy.io
+scipy.io.savemat("3DVarInhomogeneousNMCCovariances.mat",
+                 dict(nmc_cov=nmc_cov))
 
 rmse_fig.savefig("lorenz96_full.pdf")
 
