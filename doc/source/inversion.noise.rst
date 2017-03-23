@@ -1,7 +1,7 @@
-inversion.tests module
+inversion.noise module
 ======================
 
-.. automodule:: inversion.tests
+.. automodule:: inversion.noise
     :members:
     :undoc-members:
     :show-inheritance:

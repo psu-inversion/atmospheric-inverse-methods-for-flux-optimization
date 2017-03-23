@@ -1,7 +1,7 @@
-Geophysical Inversions
-======================
+inversion
+=========
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 5
 
    inversion

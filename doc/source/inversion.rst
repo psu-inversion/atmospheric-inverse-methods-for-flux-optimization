@@ -6,43 +6,22 @@ Subpackages
 
 .. toctree::
 
-    inversion.tests
+    inversion.ensemble
 
 Submodules
 ----------
 
-inversion.correlations module
------------------------------
+.. toctree::
 
-.. automodule:: inversion.correlations
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-inversion.noise module
-----------------------
-
-.. automodule:: inversion.noise
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-inversion.optimal_interpolation module
---------------------------------------
-
-.. automodule:: inversion.optimal_interpolation
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-inversion.variational module
-----------------------------
-
-.. automodule:: inversion.variational
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
+   inversion.correlations
+   inversion.integrators
+   inversion.models
+   inversion.noise
+   inversion.optimal_interpolation
+   inversion.osse
+   inversion.psas
+   inversion.tests
+   inversion.variational
 
 Module contents
 ---------------
