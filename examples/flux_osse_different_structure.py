@@ -52,7 +52,7 @@ N_RUNS = 200
 TRUE_SP_ERROR_CORRELATION_FUN = (
     inversion.correlations.Gaussian2DCorrelation(5))
 ASSUMED_SP_ERROR_CORRELATION_FUN = (
-    inversion.correlations.Gaussian2DCorrelation(2))
+    inversion.correlations.Exponential2DCorrelation(5))
 TM_ERROR_CORRELATION_FUN = (
     inversion.correlations.Exponential1DCorrelation(7))
 STDS = np.ones((N_FLUX_TIMES, NY, NX))
@@ -464,4 +464,4 @@ if __name__ == "__main__":
     #       "If this is not close to one for this perfect-model setup,\n"
     #       "we have big problems.")
     iris.save([post_shaped, innovations, increments],
-              "fraternal_gaussian_actual_5_assumed_2.nc")
+              "fraternal_actual_gaussian_5_assumed_exponential_5.nc")

@@ -1,2 +1,3 @@
 recursive-include doc *.py *.rst
 recursive-include homeworks *.py
+recursive-include examples *.py
