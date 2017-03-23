@@ -2,9 +2,14 @@
 import collections
 
 import numpy as np
-from numpy.fft import rfft
+from numpy.fft import rfft, irfft
 import scipy.linalg
 
+import iris.cube
+import iris.coords
+
+import inversion.models
+from inversion.models import ArgsYTWrapper
 from inversion.noise import gaussian_noise
 
 ASSIMILATION_SPIN_UP = 10
@@ -24,18 +29,19 @@ def _make_tuple(*args):
     return args
 
 
-def root_mean_squared_difference(arry1, arry2):
+def root_mean_squared_difference(arry1, arry2, axis=None):
     """Root mean square difference of arrays.
 
     Parameters
     ----------
     arry1, arry2: np.ndarray[N]
+    axis: int, optional
 
     Returns
     -------
     float
     """
-    return np.sqrt(np.mean(np.square(arry1 - arry2)))
+    return np.sqrt(np.mean(np.square(arry1 - arry2), axis=axis))
 
 
 def identical_twin(model, integrator, initial_state, dt,
@@ -205,7 +211,7 @@ def identical_twin(model, integrator, initial_state, dt,
         # Averaging should match the statistics better
         # The imag and real parts are the sines and cosines
         # doing them together may cause problems with the mean
-        lag_covariances = (np.fft.irfft(real_variances + imag_variances) /
+        lag_covariances = (irfft(real_variances + imag_variances) /
                            len(curr_model))
 
         result = (background_rmse, analysis_rmse,
@@ -215,3 +221,264 @@ def identical_twin(model, integrator, initial_state, dt,
         return result + (observation_background_rmsd,
                          observation_analysis_rmsd)
     return result
+
+
+def ensemble_osse(
+        model, integrator,
+        dt, assimilation_cycle_time, experiment_length,
+        observations, observation_operator, observation_error_covariance,
+        localization_matrix,
+        initial_ensemble, assimilation_function,
+        additional_forecast_times=(),
+        multiplicative_inflation_factor=1):
+    """Run an OSSE using the given observations and assumed errors.
+
+    Assumes ensemble trajectory and full background covariance
+    matrices can fit in memory.
+
+    Parameters
+    ----------
+    model: callable
+        Follows signature of :class:`inversion.models.Lorenz96`
+        instances.
+    integrator: callable
+        Follows signature of functions in :mod:`inversion.ensemble.integrators`
+    dt: float
+        Model integration time step
+    assimilation_cycle_time: float
+    experiment_length: float
+    observations: np.ndarray[N_CYCLES, M]
+        Observations generated from the truth run.
+    observation_operator: np.ndarray[M, N]
+        The assumed observation operator.
+        Currently assumes that :math:`h(x) = H x`
+    observation_error_covariance: np.ndarray[M, M]
+        The assumed observation error covariance matrix.
+    localization_matrix: np.ndarray[N, N]
+        np.ones((N, N)) gives no localization.
+        Classes in :mod:`inversion.correlations` offer other options.
+    initial_ensemble: np.ndarray[K, N]
+        The initial ensemble to start the experiment.
+    assimilation_function: callable
+        Follows signature of
+        :func:`inversion.ensemble.perturbed_observations_filter.SimplePerturbedObsFilter`.
+    additional_forecast_times: sequence of float, optional
+        Additional forecast times to include in the output.
+    multiplicative_inflation_factor: float, optional
+        Number to multiply the perturbations by after the assimilation.
+
+    Returns
+    -------
+    ensemble_forecast_trajectory: iris.cube.Cube[N_CYCLES, LEAD_TIME, K, N]
+
+    """
+    n_cycles = int(np.rint(experiment_length / assimilation_cycle_time))
+    ensemble_size, state_size = initial_ensemble.shape
+
+    curr_ensemble = initial_ensemble.copy()
+
+    forecast_times = sorted(set(_make_tuple(
+        0, assimilation_cycle_time, *additional_forecast_times)))
+    next_background_index = forecast_times.index(assimilation_cycle_time)
+    forecast_times = np.array(forecast_times)
+
+    ensemble_forecast_trajectory = np.empty(
+        (n_cycles, len(forecast_times), ensemble_size, state_size),
+        dtype=initial_ensemble.dtype)
+
+    forecast_init_times = np.arange(
+            0, experiment_length, assimilation_cycle_time)
+
+    for i, init_time in enumerate(forecast_init_times):
+        curr_obs = observations[i, :]
+
+        curr_ensemble = assimilation_function(
+            curr_ensemble, localization_matrix, curr_obs,
+            observation_error_covariance, observation_operator)
+
+        if multiplicative_inflation_factor != 1:
+            ens_mean, ens_perts = inversion.ensemble.mean_and_perturbations(
+                curr_ensemble)
+            ens_perts *= multiplicative_inflation_factor
+            curr_ensemble = inversion.ensemble.states_from_perturbations(
+                ens_mean, ens_perts)
+
+        forecasts = integrator(
+            inversion.models.ArgsYTWrapper(model),
+            curr_ensemble,
+            forecast_times,
+            dt)
+
+        ensemble_forecast_trajectory[i, :, :, :] = forecasts[:, :, :]
+        curr_ensemble = forecasts[next_background_index, :, :]
+
+    result = iris.cube.Cube(
+        ensemble_forecast_trajectory,
+        dim_coords_and_dims=(
+            (iris.coords.DimCoord(
+                forecast_init_times,
+                standard_name="forecast_reference_time"), 0),
+            (iris.coords.DimCoord(
+                forecast_times,
+                long_name="forecast_lead_time"), 1),
+            (iris.coords.DimCoord(
+                range(ensemble_size),
+                long_name="ensemble_member"), 2),
+            (iris.coords.DimCoord(
+                range(state_size),
+                long_name="state_vec_index"), 3),
+        ),
+        aux_coords_and_dims=(
+            (iris.coords.AuxCoord(
+                forecast_init_times[:, np.newaxis] +
+                forecast_times[np.newaxis, :],
+                standard_name="time"), (0, 1)),
+        ),
+    )
+    return result
+
+
+def hybrid_osse(
+        model, control_integrator, ensemble_integrator,
+        dt, assimilation_cycle_time, experiment_length,
+        observations, observation_operator, observation_error_covariance,
+        background_error_covariance, localization_matrix,
+        initial_control, initial_ensemble, assimilation_function,
+        additional_forecast_times=(),
+        multiplicative_inflation_factor=1,
+        ensemble_covariance_weight=.5):
+    """Run an OSSE using the given observations and assumed errors.
+
+    Assumes ensemble trajectory and full background covariance
+    matrices can fit in memory. Assumes `control` and rows of
+    `ensemble` are the same length and have the same dtype.
+
+    Parameters
+    ----------
+    model: callable
+        Follows signature of :class:`inversion.models.Lorenz96`
+        instances.
+    control_integrator: callable
+        Follows signature of functions in :mod:`inversion.integrators`
+    ensemble_integrator: callable
+        Follows signature of functions in :mod:`inversion.ensemble.integrator`
+    dt: float
+        Model integration time step
+    assimilation_cycle_time: float
+    experiment_length: float
+    observations: np.ndarray[N_CYCLES, M]
+        Observations generated from the truth run.
+    observation_operator: np.ndarray[M, N]
+        The assumed observation operator.
+        Currently assumes that :math:`h(x) = H x`
+    observation_error_covariance: np.ndarray[M, M]
+        The assumed observation error covariance matrix.
+    background_error_covariance: np.ndarray[N, N]
+    localization_matrix: np.ndarray[N, N]
+        np.ones((N, N)) gives no localization.
+        Classes in :mod:`inversion.correlations` offer other options.
+    initial_control: np.ndarray[N]
+    initial_ensemble: np.ndarray[K, N]
+        The initial ensemble to start the experiment.
+    assimilation_function: callable
+        Follows signature of
+        :func:`inversion.ensemble.hybrid.SimpleEns3DVar`.
+    additional_forecast_times: sequence of float, optional
+        Additional forecast times to include in the output.
+    multiplicative_inflation_factor: float, optional
+        Number to multiply the perturbations by after the assimilation.
+    ensemble_covariance_weight: float
+
+    Returns
+    -------
+    control_forecast_trajectory: iris.cube.Cube[N_CYCLES, LEAD_TIME, N]
+    ensemble_forecast_trajectory: iris.cube.Cube[N_CYCLES, LEAD_TIME, K, N]
+
+    """
+    n_cycles = int(np.rint(experiment_length / assimilation_cycle_time))
+    ensemble_size, state_size = initial_ensemble.shape
+
+    curr_control = initial_control.copy()
+    curr_ensemble = initial_ensemble.copy()
+
+    forecast_times = sorted(set(_make_tuple(
+        0, assimilation_cycle_time, *additional_forecast_times)))
+    next_background_index = forecast_times.index(assimilation_cycle_time)
+    forecast_times = np.array(forecast_times)
+
+    control_forecast_trajectory = np.empty(
+        (n_cycles, len(forecast_times), state_size),
+        dtype=initial_control.dtype)
+    ensemble_forecast_trajectory = np.empty(
+        (n_cycles, len(forecast_times), ensemble_size, state_size),
+        dtype=initial_ensemble.dtype)
+
+    forecast_init_times = np.arange(
+            0, experiment_length, assimilation_cycle_time)
+
+    for i, init_time in enumerate(forecast_init_times):
+        curr_obs = observations[i, :]
+
+        curr_control, curr_ensemble = assimilation_function(
+            curr_control, curr_ensemble,
+            background_error_covariance, localization_matrix, curr_obs,
+            observation_error_covariance, observation_operator,
+            ensemble_covariance_weight)
+
+        if multiplicative_inflation_factor != 1:
+            ens_mean, ens_perts = inversion.ensemble.mean_and_perturbations(
+                curr_ensemble)
+            ens_perts *= multiplicative_inflation_factor
+            curr_ensemble = inversion.ensemble.states_from_perturbations(
+                ens_mean, ens_perts)
+
+        ens_forecasts = ensemble_integrator(
+            inversion.models.ArgsYTWrapper(model),
+            curr_ensemble,
+            forecast_times,
+            dt)
+        control_forecasts = control_integrator(
+            inversion.models.ArgsYTWrapper(model),
+            curr_control, forecast_times, dt)
+
+        control_forecast_trajectory[i, :, :] = control_forecasts
+        ensemble_forecast_trajectory[i, :, :, :] = ens_forecasts[:, :, :]
+
+        curr_control = control_forecasts[next_background_index, :]
+        curr_ensemble = ens_forecasts[next_background_index, :, :]
+
+    ens_result = iris.cube.Cube(
+        ensemble_forecast_trajectory,
+        dim_coords_and_dims=(
+            (iris.coords.DimCoord(
+                forecast_init_times,
+                standard_name="forecast_reference_time"), 0),
+            (iris.coords.DimCoord(
+                forecast_times,
+                long_name="forecast_lead_time"), 1),
+            (iris.coords.DimCoord(
+                range(ensemble_size),
+                long_name="ensemble_member"), 2),
+            (iris.coords.DimCoord(
+                range(state_size),
+                long_name="state_vec_index"), 3),
+        ),
+        aux_coords_and_dims=(
+            (iris.coords.AuxCoord(
+                forecast_init_times[:, np.newaxis] +
+                forecast_times[np.newaxis, :],
+                standard_name="time"), (0, 1)),
+        ),
+    )
+    control_result = iris.cube.Cube(
+        control_forecast_trajectory,
+        dim_coords_and_dims=(
+            (ens_result.coord("forecast_reference_time"), 0),
+            (ens_result.coord("forecast_lead_time"), 1),
+            (ens_result.coord("state_vec_index"), 2),
+        ),
+        aux_coords_and_dims=(
+            (ens_result.coord("time"), (0, 1)),
+        ),
+    )
+    return iris.cube.CubeList((control_result, ens_result))
