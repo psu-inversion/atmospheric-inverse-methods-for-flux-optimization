@@ -6,6 +6,20 @@ import numpy as np
 import scipy.optimize
 import scipy.linalg
 
+from inversion import ConvergenceError
+
+MAX_ITERATIONS = 40
+"""Max. iterations allowed during the minimization.
+
+I think 40 is what the operational centers use.
+"""
+GRAD_TOL = 1e-3
+"""How small the gradient norm must be to declare convergence.
+
+From `gtol` option to the BFGS method of
+:fun:`scipy.optimize.minimize`
+
+"""
 
 def simple(background, background_covariance,
            observations, observation_covariance,
@@ -113,12 +127,14 @@ def simple(background, background_covariance,
         cost_function, background,
         method="BFGS",
         jac=cost_jacobian,
-        # hessp=cost_hessian_product
+        # hessp=cost_hessian_product,
+        options=dict(maxiter=MAX_ITERATIONS,
+                     gtol=GRAD_TOL),
     )
 
     if not result.success:
-        raise ValueError("Did not converge: {msg:s}".format(
-            msg=result.message))
+        raise ConvergenceError("Did not converge: {msg:s}".format(
+            msg=result.message), result)
 
     return result.x, result.hess_inv
 
@@ -233,17 +249,18 @@ def incremental(background, background_covariance,
         cost_function, np.zeros_like(background),
         method="BFGS",
         jac=cost_jacobian,
-        # hessp=cost_hessian_product
+        # hessp=cost_hessian_product,
+        options=dict(maxiter=MAX_ITERATIONS,
+                     gtol=GRAD_TOL),
     )
 
-    if not result.success:
-        print(result.x)
-        print(result.x + background)
-        print(result.jac)
-        raise ValueError("Did not converge: {msg:s}".format(
-            msg=result.message))
+    analysis = background + result.x
 
-    return background + result.x, result.hess_inv
+    if not result.success:
+        raise ConvergenceError("Did not converge: {msg:s}".format(
+            msg=result.message), result, analysis)
+
+    return analysis, result.hess_inv
 
 
 def incr_chol(background, background_covariance,
@@ -365,14 +382,15 @@ def incr_chol(background, background_covariance,
         cost_function, np.zeros_like(background),
         method="BFGS",
         jac=cost_jacobian,
-        # hessp=cost_hessian_product
+        # hessp=cost_hessian_product,
+        options=dict(maxiter=MAX_ITERATIONS,
+                     gtol=GRAD_TOL),
     )
 
-    if not result.success:
-        print(result.x)
-        print(result.x + background)
-        print(result.jac)
-        raise ValueError("Did not converge: {msg:s}".format(
-            msg=result.message))
+    analysis = background + result.x
 
-    return background + result.x, result.hess_inv
+    if not result.success:
+        raise ConvergenceError("Did not converge: {msg:s}".format(
+            msg=result.message), result, analysis)
+
+    return analysis, result.hess_inv

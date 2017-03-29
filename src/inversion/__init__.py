@@ -45,3 +45,39 @@ as being a close approximation for :math:`\vec{x}` near
     evaluation, ...)
 
 """
+
+class ConvergenceError(ValueError):
+    """An iterative scheme did not reach convergence.
+
+    The idea is that those who want good answers or nothing will get
+    them, and those who want to take a chance with a bad one can do
+    so.  I feel good or nothing is the better default.
+
+    """
+
+    def __init__(self, msg, result, guess=None, hess_inv=None):
+        """Save useful attributes.
+
+        Parameters
+        ----------
+        msg: str
+        result:
+            current state of scheme
+        guess: array_like[N], optional
+            Last state estimate
+        hess_inv: array_like[N,N], optional
+            Estimate of inverse hessian
+        """
+        super(ConvergenceError, self).__init__(self, msg)
+
+        self.result = result
+
+        if guess is None:
+            self.guess = result.x
+        else:
+            self.guess = guess
+
+        if hess_inv is None and hasattr(result, "hess_inv"):
+            self.hess_inv = result.hess_inv
+        else:
+            self.hess_inv = hess_inv

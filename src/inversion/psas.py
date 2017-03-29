@@ -6,6 +6,18 @@ import numpy as np
 import numpy.linalg as la
 import scipy.optimize
 
+MAX_ITERATIONS = 40
+"""Max. iterations allowed during the minimization.
+
+I think 40 is what the operational centers use.
+"""
+GRAD_TOL = 1e-3
+"""How small the gradient norm must be to declare convergence.
+
+From `gtol` option to the BFGS method of
+:fun:`scipy.optimize.minimize`
+
+"""
 
 def simple(background, background_covariance,
            observations, observation_covariance,
@@ -93,11 +105,10 @@ def simple(background, background_covariance,
         method="BFGS",
         jac=cost_jacobian,
         # hess=covariance_sum,
+        options=dict(maxiter=MAX_ITERATIONS,
+                     gtol=GRAD_TOL),
     )
 
-    if not result.success:
-        raise ValueError("Did not converge: {msg:s}".format(
-            msg=result.message))
     analysis_increment = result.x
 
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
@@ -121,6 +132,10 @@ def simple(background, background_covariance,
     decrease = lower_decrease.dot(lower_decrease.T)
     # this may not
     analysis_covariance = background_covariance - decrease
+
+    if not result.success:
+        raise ConvergenceError("Did not converge: {msg:s}".format(
+            msg=result.message), result, analysis, analysis_covariance)
 
     return analysis, analysis_covariance
 
@@ -202,11 +217,10 @@ def fold_common(background, background_covariance,
         method="BFGS",
         jac=cost_jacobian,
         # hess=covariance_sum,
+        options=dict(maxiter=MAX_ITERATIONS,
+                     gtol=GRAD_TOL),
     )
 
-    if not result.success:
-        raise ValueError("Did not converge: {msg:s}".format(
-            msg=result.message))
     analysis_increment = result.x
 
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
@@ -228,4 +242,7 @@ def fold_common(background, background_covariance,
     # this may not
     analysis_covariance = background_covariance - decrease
 
+    if not result.success:
+        raise ConvergenceError("Did not converge: {msg:s}".format(
+            msg=result.message), result, analysis, analysis_covariance)
     return analysis, analysis_covariance
