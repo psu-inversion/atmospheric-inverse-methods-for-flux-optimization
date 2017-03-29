@@ -48,11 +48,11 @@ import inversion.noise
 isqrt = iris.analysis.maths.IFunc(
     np.sqrt, lambda cube: cube.units.root(2))
 
-NX = 25
-NY = 20
-N_FLUX_TIMES = 2
+NX = 45
+NY = 35
+N_FLUX_TIMES = 1
 
-N_TIMES_BACK = 2
+N_TIMES_BACK = 1
 N_SITES = 6
 
 N_GRID_POINTS = NX * NY
@@ -61,9 +61,9 @@ N_OBS_TIMES = N_FLUX_TIMES - N_TIMES_BACK + 1
 N_RUNS = 200
 
 SP_ERROR_CORRELATION_FUN = (
-    inversion.correlations.GaussianSpatialCorrelation(5))
+    inversion.correlations.Gaussian2DCorrelation(5))
 TM_ERROR_CORRELATION_FUN = (
-    inversion.correlations.ExponentialTemporalCorrelation(7))
+    inversion.correlations.Exponential1DCorrelation(2))
 STDS = np.ones((N_FLUX_TIMES, NY, NX))
 
 COORD_ADJOINT_STR = "adjoint_"
@@ -369,8 +369,23 @@ if __name__ == "__main__":
         iris.analysis.SUM)
     true_obs_vec = true_obs_shaped.data.reshape(-1)
 
-    chi2_rs = []
-    innovations = np.empty((N_OBS_TIMES * N_SITES, N_RUNS), order="F")
+    chi2s = []
+    innovations = iris.cube.Cube(
+        np.empty((N_RUNS, N_OBS_TIMES, N_SITES)),
+        long_name="innovations",
+        dim_coords_and_dims=(
+            (OBS_TIME_COORD, 1),
+        )
+    )
+    increments = iris.cube.Cube(
+        np.empty((N_RUNS, N_TIMES_BACK, NY, NX)),
+        long_name="increments",
+        dim_coords_and_dims=(
+            (TIME_BACK_COORD, 1),
+            (Y_COORD, 2),
+            (X_COORD, 3),
+        )
+    )
 
     for i in range(N_RUNS):
         noise = inversion.noise.gaussian_noise(ERROR_COVARIANCE)
@@ -429,10 +444,14 @@ if __name__ == "__main__":
         # print("Expected value:       ", df_expected)
 
         # print("Chi squared reduced:", chisq / df_expected)
-        chi2_rs.append(chisq / df_expected)
-        innovations[:, i] = prior_mismatch.data.reshape(-1)
+        chi2s.append(chisq)
+        innovations.data[i, :, :] = prior_mismatch.data[np.newaxis, :]
+        increments.data[i] = (post_shaped - prior_shaped).data
 
     # print("To increase this statistic, decrease the flux variances\n"
     #       "To decrease this statistic, increase the flux variances\n"
     #       "If this is not close to one for this perfect-model setup,\n"
     #       "we have big problems.")
+    iris.save([post_shaped, innovations, increments],
+              "identical_gaussian_5.nc",
+              zlib=True)

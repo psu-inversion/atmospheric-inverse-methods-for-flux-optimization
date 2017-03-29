@@ -37,11 +37,11 @@ import inversion.noise
 isqrt = iris.analysis.maths.IFunc(
     np.sqrt, lambda cube: cube.units.root(2))
 
-NX = 30
-NY = 25
-N_FLUX_TIMES = 3
+NX = 45
+NY = 35
+N_FLUX_TIMES = 1
 
-N_TIMES_BACK = 3
+N_TIMES_BACK = 1
 N_SITES = 6
 
 N_GRID_POINTS = NX * NY
@@ -50,11 +50,11 @@ N_OBS_TIMES = N_FLUX_TIMES - N_TIMES_BACK + 1
 N_RUNS = 200
 
 TRUE_SP_ERROR_CORRELATION_FUN = (
-    inversion.correlations.Gaussian2DCorrelation(5))
-ASSUMED_SP_ERROR_CORRELATION_FUN = (
     inversion.correlations.Exponential2DCorrelation(5))
+ASSUMED_SP_ERROR_CORRELATION_FUN = (
+    inversion.correlations.Gaussian2DCorrelation(5))
 TM_ERROR_CORRELATION_FUN = (
-    inversion.correlations.Exponential1DCorrelation(7))
+    inversion.correlations.Exponential1DCorrelation(2))
 STDS = np.ones((N_FLUX_TIMES, NY, NX))
 
 COORD_ADJOINT_STR = "adjoint_"
@@ -380,7 +380,10 @@ if __name__ == "__main__":
         iris.analysis.SUM)
     true_obs_vec = true_obs_shaped.data.reshape(-1)
 
-    chi2s = []
+    chi2s = iris.cube.Cube(
+        np.empty((N_RUNS)),
+        long_name="chi_squared_statistics",
+    )
     innovations = iris.cube.Cube(
         np.empty((N_RUNS, N_OBS_TIMES, N_SITES)),
         long_name="innovations",
@@ -455,13 +458,13 @@ if __name__ == "__main__":
         # print("Expected value:       ", df_expected)
 
         # print("Chi squared reduced:", chisq / df_expected)
-        chi2s.append(chisq)
-        innovations[i, :, :].data = prior_mismatch.data[np.newaxis, :]
-        increments[i].data = (post_shaped - prior_shaped).data
+        chi2s.data[i] = chisq
+        innovations.data[i, :, :] = prior_mismatch.data[np.newaxis, :]
+        increments.data[i] = (post_shaped - prior_shaped).data
 
     # print("To increase this statistic, decrease the flux variances\n"
     #       "To decrease this statistic, increase the flux variances\n"
     #       "If this is not close to one for this perfect-model setup,\n"
     #       "we have big problems.")
-    iris.save([post_shaped, innovations, increments],
-              "fraternal_actual_gaussian_5_assumed_exponential_5.nc")
+    iris.save([post_shaped, innovations, increments, chi2s],
+              "fraternal_actual_exponential_5_assumed_gaussian_5.nc")

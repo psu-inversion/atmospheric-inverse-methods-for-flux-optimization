@@ -42,9 +42,11 @@ setup(
             "pandas",
             "statsmodels",
             "matplotlib",
+            "git://github.com/Scitools/iris.git#egg=iris",
         ],
         examples=[
-            "scipy>=0.16.0",
+            "Iris", #"git+https://github.com/Scitools/iris.git#egg=iris",
+            "xarray",
         ],
     ),
     tests_require=[
