@@ -5,9 +5,13 @@ the right and left to obtain covariance matrices.
 
 """
 import abc
+import functools
 
-from numpy import sqrt, exp, fromfunction, dot, diag
+from numpy import ones_like, fromfunction, arange
+from numpy import sqrt, exp, dot, diag, prod
+from numpy.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
 from numpy.linalg import eigh
+from scipy.sparse.linalg import LinearOperator
 import six
 
 ROUNDOFF = 1e-13
@@ -28,6 +32,90 @@ away from zero due to roundoff. Values that were originally smaller
 than this are reset to zero.
 
 """
+
+
+class HomogeneousIsotropicCorrelation(LinearOperator):
+    """Homogeneous isotropic correlations using FFTs.
+
+    See Also
+    --------
+    scipy.linalg.solve_circulant
+        I stole the idea from here.
+    """
+
+    def __init__(self, corr_func, shape):
+        """Set up the instance.
+
+        Assumes correlations are real.
+
+        Parameters
+        ----------
+        corr_func: callable
+        shape: tuple of int
+            Shape of input domain expected by `corr_func`.
+            The state is formally input as a vector, but the correlations
+            depend on the layout in some other shape, usually related to the
+            physical layout. This is that shape.
+        """
+        state_size = prod(shape)
+
+        super(HomogeneousIsotropicCorrelation, self).__init__(
+            self, dtype=float, shape=(state_size, state_size),
+            matvec=self._matvec, rmatvec=self._matvec, matmat=self._matmat)
+
+        ndims = len(shape)
+        if ndims == 1:
+            self._fft = rfft
+            self._ifft = irfft
+        elif ndims == 2:
+            self._fft = rfft2
+            self._ifft = irfft2
+        else:
+            self._fft = functools.partial(rfftn, axes=arange(-ndims, 0, dtype=int))
+            self._ifft = functools.partial(irfftn, axes=arange(-ndims, 0, dtype=int))
+
+        corr_struct = fromfunction(corr_func, tuple(ones_like(shape)) + shape)
+        self._corr_fourier = self._fft(corr_struct[0, 0])
+        self._underlying_shape = shape
+
+    def _matvec(self, vec):
+        """The matrix product of this matrix and `vec`.
+
+        Parameters
+        ----------
+        vec: array_like[N]
+
+        Returns
+        -------
+        array_like[N]
+        """
+        field = vec.reshape(self._underlying_shape)
+
+        spectral_field = self._fft(field)
+        spectral_field *= self._corr_fourier
+        result = self._ifft(spectral_field)
+
+        return result.reshape(self.shape[-1])
+
+    def solve(self, vec):
+        """Solve A x = vec.
+
+        Parameters
+        ----------
+        vec: array_like[N]
+
+        Returns
+        -------
+        array_like[N]
+            Solution of `self @ x = vec`
+        """
+        field = vec.reshape(self._underlying_shape)
+
+        spectral_field = self._fft(field)
+        spectral_field /= self._corr_fourier
+        result = self._ifft(spectral_field)
+
+        return result.reshape(self.shape[-1])
 
 
 class CorrelationFunction2D(six.with_metaclass(abc.ABCMeta)):
