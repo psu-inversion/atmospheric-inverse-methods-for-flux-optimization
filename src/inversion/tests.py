@@ -297,32 +297,32 @@ class TestGaussianNoise(unittest.TestCase):
 class TestCorrelations(unittest2.TestCase):
     """Test the generation of correlation matrices."""
 
-    def test_2d_far_correl(self):
-        """Test the 2D correlation between points far apart.
+    def test_far_correl(self):
+        """Test the correlation between points far apart.
 
         Should be zero.
         """
         for corr_class in (
-                inversion.correlations.CorrelationFunction2D
+                inversion.correlations.DistanceCorrelationFunction
                 .__subclasses__()):
-            with self.subTest(corr_class=corr_class):
+            with self.subTest(corr_class=corr_class.__name__):
                 corr_fun = corr_class(1e-8)
 
-                corr = corr_fun(0, 0, 1e8, 1e8)
+                corr = corr_fun(1e8)
                 self.assertAlmostEqual(corr, 0)
 
-    def test_2d_near_correl(self):
+    def test_near_correl(self):
         """Test 2D correlation between near points.
 
         Should be one.
         """
         for corr_class in (
-                inversion.correlations.CorrelationFunction2D
+                inversion.correlations.DistanceCorrelationFunction
                 .__subclasses__()):
-            with self.subTest(corr_class=corr_class):
+            with self.subTest(corr_class=corr_class.__name__):
                 corr_fun = corr_class(1e8)
 
-                corr = corr_fun(0, 0, 1e-8, 1e-8)
+                corr = corr_fun(1e-8)
                 self.assertAlmostEqual(corr, 1)
 
     def test_2d_np_fromfunction(self):
@@ -333,12 +333,13 @@ class TestCorrelations(unittest2.TestCase):
         """
         test_size = (int(15), int(20))
         for corr_class in (
-                inversion.correlations.CorrelationFunction2D
+                inversion.correlations.DistanceCorrelationFunction
                 .__subclasses__()):
             with self.subTest(corr_class=getname(corr_class)):
                 corr_fun = corr_class(2.)
 
-                corr = np.fromfunction(corr_fun, test_size*2, dtype=float)
+                corr = np.fromfunction(corr_fun.correlation_from_index,
+                                       test_size*2, dtype=float)
                 corr_mat = corr.reshape((np.prod(test_size),)*2)
 
                 # test postitive definite
@@ -360,14 +361,15 @@ class TestCorrelations(unittest2.TestCase):
         test_points = test_ny * test_nx
 
         for corr_class in (
-                inversion.correlations.CorrelationFunction2D.
+                inversion.correlations.DistanceCorrelationFunction.
                 __subclasses__()):
             for dist in (1, 5, 10, 15):
                 with self.subTest(corr_class=getname(corr_class),
                                   dist=dist):
                     corr_fun = corr_class(dist)
 
-                    corr_mat = corr_fun.make_matrix(test_ny, test_nx)
+                    corr_mat = inversion.correlations.make_matrix(
+                        corr_fun, (test_ny, test_nx))
 
                     # Make sure diagonal elements are ones
                     np.testing.assert_allclose(np.diag(corr_mat), 1)
@@ -376,7 +378,8 @@ class TestCorrelations(unittest2.TestCase):
                     np.testing.assert_allclose(
                         corr_mat,
                         np.fromfunction(
-                            corr_fun, (test_ny, test_nx, test_ny, test_nx)
+                            corr_fun.correlation_from_index,
+                            (test_ny, test_nx, test_ny, test_nx)
                         ).reshape((test_points, test_points)),
                         # rtol=1e-13: Gaussian 10 and 15 fail
                         # atol=1e-15: Gaussian 1 and 5 fail
@@ -384,34 +387,6 @@ class TestCorrelations(unittest2.TestCase):
 
                     # check if it actually is positive definite
                     la.cholesky(corr_mat)
-
-    def test_1d_far_correl(self):
-        """Test the 1D correlation between points far apart.
-
-        Should be zero.
-        """
-        for corr_class in (
-                inversion.correlations.CorrelationFunction1D
-                .__subclasses__()):
-            with self.subTest(corr_class=corr_class):
-                corr_fun = corr_class(1e-8)
-
-                corr = corr_fun(0, 1e8)
-                self.assertAlmostEqual(corr, 0)
-
-    def test_1d_near_correl(self):
-        """Test 1D correlation between near points.
-
-        Should be one.
-        """
-        for corr_class in (
-                inversion.correlations.CorrelationFunction1D
-                .__subclasses__()):
-            with self.subTest(corr_class=corr_class):
-                corr_fun = corr_class(1e8)
-
-                corr = corr_fun(0, 1e-8)
-                self.assertAlmostEqual(corr, 1)
 
     def test_1d_np_fromfunction(self):
         """Test that the structure works with np.fromfunction.
@@ -421,17 +396,23 @@ class TestCorrelations(unittest2.TestCase):
         """
         test_size = (200,)
         for corr_class in (
-                inversion.correlations.CorrelationFunction1D
+                inversion.correlations.DistanceCorrelationFunction
                 .__subclasses__()):
             with self.subTest(corr_class=getname(corr_class)):
                 # This fails with a correlation length of 5
                 corr_fun = corr_class(2.)
 
-                corr = np.fromfunction(corr_fun, test_size*2, dtype=float)
+                corr = np.fromfunction(corr_fun.correlation_from_index,
+                                       test_size*2, dtype=float)
                 corr_mat = corr.reshape((np.prod(test_size),)*2)
 
                 # test postitive definite
-                la.cholesky(corr_mat)
+                chol_upper = la.cholesky(corr_mat)
+
+                # test symmetry
+                np.testing.assert_allclose(chol_upper.dot(chol_upper.T),
+                                           corr_mat,
+                                           rtol=1e-4, atol=1e-4)
 
     def test_1d_make_matrix(self):
         """Test make_matrix for 1D correlations.
@@ -441,14 +422,15 @@ class TestCorrelations(unittest2.TestCase):
         test_nt = 300
 
         for corr_class in (
-                inversion.correlations.CorrelationFunction1D.
+                inversion.correlations.DistanceCorrelationFunction.
                 __subclasses__()):
             for dist in (1, 5, 10, 30, 100):
                 with self.subTest(corr_class=getname(corr_class),
                                   dist=dist):
                     corr_fun = corr_class(dist)
 
-                    corr_mat = corr_fun.make_matrix(test_nt)
+                    corr_mat = inversion.correlations.make_matrix(corr_fun,
+                                                                  test_nt)
 
                     # Make sure diagonal elements are ones
                     np.testing.assert_allclose(np.diag(corr_mat), 1)
@@ -457,7 +439,7 @@ class TestCorrelations(unittest2.TestCase):
                     np.testing.assert_allclose(
                         corr_mat,
                         np.fromfunction(
-                            corr_fun, (test_nt, test_nt)
+                            corr_fun.correlation_from_index, (test_nt, test_nt)
                         ).reshape((test_nt, test_nt)),
                         # rtol=1e-13: Gaussian 10 and 15 fail
                         # atol=1e-15: Gaussian 1 and 5 fail

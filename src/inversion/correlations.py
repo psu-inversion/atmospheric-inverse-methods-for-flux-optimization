@@ -7,10 +7,10 @@ the right and left to obtain covariance matrices.
 import abc
 import functools
 
-from numpy import ones_like, fromfunction, arange
-from numpy import sqrt, exp, dot, diag, prod
+from numpy import fromfunction, arange, atleast_1d, asanyarray
+from numpy import exp, dot, diag, prod, square
 from numpy.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
-from numpy.linalg import eigh
+from numpy.linalg import eigh, norm
 from scipy.sparse.linalg import LinearOperator
 import six
 
@@ -50,9 +50,8 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
 
         Parameters
         ----------
-        corr_func: callable
+        corr_func: callable(float) -> float[-1, 1]
         shape: tuple of int
-            Shape of input domain expected by `corr_func`.
             The state is formally input as a vector, but the correlations
             depend on the layout in some other shape, usually related to the
             physical layout. This is that shape.
@@ -76,7 +75,28 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
             self._ifft = functools.partial(
                 irfftn, axes=arange(-ndims, 0, dtype=int))
 
-        corr_struct = fromfunction(corr_func, tuple(ones_like(shape)) + shape)
+        def corr_from_index(*index):
+            """Correlation of index with zero.
+
+            Turns a correlation function in terms of index distance
+            into one in terms of indices.
+
+            Parameters
+            ----------
+            index: tuple of int
+
+            Returns
+            -------
+            float[-1, 1]
+
+            See Also
+            --------
+            DistanceCorrelationFunction.correlation_from_index
+
+            """
+            return corr_func(norm(index, axis=0))
+
+        corr_struct = fromfunction(corr_from_index, shape)
         self._corr_fourier = self._fft(corr_struct[0, 0])
         # This is also affected by roundoff
         self._fourier_near_zero = self._corr_fourier < ROUNDOFF
@@ -158,73 +178,99 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         return result.reshape(self.shape[-1])
 
 
-class CorrelationFunction2D(six.with_metaclass(abc.ABCMeta)):
-    """Base class for 2D correlations."""
+def make_matrix(corr_func, shape):
+    """Make a correlation matrix for a domain with shape `shape`.
+
+    Parameters
+    ----------
+    corr_func: callable(float) -> float[-1, 1]
+        Function giving correlation between two indices a distance d
+        from each other.
+    shape: tuple of int
+        The underlying shape of the domain. It is viewed as a vector
+        here, but may be more naturally seen as an N-D array. This is
+        the shape of that array.
+        `N = prod(shape)`
+
+    Returns
+    -------
+    corr: np.ndarray[N, N]
+
+    """
+    shape = tuple(atleast_1d(shape))
+    n_points = prod(shape)
+
+    tmp_res = fromfunction(corr_func.correlation_from_index,
+                           2 * shape).reshape(
+        (n_points, n_points))
+    where_small = tmp_res < NEAR_ZERO
+    where_small &= tmp_res > -NEAR_ZERO
+
+    # This isn't always positive definite.  I reset the values on
+    # the negative side of roundoff to the positive side
+    vals, vecs = eigh(tmp_res)
+    del tmp_res
+    vals[vals < ROUNDOFF] = ROUNDOFF
+
+    result = dot(vecs, diag(vals).dot(vecs.T))
+
+    # Now, there's more roundoff
+    # make the values that were originally small zero
+    result[where_small] = 0
+    return result
+
+
+class DistanceCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
+    """A correlation function that depends only on distance."""
 
     def __init__(self, length):
-        """Set up the instance.
+        """Set up instance.
 
         Parameters
         ----------
         length: float
-            Unitless: physical correlation length / grid spacing
+            The correlation length in index space. Unitless.
         """
         self._length = float(length)
 
     @abc.abstractmethod
-    def __call__(self, y1, x1, y2, x2):
-        """The correlation between the points.
-
-        Argument order for use with :func:`np.fromfunction`.  Should
-        be similar to results from :func:`scipy.linalg.kron` when
-        reshaped to a 2D array for separable correlation functions
+    def __call__(self, dist):
+        """The correlation between points whose indices differ by dist.
 
         Parameters
         ----------
-        x1, x2: float
-        y1, y2: float
+        dist: float
 
         Returns
         -------
-        corr: float
-
+        correlation: float[-1, 1]
         """
         pass
 
-    def make_matrix(self, ny, nx):
-        """Make a correlation matrix for an `nx` by `ny` domain.
+    def correlation_from_index(self, *indices):
+        """Find the correlation between the indices.
+
+        Should be independent of the length of the underlying shape,
+        but `indices` must still be even.
 
         Parameters
         ----------
-        ny: int
-        nx: int
+        indices: tuple of int
 
         Returns
         -------
-        corr: np.ndarray[ny*nx, ny*nx]
+        float
+
         """
-        n_points = ny * nx
-        tmp_res = fromfunction(self, (ny, nx, ny, nx)).reshape(
-            (n_points, n_points))
-        where_small = tmp_res < NEAR_ZERO
-        where_small &= tmp_res > -NEAR_ZERO
-
-        # This isn't always positive definite.  I reset the values on
-        # the negative side of roundoff to the positive side
-        vals, vecs = eigh(tmp_res)
-        del tmp_res
-        vals[vals < ROUNDOFF] = ROUNDOFF
-
-        result = dot(vecs, diag(vals).dot(vecs.T))
-
-        # Now, there's more roundoff
-        # make the values that were originally small zero
-        result[where_small] = 0
-        return result
+        half = len(indices) // 2
+        point1 = asanyarray(indices[:half])
+        point2 = asanyarray(indices[half:])
+        dist = norm(point1 - point2, axis=0)
+        return self(dist)
 
 
-class Gaussian2DCorrelation(CorrelationFunction2D):
-    """A 2D gaussian correlation structure.
+class GaussianCorrelation(DistanceCorrelationFunction):
+    """A gaussian correlation structure.
 
     Note
     ----
@@ -232,26 +278,23 @@ class Gaussian2DCorrelation(CorrelationFunction2D):
     distance between the points.
     """
 
-    def __call__(self, y1, x1, y2, x2):
+    def __call__(self, dist):
         """The correlation between the points.
-
-        Argument order mirrors :func:`np.fromfunction`
 
         Parameters
         ----------
-        x1, x2: float
-        y1, y2: float
+        dist: float
 
         Returns
         -------
         corr: float
         """
-        dist2 = ((x1 - x2)**2 + (y1 - y2)**2)
-        return exp(-dist2 / (2 * self._length ** 2))
+        scaled_dist2 = square(dist / self._length)
+        return exp(-.5 * scaled_dist2)
 
 
-class Exponential2DCorrelation(CorrelationFunction2D):
-    """A 2D exponential correlation structure.
+class ExponentialCorrelation(DistanceCorrelationFunction):
+    """A exponential correlation structure.
 
     Note
     ----
@@ -259,133 +302,15 @@ class Exponential2DCorrelation(CorrelationFunction2D):
     where dist is the distance between the points.
     """
 
-    def __call__(self, y1, x1, y2, x2):
+    def __call__(self, dist):
         """The correlation between the points.
-
-        Argument order mirrors :func:`np.fromfunction`
 
         Parameters
         ----------
-        x1, x2: float
-        y1, y2: float
+        dist: float
 
         Returns
         -------
         corr: float
         """
-        dist = sqrt((x1 - x2)**2 + (y1-y2)**2)
         return exp(-dist/self._length)
-
-
-class CorrelationFunction1D(six.with_metaclass(abc.ABCMeta)):
-    """Base class for 1D correlations."""
-
-    def __init__(self, length):
-        """Set up the instance.
-
-        Parameters
-        ----------
-        length: float
-            Unitless: physical correlation time / bin dt
-        """
-        self._length = float(length)
-
-    @abc.abstractmethod
-    def __call__(self, t1, t2):
-        """The correlation between the points.
-
-        Argument order for use with :func:`np.fromfunction`.
-
-        Parameters
-        ----------
-        t1, t2: float
-
-        Returns
-        -------
-        corr: float
-
-        """
-        pass
-
-    def make_matrix(self, nt):
-        """Make a correlation matrix for `nt` times.
-
-        Parameters
-        ----------
-        nt: int
-
-        Returns
-        -------
-        corr: np.ndarray[nt, nt]
-        """
-        tmp_res = fromfunction(self, (nt, nt))
-        where_small = tmp_res < NEAR_ZERO
-        where_small &= tmp_res > -NEAR_ZERO
-
-        # This isn't always positive definite.  I reset the values on
-        # the negative side of roundoff to the positive side
-        vals, vecs = eigh(tmp_res)
-        del tmp_res
-        vals[vals < ROUNDOFF] = ROUNDOFF
-
-        result = dot(vecs, diag(vals).dot(vecs.T))
-
-        # Now there's more roundoff
-        # make the values that were originally small zero
-        result[where_small] = 0
-        return result
-
-
-class Exponential1DCorrelation(CorrelationFunction1D):
-    """A 1D exponential correlation structure.
-
-    Should model AR(1) processes fairly well
-
-    Note
-    ----
-    Correlation given by exp(-dist/length)
-    where dist is the distance between the points.
-    """
-
-    def __call__(self, t1, t2):
-        """The correlation between the points.
-
-        Argument order mirrors :func:`np.fromfunction`
-
-        Parameters
-        ----------
-        t1, t2: float
-
-        Returns
-        -------
-        corr: float
-        """
-        dist = abs(t1 - t2)
-        return exp(-dist/self._length)
-
-
-class Gaussian1DCorrelation(CorrelationFunction1D):
-    """A 1D gaussian correlation structure.
-
-    Note
-    ----
-    Correlation given by exp(-dist**2 / (2 * length**2)) where dist is the
-    distance between the points.
-    """
-
-    def __call__(self, t1, t2):
-        """The correlation between the points.
-
-        Argument order mirrors :func:`np.fromfunction`
-
-        Parameters
-        ----------
-        x1, x2: float
-        y1, y2: float
-
-        Returns
-        -------
-        corr: float
-        """
-        dist2 = (t1 - t2)**2
-        return exp(-dist2 / (2 * self._length ** 2))
