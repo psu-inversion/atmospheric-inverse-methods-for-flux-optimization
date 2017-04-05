@@ -12,14 +12,22 @@ MAX_ITERATIONS = 40
 """Max. iterations allowed during the minimization.
 
 I think 40 is what the operational centers use.
+
+Note
+----
+Must change test tolerances if this changes
 """
-GRAD_TOL = 1e-3
+GRAD_TOL = 1e-5
 """How small the gradient norm must be to declare convergence.
 
 From `gtol` option to the BFGS method of
 :fun:`scipy.optimize.minimize`
 
+Note
+----
+Must change test tolerances if this changes.
 """
+
 
 def simple(background, background_covariance,
            observations, observation_covariance,

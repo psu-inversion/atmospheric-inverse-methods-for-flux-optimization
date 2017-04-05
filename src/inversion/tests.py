@@ -19,6 +19,9 @@ import inversion.noise
 import inversion.correlations
 import inversion.integrators
 
+# If adding other inexact methods to the list tested, be sure to add
+# those to the `if "var" in name or "psas" in name` and
+# `if "psas" in name` tests as applicable.
 ALL_METHODS = (inversion.optimal_interpolation.simple,
                inversion.optimal_interpolation.fold_common,
                inversion.optimal_interpolation.scipy_chol,
@@ -29,6 +32,10 @@ ALL_METHODS = (inversion.optimal_interpolation.simple,
                inversion.psas.fold_common,
 )
 PRECISE_DTYPE = np.float128
+
+ITERATIVE_STATE_TOLERANCE = 1e-3
+ITERATIVE_COVARIANCE_TOLERANCE = 1e-1
+EXACT_TOLERANCE = 1e-7
 
 
 def getname(method):
@@ -67,7 +74,9 @@ class TestSimple(unittest2.TestCase):
         obs_op = np.atleast_2d(1.)
 
         for method in ALL_METHODS:
-            with self.subTest(method=getname(method)):
+            name = getname(method)
+
+            with self.subTest(method=name):
                 post, post_cov = method(
                     bg, bg_cov, obs, obs_cov, obs_op)
 
@@ -94,6 +103,8 @@ class TestSimple(unittest2.TestCase):
 
                 np.testing.assert_allclose(
                     post, PRECISE_DTYPE(14 + fractions.Fraction(1, 3)))
+                np.testing.assert_allclose(
+                    post_cov, PRECISE_DTYPE(fractions.Fraction(2, 3)))
 
     def test_homework_one(self):
         """Verify that this can reproduce the answers to HW1.
@@ -123,7 +134,12 @@ class TestSimple(unittest2.TestCase):
         obs_cov = np.diag(obs_var)
 
         for method in ALL_METHODS:
-            with self.subTest(method=getname(method)):
+            # Setup for expected degradation of solutions
+            name = getname(method)
+            # The default for assert_allclose
+            cov_rtol = state_rtol = EXACT_TOLERANCE
+
+            with self.subTest(method=name):
                 with self.subTest(problem=3):
                     state_college_index = 1
                     post, post_cov = method(
@@ -135,7 +151,8 @@ class TestSimple(unittest2.TestCase):
 
                     np.testing.assert_allclose(
                         post, np.asanyarray(14 + fractions.Fraction(1, 3),
-                                            dtype=PRECISE_DTYPE))
+                                            dtype=PRECISE_DTYPE),
+                        rtol=state_rtol)
 
                 with self.subTest(problem=4):
                     state_college_index = 1
@@ -150,7 +167,8 @@ class TestSimple(unittest2.TestCase):
                         post, np.asanyarray((17 + fractions.Fraction(2, 3),
                                              14 + fractions.Fraction(1, 3),
                                              21 + fractions.Fraction(2, 3)),
-                                            dtype=PRECISE_DTYPE))
+                                            dtype=PRECISE_DTYPE),
+                        rtol=state_rtol)
 
                 with self.subTest(problem=5):
                     pittsburgh_index = 0
@@ -166,7 +184,8 @@ class TestSimple(unittest2.TestCase):
                         np.asanyarray((18 + fractions.Fraction(2, 3),
                                        15 + fractions.Fraction(1, 3),
                                        22 + fractions.Fraction(1, 6)),
-                                      PRECISE_DTYPE))
+                                      PRECISE_DTYPE),
+                        rtol=state_rtol)
 
                 with self.subTest(problem=7):
                     state_college_index = 1
@@ -181,7 +200,8 @@ class TestSimple(unittest2.TestCase):
                         post, np.asanyarray((17 + fractions.Fraction(5, 6),
                                              14 + fractions.Fraction(2, 3),
                                              21 + fractions.Fraction(5, 6)),
-                                            dtype=PRECISE_DTYPE))
+                                            dtype=PRECISE_DTYPE),
+                        rtol=state_rtol)
 
                 with self.subTest(problem=8):
                     post, post_cov = method(
@@ -195,7 +215,8 @@ class TestSimple(unittest2.TestCase):
                             (18 + fractions.Fraction(1, 2),
                              14 + fractions.Fraction(1, 2),
                              21 + fractions.Fraction(3, 4)),
-                            dtype=PRECISE_DTYPE))
+                            dtype=PRECISE_DTYPE),
+                        rtol=state_rtol)
 
     def test_sequential_assimilations(self):
         """Make sure this follows Bayes' rule."""
@@ -222,11 +243,12 @@ class TestSimple(unittest2.TestCase):
         for method in ALL_METHODS:
             name = getname(method)
             if "var" in name.lower() or "psas" in name.lower():
-                state_rtol = 1e-3
-                cov_rtol = 1e-1
+                state_rtol = ITERATIVE_STATE_TOLERANCE
+                cov_rtol = ITERATIVE_COVARIANCE_TOLERANCE
             else:
                 # The default for assert_allclose
-                cov_rtol = state_rtol = 1e-7
+                cov_rtol = state_rtol = EXACT_TOLERANCE
+
             with self.subTest(method=name):
                 inter1, inter_cov1 = method(
                     bg, bg_cov, obs[0], obs_cov[0, 0],
