@@ -1,10 +1,15 @@
 """Hybrid ensemble-static assimilation schemes."""
 
-import numpy as np
-
 import inversion.ensemble
 
+
 class SimpleEns3DVar:
+    """Ensemble 3D-Var implementation.
+
+    Uses ensemble to generate a flow-dependent background that is then
+    added to the static background from the background assimilator.
+
+    """
 
     def __init__(self, control_assimilator, ensemble_assimilator):
         """Set assimilators.
@@ -12,7 +17,11 @@ class SimpleEns3DVar:
         Parameters
         ----------
         control_assimilator: callable
+            Assumed to be one of the :mod:`inversion.variational`
+            functions, but :mod:`inversion.optimal_interpolation` and
+            :mod:`inversion.psas` functions have the same interface.
         ensemble_assimilator: callable
+
         """
         self._control_assim = control_assimilator
         self._ens_assim = ensemble_assimilator
@@ -44,7 +53,7 @@ class SimpleEns3DVar:
         observation_operator: np.ndarray[M, N]
         ens_weight: float
         control_to_ensemble_function: callable
-            Function to 
+            Function to
 
         Returns
         -------

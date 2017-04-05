@@ -9,7 +9,6 @@ import iris.cube
 import iris.coords
 
 import inversion.models
-from inversion.models import ArgsYTWrapper
 from inversion.noise import gaussian_noise
 
 ASSIMILATION_SPIN_UP = 10

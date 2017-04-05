@@ -21,7 +21,7 @@ GRAD_TOL = 1e-5
 """How small the gradient norm must be to declare convergence.
 
 From `gtol` option to the BFGS method of
-:fun:`scipy.optimize.minimize`
+:func:`scipy.optimize.minimize`
 
 Note
 ----

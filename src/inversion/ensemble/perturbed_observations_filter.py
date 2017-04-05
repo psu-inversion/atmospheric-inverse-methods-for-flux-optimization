@@ -19,7 +19,15 @@ from inversion.noise import gaussian_noise
 
 
 class SimplePerturbedObsFilter:
+    """Perturbed obs filter.
 
+    Performs separate assimilations on each member. Alone, this
+    reduces the posterior covariance to :math:`(I-KH)P_B(I-KH)` rather
+    than :math:`(I-KH)P_B`. Adding random errors to the observations
+    in accordance with their covariance (seperately for each
+    ensemble's assimilation) brings this back where it should be.
+
+    """
 
     def __init__(self, assimilator):
         """Set up using given per-member assimilator.
@@ -59,8 +67,9 @@ class SimplePerturbedObsFilter:
         perturbations = inversion.ensemble.perturbations(ensemble)
 
         # If I assume the ROI for observations << localization length and
-        # can somehow get (L * (X @ X.T)) @ H.T in terms of X @ (H @ X).T, I can
-        # reduce the memory footprint.  Until then, I do things this way.
+        # can somehow get (L * (X @ X.T)) @ H.T in terms of X @ (H @ X).T,
+        # I can reduce the memory footprint.  Until then, I do things this way.
+        # Using dask arrays may also help with this.
         background_covariance = (
             1 / (ensemble_size - 1) *
             perturbations.T.dot(perturbations) *

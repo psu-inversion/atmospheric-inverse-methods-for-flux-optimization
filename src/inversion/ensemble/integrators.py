@@ -18,6 +18,7 @@ MAX_PARALLEL = None
 None means use CPU count.
 """
 
+
 class EnsembleIntegrator(six.with_metaclass(abc.ABCMeta)):
     """Metaclass for ensemble integrators."""
 
@@ -27,8 +28,8 @@ class EnsembleIntegrator(six.with_metaclass(abc.ABCMeta)):
         Parameters
         ----------
         integrator: callable
-            The integrator to use.
-            Follows the signature of :func:`inversion.integrators.forward_euler`
+            The integrator to use. Assumed to follow the signature of
+            :func:`inversion.integrators.forward_euler`
 
         """
         self._integrator = integrator
@@ -52,6 +53,7 @@ class EnsembleIntegrator(six.with_metaclass(abc.ABCMeta)):
             Array of solutions to y' = func(y, t)
         """
         pass
+
 
 class SerialEnsembleIntegrator(EnsembleIntegrator):
     """Integrate the ensemble members one at a time."""
@@ -90,7 +92,7 @@ class MultiprocessEnsembleIntegrator(EnsembleIntegrator):
 
     Unrelaible on cygwin due to fork() failures.
     """
-    
+
     def __call__(self, func, y0s, tseq, dt, Dfunc=None):
         """Integrate each y0 in `y0s` to times in `tseq`.
 
@@ -177,6 +179,8 @@ class ThreadedEnsembleIntegrator(EnsembleIntegrator):
         """
         y0s = np.atleast_2d(y0s)
         res = np.empty((len(tseq),) + y0s.shape, y0s.dtype)
+
+        integrator = self._integrator
 
         def thread_fun(i):
             """The function for the threads.

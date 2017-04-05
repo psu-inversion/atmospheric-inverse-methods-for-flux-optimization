@@ -46,6 +46,7 @@ as being a close approximation for :math:`\vec{x}` near
 
 """
 
+
 class ConvergenceError(ValueError):
     """An iterative scheme did not reach convergence.
 

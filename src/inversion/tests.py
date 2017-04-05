@@ -140,6 +140,7 @@ class TestSimple(unittest2.TestCase):
             cov_rtol = state_rtol = EXACT_TOLERANCE
 
             with self.subTest(method=name):
+                # Also tested above in scalar_unequal_variance
                 with self.subTest(problem=3):
                     state_college_index = 1
                     post, post_cov = method(
@@ -153,6 +154,10 @@ class TestSimple(unittest2.TestCase):
                         post, np.asanyarray(14 + fractions.Fraction(1, 3),
                                             dtype=PRECISE_DTYPE),
                         rtol=state_rtol)
+                    np.testing.assert_allclose(
+                        post_cov, np.asanyarray(fractions.Fraction(2, 3),
+                                                dtype=PRECISE_DTYPE),
+                        rtol=cov_rtol)
 
                 with self.subTest(problem=4):
                     state_college_index = 1

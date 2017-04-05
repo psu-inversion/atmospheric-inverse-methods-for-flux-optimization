@@ -71,8 +71,10 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
             self._fft = rfft2
             self._ifft = irfft2
         else:
-            self._fft = functools.partial(rfftn, axes=arange(-ndims, 0, dtype=int))
-            self._ifft = functools.partial(irfftn, axes=arange(-ndims, 0, dtype=int))
+            self._fft = functools.partial(
+                rfftn, axes=arange(-ndims, 0, dtype=int))
+            self._ifft = functools.partial(
+                irfftn, axes=arange(-ndims, 0, dtype=int))
 
         corr_struct = fromfunction(corr_func, tuple(ones_like(shape)) + shape)
         self._corr_fourier = self._fft(corr_struct[0, 0])
