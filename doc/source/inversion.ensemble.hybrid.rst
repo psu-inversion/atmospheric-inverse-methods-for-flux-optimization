@@ -1,5 +1,5 @@
-inversion.ensemble.hybrid module
-================================
+inversion\.ensemble\.hybrid module
+==================================
 
 .. automodule:: inversion.ensemble.hybrid
     :members:

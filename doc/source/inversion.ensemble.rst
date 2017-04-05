@@ -1,5 +1,5 @@
-inversion.ensemble package
-==========================
+inversion\.ensemble package
+===========================
 
 Submodules
 ----------
@@ -7,6 +7,7 @@ Submodules
 .. toctree::
 
    inversion.ensemble.hybrid
+   inversion.ensemble.inflation
    inversion.ensemble.integrators
    inversion.ensemble.perturbed_observations_filter
 

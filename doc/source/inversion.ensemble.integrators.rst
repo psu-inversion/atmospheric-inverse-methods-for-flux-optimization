@@ -1,5 +1,5 @@
-inversion.ensemble.integrators module
-=====================================
+inversion\.ensemble\.integrators module
+=======================================
 
 .. automodule:: inversion.ensemble.integrators
     :members:

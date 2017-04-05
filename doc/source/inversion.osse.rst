@@ -1,5 +1,5 @@
-inversion.osse module
-=====================
+inversion\.osse module
+======================
 
 .. automodule:: inversion.osse
     :members:

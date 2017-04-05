@@ -1,5 +1,5 @@
-inversion.tests module
-======================
+inversion\.tests module
+=======================
 
 .. automodule:: inversion.tests
     :members:

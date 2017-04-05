@@ -1,5 +1,5 @@
-inversion.psas module
-=====================
+inversion\.psas module
+======================
 
 .. automodule:: inversion.psas
     :members:

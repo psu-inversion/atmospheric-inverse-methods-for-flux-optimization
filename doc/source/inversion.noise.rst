@@ -1,5 +1,5 @@
-inversion.noise module
-======================
+inversion\.noise module
+=======================
 
 .. automodule:: inversion.noise
     :members:
