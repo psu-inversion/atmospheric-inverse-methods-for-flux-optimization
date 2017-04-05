@@ -1,5 +1,5 @@
-inversion.correlations module
-=============================
+inversion\.correlations module
+==============================
 
 .. automodule:: inversion.correlations
     :members:

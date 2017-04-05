@@ -1,5 +1,5 @@
-inversion.variational module
-============================
+inversion\.variational module
+=============================
 
 .. automodule:: inversion.variational
     :members:

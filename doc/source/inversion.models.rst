@@ -1,5 +1,5 @@
-inversion.models module
-=======================
+inversion\.models module
+========================
 
 .. automodule:: inversion.models
     :members:

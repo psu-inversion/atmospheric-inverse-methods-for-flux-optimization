@@ -1,5 +1,5 @@
-inversion.optimal_interpolation module
-======================================
+inversion\.optimal\_interpolation module
+========================================
 
 .. automodule:: inversion.optimal_interpolation
     :members:

@@ -1,5 +1,5 @@
-inversion.ensemble.perturbed_observations_filter module
-=======================================================
+inversion\.ensemble\.perturbed\_observations\_filter module
+===========================================================
 
 .. automodule:: inversion.ensemble.perturbed_observations_filter
     :members:
