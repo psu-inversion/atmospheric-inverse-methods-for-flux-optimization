@@ -11,3 +11,18 @@ setup.cfg
 \#*#
 .#*
 *~
+
+# Other backup files
+*.bak
+
+# LaTeX-specific
+auto/
+
+# R history files
+.Rhistory
+
+# IPython notebook checkpoints
+.ipynb_checkpoints
+
+# crashes
+*.stackdump
