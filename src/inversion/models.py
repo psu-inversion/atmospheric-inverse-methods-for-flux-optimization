@@ -1,6 +1,6 @@
 """Models for identical twin experiments and similar."""
 
-import numpy as np
+from numpy import empty_like
 
 
 class Lorenz63:
@@ -62,10 +62,14 @@ class Lorenz96:
         -------
         deriv: np.ndarray[`size`]
         """
-        xkm1 = np.roll(state, 1)
-        xkm2 = np.roll(state, 2)
-        xkp1 = np.roll(state, -1)
-        res = xkm1 * (xkp1 - xkm2) - state + self._forcing
+        res = empty_like(state)
+        res[2:-1] = state[1:-2] * (state[3:] - state[:-3])
+
+        # fill in -1, 0, 1
+        for i in range(-1, 2):
+            res[i] = state[i-1] * (state[i+1] - state[i-2])
+        res -= state
+        res += self._forcing
 
         return res
 
