@@ -61,7 +61,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
 
         super(HomogeneousIsotropicCorrelation, self).__init__(
             self, dtype=float, shape=(state_size, state_size),
-            matvec=self._matvec, rmatvec=self._matvec, matmat=self._matmat)
+            matvec=self._matvec, rmatvec=self._matvec)
 
         ndims = len(shape)
         if ndims == 1:
@@ -81,6 +81,39 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         # This is also affected by roundoff
         self._fourier_near_zero = self._corr_fourier < ROUNDOFF
         self._underlying_shape = shape
+
+    @classmethod
+    def from_function(cls, corr_func, shape):
+        """Create an instance to apply the correlation function.
+
+        Parameters
+        ----------
+        corr_func: callable(*shape, *shape) -> float
+        shape: tuple of int
+            Shape of input domain expected by `corr_func`.  The state
+            is formally a vector, but the correlations are assumed to
+            depend on the layout in some other shape, usually related
+            to the physical layout. This is the other shape.
+
+        Returns
+        -------
+        HomogeneousIsotropicCorrelation
+        """
+        return cls(corr_func, shape)
+
+    @classmethod
+    def from_array(cls, corr_array):
+        """Create an instance with the given correlations.
+
+        Parameters
+        ----------
+        corr_array: array_like
+
+        Returns
+        -------
+        HomogeneousIsotropicCorrelation
+        """
+        return cls(corr_array.__getitem__, corr_array.shape)
 
     def _matvec(self, vec):
         """The matrix product of this matrix and `vec`.
