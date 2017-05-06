@@ -78,6 +78,8 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
 
         corr_struct = fromfunction(corr_func, tuple(ones_like(shape)) + shape)
         self._corr_fourier = self._fft(corr_struct[0, 0])
+        # This is also affected by roundoff
+        self._fourier_near_zero = self._corr_fourier < ROUNDOFF
         self._underlying_shape = shape
 
     def _matvec(self, vec):
@@ -115,6 +117,9 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
 
         spectral_field = self._fft(field)
         spectral_field /= self._corr_fourier
+        # Dividing by a small number is numerically unstable. This is
+        # nearly an SVD solve already, so borrow that solution.
+        spectral_field[self._fourier_near_zero] = 0
         result = self._ifft(spectral_field)
 
         return result.reshape(self.shape[-1])
