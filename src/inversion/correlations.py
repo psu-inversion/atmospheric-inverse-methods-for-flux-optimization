@@ -32,7 +32,6 @@ NEAR_ZERO = 1e-20
 The method of assuring positive definiteness increases some values
 away from zero due to roundoff. Values that were originally smaller
 than this are reset to zero.
-
 """
 FOURIER_NEAR_ZERO = 1e-20
 """Where fourier coefficients are treated as zero."""

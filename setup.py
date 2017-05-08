@@ -1,3 +1,7 @@
+"""Describe package metadata for inclusion in a package.
+
+Not yet ready for PyPI.
+"""
 import os.path
 import sys
 

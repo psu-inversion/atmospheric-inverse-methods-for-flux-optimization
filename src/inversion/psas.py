@@ -6,27 +6,7 @@ import numpy as np
 import numpy.linalg as la
 import scipy.optimize
 
-from inversion import ConvergenceError
-
-MAX_ITERATIONS = 40
-"""Max. iterations allowed during the minimization.
-
-I think 40 is what the operational centers use.
-
-Note
-----
-Must change test tolerances if this changes.
-"""
-GRAD_TOL = 1e-5
-"""How small the gradient norm must be to declare convergence.
-
-From `gtol` option to the BFGS method of
-:func:`scipy.optimize.minimize`
-
-Note
-----
-Must change test tolerances if this changes.
-"""
+from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
 
 
 def simple(background, background_covariance,

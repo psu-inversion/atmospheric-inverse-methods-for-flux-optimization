@@ -9,7 +9,7 @@ import unittest
 
 import numpy as np
 import numpy.linalg as la
-import numpy.testing
+import numpy.testing as np_tst
 import unittest2
 
 import inversion.optimal_interpolation
@@ -80,8 +80,8 @@ class TestSimple(unittest2.TestCase):
                 post, post_cov = method(
                     bg, bg_cov, obs, obs_cov, obs_op)
 
-                np.testing.assert_allclose(post, 2.5)
-                np.testing.assert_allclose(post_cov, .5)
+                np_tst.assert_allclose(post, 2.5)
+                np_tst.assert_allclose(post_cov, .5)
 
     def test_scalar_unequal_variance(self):
         """Test the a direct measurement fo a scalar state.
@@ -101,9 +101,9 @@ class TestSimple(unittest2.TestCase):
                 post, post_cov = method(
                     bg, bg_cov, obs, obs_cov, obs_op)
 
-                np.testing.assert_allclose(
+                np_tst.assert_allclose(
                     post, PRECISE_DTYPE(14 + fractions.Fraction(1, 3)))
-                np.testing.assert_allclose(
+                np_tst.assert_allclose(
                     post_cov, PRECISE_DTYPE(fractions.Fraction(2, 3)))
 
     def test_homework_one(self):
@@ -150,11 +150,11 @@ class TestSimple(unittest2.TestCase):
                         obs_cov[state_college_index, state_college_index],
                         obs_op[state_college_index, state_college_index])
 
-                    np.testing.assert_allclose(
+                    np_tst.assert_allclose(
                         post, np.asanyarray(14 + fractions.Fraction(1, 3),
                                             dtype=PRECISE_DTYPE),
                         rtol=state_rtol)
-                    np.testing.assert_allclose(
+                    np_tst.assert_allclose(
                         post_cov, np.asanyarray(fractions.Fraction(2, 3),
                                                 dtype=PRECISE_DTYPE),
                         rtol=cov_rtol)
@@ -168,7 +168,7 @@ class TestSimple(unittest2.TestCase):
                         obs_cov[state_college_index, state_college_index],
                         obs_op[state_college_index, :])
 
-                    np.testing.assert_allclose(
+                    np_tst.assert_allclose(
                         post, np.asanyarray((17 + fractions.Fraction(2, 3),
                                              14 + fractions.Fraction(1, 3),
                                              21 + fractions.Fraction(2, 3)),
@@ -184,7 +184,7 @@ class TestSimple(unittest2.TestCase):
                         obs_cov[pittsburgh_index, pittsburgh_index],
                         obs_op[pittsburgh_index, :])
 
-                    np.testing.assert_allclose(
+                    np_tst.assert_allclose(
                         post,
                         np.asanyarray((18 + fractions.Fraction(2, 3),
                                        15 + fractions.Fraction(1, 3),
@@ -201,7 +201,7 @@ class TestSimple(unittest2.TestCase):
                         4 * obs_cov[state_college_index, state_college_index],
                         obs_op[state_college_index, :])
 
-                    np.testing.assert_allclose(
+                    np_tst.assert_allclose(
                         post, np.asanyarray((17 + fractions.Fraction(5, 6),
                                              14 + fractions.Fraction(2, 3),
                                              21 + fractions.Fraction(5, 6)),
@@ -215,7 +215,7 @@ class TestSimple(unittest2.TestCase):
                     # background correlations make this problem not
                     # strictly linear, at least without doing
                     # sequential inversions. Have not verified by hand
-                    np.testing.assert_allclose(
+                    np_tst.assert_allclose(
                         post, np.asanyarray(
                             (18 + fractions.Fraction(1, 2),
                              14 + fractions.Fraction(1, 2),
@@ -265,7 +265,7 @@ class TestSimple(unittest2.TestCase):
                 post2, post_cov2 = method(
                     bg, bg_cov, obs, obs_cov, obs_op)
 
-                np.testing.assert_allclose(
+                np_tst.assert_allclose(
                     post1, post2, rtol=state_rtol)
 
                 if "psas" in name.lower():
@@ -274,7 +274,7 @@ class TestSimple(unittest2.TestCase):
                     # magnitude between the two.
                     raise unittest2.SkipTest("Known Failure: PSAS Covariances")
 
-                np.testing.assert_allclose(
+                np_tst.assert_allclose(
                     post_cov1, post_cov2, rtol=cov_rtol)
 
 
@@ -346,9 +346,9 @@ class TestCorrelations(unittest2.TestCase):
                 chol_upper = la.cholesky(corr_mat)
 
                 # test symmetry
-                np.testing.assert_allclose(chol_upper.dot(chol_upper.T),
-                                           corr_mat,
-                                           rtol=1e-4, atol=1e-4)
+                np_tst.assert_allclose(chol_upper.dot(chol_upper.T),
+                                       corr_mat,
+                                       rtol=1e-4, atol=1e-4)
 
     def test_2d_make_matrix(self):
         """Test make_matrix for 2D correlations.
@@ -372,10 +372,10 @@ class TestCorrelations(unittest2.TestCase):
                         corr_fun, (test_ny, test_nx))
 
                     # Make sure diagonal elements are ones
-                    np.testing.assert_allclose(np.diag(corr_mat), 1)
+                    np_tst.assert_allclose(np.diag(corr_mat), 1)
 
                     # check if it matches the original
-                    np.testing.assert_allclose(
+                    np_tst.assert_allclose(
                         corr_mat,
                         np.fromfunction(
                             corr_fun.correlation_from_index,
@@ -410,9 +410,9 @@ class TestCorrelations(unittest2.TestCase):
                 chol_upper = la.cholesky(corr_mat)
 
                 # test symmetry
-                np.testing.assert_allclose(chol_upper.dot(chol_upper.T),
-                                           corr_mat,
-                                           rtol=1e-4, atol=1e-4)
+                np_tst.assert_allclose(chol_upper.dot(chol_upper.T),
+                                       corr_mat,
+                                       rtol=1e-4, atol=1e-4)
 
     def test_1d_make_matrix(self):
         """Test make_matrix for 1D correlations.
@@ -433,10 +433,10 @@ class TestCorrelations(unittest2.TestCase):
                                                                   test_nt)
 
                     # Make sure diagonal elements are ones
-                    np.testing.assert_allclose(np.diag(corr_mat), 1)
+                    np_tst.assert_allclose(np.diag(corr_mat), 1)
 
                     # check if it matches the original
-                    np.testing.assert_allclose(
+                    np_tst.assert_allclose(
                         corr_mat,
                         np.fromfunction(
                             corr_fun.correlation_from_index, (test_nt, test_nt)
@@ -449,9 +449,9 @@ class TestCorrelations(unittest2.TestCase):
                     chol_upper = la.cholesky(corr_mat)
 
                     # test symmetry
-                    np.testing.assert_allclose(chol_upper.dot(chol_upper.T),
-                                               corr_mat,
-                                               rtol=1e-4, atol=1e-4)
+                    np_tst.assert_allclose(chol_upper.dot(chol_upper.T),
+                                           corr_mat,
+                                           rtol=1e-4, atol=1e-4)
 
     def test_fft_correlation_structure(self):
         """Ensure the FFT-based operators satisfy conditions of correlation matrices.
@@ -473,12 +473,12 @@ class TestCorrelations(unittest2.TestCase):
                     with self.subTest(corr_class=getname(corr_class),
                                       dist=dist, test_shape=test_shape,
                                       test="symmetry"):
-                        np.testing.assert_allclose(corr_mat, corr_mat.T,
-                                                   rtol=1e-14, atol=1e-15)
+                        np_tst.assert_allclose(corr_mat, corr_mat.T,
+                                               rtol=1e-14, atol=1e-15)
                     with self.subTest(corr_class=getname(corr_class),
                                       dist=dist, test_shape=test_shape,
                                       test="self-correlation"):
-                        np.testing.assert_allclose(np.diag(corr_mat), 1)
+                        np_tst.assert_allclose(np.diag(corr_mat), 1)
 
     def test_1d_fft_correlation(self):
         """Test HomogeneousIsotropicCorrelation for 1D arrays.
@@ -509,7 +509,7 @@ class TestCorrelations(unittest2.TestCase):
                     with self.subTest(corr_class=getname(corr_class),
                                       dist=dist, test_num=i,
                                       inverse="no"):
-                        np.testing.assert_allclose(
+                        np_tst.assert_allclose(
                             corr_op.dot(test_vec)[noncorr_dist:-noncorr_dist],
                             corr_mat.dot(test_vec)[noncorr_dist:-noncorr_dist],
                             rtol=1e-3, atol=1e-5)
@@ -526,7 +526,7 @@ class TestCorrelations(unittest2.TestCase):
                             raise unittest2.SkipTest(
                                 "Gaussian({:d}) correlations ill-conditioned".
                                 format(dist))
-                        np.testing.assert_allclose(
+                        np_tst.assert_allclose(
                             corr_op.solve(
                                 test_vec)[noncorr_dist:-noncorr_dist],
                             la.solve(
@@ -566,7 +566,7 @@ class TestCorrelations(unittest2.TestCase):
                     with self.subTest(corr_class=getname(corr_class),
                                       dist=dist, test_num=i,
                                       direction="forward"):
-                        np.testing.assert_allclose(
+                        np_tst.assert_allclose(
                             corr_op.dot(test_vec).reshape(test_shape)
                             [noncorr_dist:-noncorr_dist,
                              noncorr_dist:-noncorr_dist],
@@ -587,7 +587,7 @@ class TestCorrelations(unittest2.TestCase):
                             raise unittest2.SkipTest(
                                 "Gaussian({:d}) correlations ill-conditioned".
                                 format(dist))
-                        np.testing.assert_allclose(
+                        np_tst.assert_allclose(
                             corr_op.solve(
                                 test_vec).reshape(test_shape)
                             [noncorr_dist:-noncorr_dist,
@@ -604,7 +604,7 @@ class TestIntegrators(unittest2.TestCase):
     """Test the integrators."""
 
     def test_exp(self):
-        """Test that the ingegrators can integrate y'=y for one unit.
+        """Test that the integrators can integrate y'=y for one unit.
 
         Uses a very small integration step to get similarity from
         one-step forward Euler.
@@ -619,5 +619,5 @@ class TestIntegrators(unittest2.TestCase):
                     (0, 1),
                     1e-6)
 
-                np.testing.assert_allclose(solns[1, :],
-                                           np.exp(1.), rtol=1e-5)
+                np_tst.assert_allclose(solns[1, :],
+                                       np.exp(1.), rtol=1e-5)

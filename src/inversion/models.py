@@ -1,6 +1,6 @@
 """Models for identical twin experiments and similar."""
 
-from numpy import empty_like
+from numpy import empty_like, array
 
 
 class Lorenz63:
@@ -24,13 +24,13 @@ class Lorenz63:
 
         Parameters
         ----------
-        state: np.ndarray[3]
+        state: array_like[3]
 
         Returns
         -------
-        deriv: np.ndarray[3]
+        deriv: array_like[3]
         """
-        return np.array((
+        return array((
             self._sigma * (state[1] - state[0]),
             self._r * state[0] - state[1] - state[0] * state[2],
             state[0] * state[1] - self._b * state[2]

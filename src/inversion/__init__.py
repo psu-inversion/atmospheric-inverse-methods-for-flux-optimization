@@ -46,6 +46,32 @@ as being a close approximation for :math:`\vec{x}` near
 
 """
 
+MAX_ITERATIONS = 40
+"""Max. iterations allowed during minimizations.
+
+I think 40 is what the operational centers use.
+
+Used by variational and PSAS schemes to constrain iterative
+minimization.
+
+Note
+----
+Must change test tolerances if this changes
+"""
+GRAD_TOL = 1e-5
+"""How small the gradient norm must be to declare convergence.
+
+From `gtol` option to the BFGS method of
+:func:`scipy.optimize.minimize`
+
+Used by variational and PSAS schemes to constrain iterative
+minimization.
+
+Note
+----
+Must change test tolerances if this changes.
+"""
+
 
 class ConvergenceError(ValueError):
     """An iterative scheme did not reach convergence.
