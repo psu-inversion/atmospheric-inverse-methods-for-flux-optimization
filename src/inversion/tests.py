@@ -453,6 +453,152 @@ class TestCorrelations(unittest2.TestCase):
                                                corr_mat,
                                                rtol=1e-4, atol=1e-4)
 
+    def test_fft_correlation_structure(self):
+        """Ensure the FFT-based operators satisfy conditions of correlation matrices.
+
+        Checks for symmetry and ones on the diagonal.
+        """
+        for corr_class in (
+                inversion.correlations.DistanceCorrelationFunction.
+                __subclasses__()):
+            for test_shape in ((300,), (20, 30)):
+                for dist in (1, 3, 10, 30):
+                    corr_fun = corr_class(dist)
+
+                    corr_op = (
+                        inversion.correlations.HomogeneousIsotropicCorrelation.
+                        from_function(corr_fun, test_shape))
+                    corr_mat = corr_op.dot(np.eye(np.prod(test_shape)))
+
+                    with self.subTest(corr_class=getname(corr_class),
+                                      dist=dist, test_shape=test_shape,
+                                      test="symmetry"):
+                        np.testing.assert_allclose(corr_mat, corr_mat.T,
+                                                   rtol=1e-14, atol=1e-15)
+                    with self.subTest(corr_class=getname(corr_class),
+                                      dist=dist, test_shape=test_shape,
+                                      test="self-correlation"):
+                        np.testing.assert_allclose(np.diag(corr_mat), 1)
+
+    def test_1d_fft_correlation(self):
+        """Test HomogeneousIsotropicCorrelation for 1D arrays.
+
+        Check against `make_matrix` and ignore values near the edges
+        of the domain where the two methods are different.
+        """
+        test_nt = 500
+        test_lst = (np.zeros(test_nt), np.ones(test_nt), np.arange(test_nt),
+                    np.eye(100, test_nt)[-1])
+
+        for corr_class in (
+                inversion.correlations.DistanceCorrelationFunction.
+                __subclasses__()):
+            for dist in (1, 3, 10, 30):
+                # Magic numbers
+                # May need to increase for larger test_nt
+                noncorr_dist = 20 + 8 * dist
+                corr_fun = corr_class(dist)
+
+                corr_mat = inversion.correlations.make_matrix(
+                    corr_fun, test_nt)
+                corr_op = (
+                    inversion.correlations.HomogeneousIsotropicCorrelation.
+                    from_function(corr_fun, test_nt))
+
+                for i, test_vec in enumerate(test_lst):
+                    with self.subTest(corr_class=getname(corr_class),
+                                      dist=dist, test_num=i,
+                                      inverse="no"):
+                        np.testing.assert_allclose(
+                            corr_op.dot(test_vec)[noncorr_dist:-noncorr_dist],
+                            corr_mat.dot(test_vec)[noncorr_dist:-noncorr_dist],
+                            rtol=1e-3, atol=1e-5)
+
+                for i, test_vec in enumerate(test_lst):
+                    with self.subTest(corr_class=getname(corr_class),
+                                      dist=dist, test_num=i,
+                                      inverse="yes"):
+                        if ((corr_class is inversion.correlations.
+                             GaussianCorrelation and
+                             dist >= 3)):
+                            # Gaussian(3) has FFT less
+                            # well-conditioned than make_matrix
+                            raise unittest2.SkipTest(
+                                "Gaussian({:d}) correlations ill-conditioned".
+                                format(dist))
+                        np.testing.assert_allclose(
+                            corr_op.solve(
+                                test_vec)[noncorr_dist:-noncorr_dist],
+                            la.solve(
+                                corr_mat,
+                                test_vec)[noncorr_dist:-noncorr_dist],
+                            rtol=1e-3, atol=1e-5)
+
+    def test_2d_fft_correlation(self):
+        """Test HomogeneousIsotropicCorrelation for 2D arrays.
+
+        Check against `make_matrix` and ignore values near the edges
+        where the two methods differ.
+        """
+        test_shape = (20, 30)
+        test_size = np.prod(test_shape)
+        test_lst = (np.zeros(test_size),
+                    np.ones(test_size),
+                    np.arange(test_size),
+                    np.eye(10 * test_shape[0], test_size)[-1])
+
+        for corr_class in (
+                inversion.correlations.DistanceCorrelationFunction.
+                __subclasses__()):
+            for dist in (1, 3):
+                # Magic numbers
+                # May need to increase for larger domains
+                noncorr_dist = 20 + 8 * dist
+                corr_fun = corr_class(dist)
+
+                corr_mat = inversion.correlations.make_matrix(
+                    corr_fun, test_shape)
+                corr_op = (
+                    inversion.correlations.HomogeneousIsotropicCorrelation.
+                    from_function(corr_fun, test_shape))
+
+                for i, test_vec in enumerate(test_lst):
+                    with self.subTest(corr_class=getname(corr_class),
+                                      dist=dist, test_num=i,
+                                      direction="forward"):
+                        np.testing.assert_allclose(
+                            corr_op.dot(test_vec).reshape(test_shape)
+                            [noncorr_dist:-noncorr_dist,
+                             noncorr_dist:-noncorr_dist],
+                            corr_mat.dot(test_vec).reshape(test_shape)
+                            [noncorr_dist:-noncorr_dist,
+                             noncorr_dist:-noncorr_dist],
+                            rtol=1e-3, atol=1e-5)
+
+                for i, test_vec in enumerate(test_lst):
+                    with self.subTest(corr_class=getname(corr_class),
+                                      dist=dist, test_num=i,
+                                      direction="backward"):
+                        if ((corr_class is inversion.correlations.
+                             GaussianCorrelation and
+                             dist >= 3)):
+                            # Gaussian(3) has FFT less
+                            # well-conditioned than make_matrix
+                            raise unittest2.SkipTest(
+                                "Gaussian({:d}) correlations ill-conditioned".
+                                format(dist))
+                        np.testing.assert_allclose(
+                            corr_op.solve(
+                                test_vec).reshape(test_shape)
+                            [noncorr_dist:-noncorr_dist,
+                             noncorr_dist:-noncorr_dist],
+                            la.solve(
+                                corr_mat,
+                                test_vec).reshape(test_shape)
+                            [noncorr_dist:-noncorr_dist,
+                             noncorr_dist:-noncorr_dist],
+                            rtol=1e-3, atol=1e-5)
+
 
 class TestIntegrators(unittest2.TestCase):
     """Test the integrators."""
