@@ -278,7 +278,7 @@ class TestSimple(unittest2.TestCase):
                     post_cov1, post_cov2, rtol=cov_rtol)
 
 
-class TestGaussianNoise(unittest.TestCase):
+class TestGaussianNoise(unittest2.TestCase):
     """Test the properties of the gaussian noise."""
 
     def test_ident_cov(self):
@@ -287,11 +287,34 @@ class TestGaussianNoise(unittest.TestCase):
         cov = np.eye(sample_shape)
         noise = inversion.noise.gaussian_noise(cov, int(1e6))
 
-        self.assertTrue(np.allclose(noise.mean(axis=0),
-                                    np.zeros((sample_shape,)),
-                                    rtol=1e-2, atol=1e-2))
-        self.assertTrue(np.allclose(np.cov(noise.T), cov,
-                                    rtol=1e-2, atol=1e-2))
+        np_tst.assert_allclose(noise.mean(axis=0),
+                               np.zeros((sample_shape,)),
+                               rtol=1e-2, atol=1e-2)
+        np_tst.assert_allclose(np.cov(noise.T), cov,
+                               rtol=1e-2, atol=1e-2)
+
+    def test_shape(self):
+        """Make sure the returned shapes are correct."""
+        sample_shape = (3,)
+        sample_cov = np.eye(sample_shape[0])
+
+        for shape in ((), (6,), (2, 3)):
+            with self.subTest(shape=shape):
+                res = inversion.noise.gaussian_noise(
+                    sample_cov, shape)
+
+                self.assertEqual(res.shape, shape + sample_shape)
+
+        with self.subTest(shape=5):
+            res = inversion.noise.gaussian_noise(
+                sample_cov, 5)
+
+            self.assertEqual(res.shape, (5,) + sample_shape)
+
+        with self.subTest(shape=None):
+            res = inversion.noise.gaussian_noise(
+                sample_cov, None)
+            self.assertEqual(res.shape, sample_shape)
 
 
 class TestCorrelations(unittest2.TestCase):
