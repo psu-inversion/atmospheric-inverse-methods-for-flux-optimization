@@ -276,4 +276,5 @@ intersphinx_mapping = {
     'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
     'matplotlib': ('http://matplotlib.org/', None),
     'dask': ("http://dask.pydata.org/en/latest/", None),
+    'xarray': ("http://xarray.pydata.org/en/stable/", None),
 }
