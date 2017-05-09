@@ -71,15 +71,15 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         ndims = len(shape)
         if ndims == 1:
             self._fft = rfft
-            self._ifft = irfft
+            self._ifft = functools.partial(irfft, n=state_size)
         elif ndims == 2:
             self._fft = rfft2
-            self._ifft = irfft2
+            self._ifft = functools.partial(irfft2, s=shape)
         else:
             self._fft = functools.partial(
                 rfftn, axes=arange(-ndims, 0, dtype=int))
             self._ifft = functools.partial(
-                irfftn, axes=arange(-ndims, 0, dtype=int))
+                irfftn, axes=arange(-ndims, 0, dtype=int), s=shape)
 
         broadcastable_shape = shape[:, newaxis]
         while broadcastable_shape.ndim < len(shape) + 1:

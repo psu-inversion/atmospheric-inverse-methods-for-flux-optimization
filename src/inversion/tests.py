@@ -5,13 +5,14 @@ different methods agree for simple problems.
 
 """
 import fractions
-import unittest
 
 import numpy as np
 import numpy.linalg as la
+import numpy.random as np_rand
 import numpy.testing as np_tst
 import unittest2
 
+import inversion.covariance_estimation
 import inversion.optimal_interpolation
 import inversion.variational
 import inversion.psas
@@ -644,3 +645,73 @@ class TestIntegrators(unittest2.TestCase):
 
                 np_tst.assert_allclose(solns[1, :],
                                        np.exp(1.), rtol=1e-5)
+
+
+class TestCovarianceEstimation(unittest2.TestCase):
+    """Test the background error covariance estimators.
+
+    Not quite a true unit test, since it uses inversion.correlations.
+    """
+
+    def test_nmc_identity(self):
+        """Test that the NMC method for simple case.
+
+        Uses stationary noise on top of a forecast of zero.
+        """
+        test_sample = int(1e6)
+        state_size = 8
+        sample_cov = np.eye(state_size)
+
+        sim_forecasts = np_rand.multivariate_normal(
+            np.zeros(state_size),
+            sample_cov,
+            (test_sample, 2))
+
+        for assume_homogeneous in (False, True):
+            with self.subTest(assume_homogeneous=assume_homogeneous):
+                estimated_cov = (
+                    inversion.covariance_estimation.nmc_covariances(
+                        sim_forecasts, 4, assume_homogeneous))
+                np_tst.assert_allclose(estimated_cov, sample_cov,
+                                       rtol=1e-2, atol=1e-2)
+
+    def test_nmc_generated(self):
+        """Test NMC method for a more complicated case.
+
+        Gaussian correlations are still a bad choice.
+        """
+        test_sample = int(1e6)
+        state_size = 5
+
+        corr_class = inversion.correlations.ExponentialCorrelation
+        for dist in (1, 3):
+            corr_fun = corr_class(dist)
+
+            # corr_mat = inversion.correlations.make_matrix(corr_fun,
+            #                                               state_size)
+            corr_op = (
+                inversion.correlations.HomogeneousIsotropicCorrelation(
+                    corr_fun, state_size))
+            corr_mat = corr_op.dot(np.eye(state_size))
+
+            sim_forecasts = np_rand.multivariate_normal(
+                np.zeros(state_size),
+                corr_mat,
+                (test_sample, 2))
+
+            for assume_homogeneous in (False, True):
+                with self.subTest(assume_homogeneous=assume_homogeneous,
+                                  corr_class=getname(corr_class),
+                                  dist=dist):
+                    estimated_cov = (
+                        inversion.covariance_estimation.nmc_covariances(
+                            sim_forecasts, 4, assume_homogeneous))
+
+                    # 1/sqrt(test_sample) would be roughly the
+                    # standard error for the mean. I don't know the
+                    # characteristics of the distribution for
+                    # covariance matrices, but they tend to be more
+                    # finicky.
+                    np_tst.assert_allclose(estimated_cov, corr_mat,
+                                           rtol=1e-2, atol=1e-2)
+
