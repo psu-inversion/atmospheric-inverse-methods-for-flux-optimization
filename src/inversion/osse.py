@@ -284,7 +284,7 @@ def ensemble_osse(
         dtype=initial_ensemble.dtype)
 
     forecast_init_times = np.arange(
-            0, experiment_length, assimilation_cycle_time)
+        0, experiment_length, assimilation_cycle_time)
 
     for i, init_time in enumerate(forecast_init_times):
         curr_obs = observations[i, :]
@@ -339,7 +339,7 @@ def ensemble_osse(
                 forecast_init_times[:, np.newaxis] +
                 forecast_times[np.newaxis, :],
                 dict(standard_name="time")),
-            ),
+        ),
         attrs=dict(Conventions="CF-1.6"),
     )
     return result
@@ -420,7 +420,7 @@ def hybrid_osse(
         dtype=initial_ensemble.dtype)
 
     forecast_init_times = np.arange(
-            0, experiment_length, assimilation_cycle_time)
+        0, experiment_length, assimilation_cycle_time)
 
     for i, init_time in enumerate(forecast_init_times):
         curr_obs = observations[i, :]
@@ -489,7 +489,7 @@ def hybrid_osse(
                 forecast_init_times[:, np.newaxis] +
                 forecast_times[np.newaxis, :],
                 dict(standard_name="time", long_name="forecast_valid_time")),
-            ),
+        ),
         attrs=dict(Conventions="CF-1.6"),
     )
     return result

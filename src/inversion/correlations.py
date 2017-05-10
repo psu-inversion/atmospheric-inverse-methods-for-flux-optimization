@@ -151,7 +151,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         return cls(corr_array.__getitem__, corr_array.shape)
 
     def _matvec(self, vec):
-        """The matrix product of this matrix and `vec`.
+        """Evaluate the matrix product of this matrix and `vec`.
 
         Parameters
         ----------
@@ -250,7 +250,7 @@ class DistanceCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
 
     @abc.abstractmethod
     def __call__(self, dist):
-        """The correlation between points whose indices differ by dist.
+        """Get the correlation between points whose indices differ by dist.
 
         Parameters
         ----------
@@ -294,7 +294,7 @@ class GaussianCorrelation(DistanceCorrelationFunction):
     """
 
     def __call__(self, dist):
-        """The correlation between the points.
+        """Get the correlation between the points.
 
         Parameters
         ----------
@@ -318,7 +318,7 @@ class ExponentialCorrelation(DistanceCorrelationFunction):
     """
 
     def __call__(self, dist):
-        """The correlation between the points.
+        """Get the correlation between the points.
 
         Parameters
         ----------
@@ -328,4 +328,4 @@ class ExponentialCorrelation(DistanceCorrelationFunction):
         -------
         corr: float
         """
-        return exp(-dist/self._length)
+        return exp(-dist / self._length)

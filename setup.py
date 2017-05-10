@@ -10,7 +10,7 @@ from setuptools import setup, find_packages
 sys.path.append(os.path.join(
     os.path.abspath(os.path.dirname(__file__)),
     "doc", "source"))
-from conf import man_pages, release
+from conf import man_pages, release  # noqa: E402
 authors = man_pages[0][3]
 
 with open("README.rst", "r") as in_file:

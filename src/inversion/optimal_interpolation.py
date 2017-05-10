@@ -9,9 +9,10 @@ import scipy.linalg
 def simple(background, background_covariance,
            observations, observation_covariance,
            observation_operator):
-    """Simple direct matrix inversion.
+    """Solve the inversion problem using the equations literally.
 
-    Assumes all arrays fit in memory with room to spare.
+    Assumes all arrays fit in memory with room to spare.  A direct
+    translation of the matrix inversion equations to Python.
 
     Parameters
     ----------
@@ -25,7 +26,6 @@ def simple(background, background_covariance,
     -------
     analysis: np.ndarray[N]
     analysis_covariance: np.ndarray[N,N]
-
     """
     background = np.atleast_1d(background)
     background_covariance = np.atleast_2d(background_covariance)
@@ -71,7 +71,7 @@ def simple(background, background_covariance,
 def fold_common(background, background_covariance,
                 observations, observation_covariance,
                 observation_operator):
-    """Simple direct matrix inversion.
+    """Solve the inversion problem, evaluating sub-expressions only once.
 
     Assumes all arrays fit in memory with room to spare.
 
@@ -87,7 +87,6 @@ def fold_common(background, background_covariance,
     -------
     analysis: np.ndarray[N]
     analysis_covariance: np.ndarray[N,N]
-
     """
     background = np.atleast_1d(background)
     background_covariance = np.atleast_2d(background_covariance)
@@ -131,7 +130,7 @@ def fold_common(background, background_covariance,
 def scipy_chol(background, background_covariance,
                observations, observation_covariance,
                observation_operator):
-    """Simple direct matrix inversion.
+    """Use the Cholesky decomposition to solve the inverison problem.
 
     Assumes all arrays fit in memory with room to spare.
     Uses cholesky decomposition for solving a matrix equation
@@ -149,7 +148,6 @@ def scipy_chol(background, background_covariance,
     -------
     analysis: np.ndarray[N]
     analysis_covariance: np.ndarray[N,N]
-
     """
     background = np.atleast_1d(background)
     background_covariance = np.atleast_2d(background_covariance)

@@ -1,4 +1,5 @@
 """Models for identical twin experiments and similar."""
+from __future__ import division
 
 from numpy import empty_like, array
 
@@ -6,7 +7,7 @@ from numpy import empty_like, array
 class Lorenz63:
     """Classic Lorenz '63 model."""
 
-    def __init__(self, sigma=10, r=28, b=8./3):
+    def __init__(self, sigma=10, r=28, b=8/3):
         """Set up instance with parameters.
 
         Parameters
@@ -20,7 +21,7 @@ class Lorenz63:
         self._b = b
 
     def __call__(self, state):
-        """The derivative at state.
+        """Get the derivative at state.
 
         Parameters
         ----------
@@ -52,7 +53,7 @@ class Lorenz96:
         self._size = size
 
     def __call__(self, state):
-        """The derivative at `state`.
+        """Get the derivative at `state`.
 
         Parameters
         ----------
@@ -67,7 +68,7 @@ class Lorenz96:
 
         # fill in -1, 0, 1
         for i in range(-1, 2):
-            res[i] = state[i-1] * (state[i+1] - state[i-2])
+            res[i] = state[i - 1] * (state[i + 1] - state[i - 2])
         res -= state
         res += self._forcing
 

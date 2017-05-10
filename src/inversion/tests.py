@@ -4,35 +4,50 @@ Includes tests using random data, analytic solutions, and checks that
 different methods agree for simple problems.
 
 """
+from __future__ import print_function, division
 import fractions
 
 import numpy as np
 import numpy.linalg as la
 import numpy.random as np_rand
 import numpy.testing as np_tst
+import scipy.optimize
 import unittest2
 
 import inversion.covariance_estimation
 import inversion.optimal_interpolation
-import inversion.variational
-import inversion.psas
-import inversion.noise
 import inversion.correlations
 import inversion.integrators
+import inversion.variational
+import inversion.ensemble
+import inversion.noise
+import inversion.psas
 
 # If adding other inexact methods to the list tested, be sure to add
 # those to the `if "var" in name or "psas" in name` and
 # `if "psas" in name` tests as applicable.
-ALL_METHODS = (inversion.optimal_interpolation.simple,
-               inversion.optimal_interpolation.fold_common,
-               inversion.optimal_interpolation.scipy_chol,
-               inversion.variational.simple,
-               inversion.variational.incremental,
-               inversion.variational.incr_chol,
-               inversion.psas.simple,
-               inversion.psas.fold_common,
+ALL_METHODS = (
+    inversion.optimal_interpolation.simple,
+    inversion.optimal_interpolation.fold_common,
+    inversion.optimal_interpolation.scipy_chol,
+    inversion.variational.simple,
+    inversion.variational.incremental,
+    inversion.variational.incr_chol,
+    inversion.psas.simple,
+    inversion.psas.fold_common,
 )
+ITERATIVE_METHOD_START = 3
+"""Where the iterative methods start in the above list.
+
+Used to test failure modes for these solvers.
+"""
+
 PRECISE_DTYPE = np.float128
+"""The dtype used to represent analytic results.
+
+These are initialized as :class:`fractions.Fraction` then converted to
+this dtype for the comparison.
+"""
 
 ITERATIVE_STATE_TOLERANCE = 1e-3
 ITERATIVE_COVARIANCE_TOLERANCE = 1e-1
@@ -40,7 +55,7 @@ EXACT_TOLERANCE = 1e-7
 
 
 def getname(method):
-    """A name for the function.
+    """Descriptive name for the function.
 
     A name combining the function name and module.
 
@@ -61,7 +76,7 @@ def getname(method):
                                             variant=variant)
 
 
-class TestSimple(unittest2.TestCase):
+class TestInversionSimple(unittest2.TestCase):
     """Test inversions using simple cases."""
 
     def test_scalar_equal_variance(self):
@@ -363,8 +378,8 @@ class TestCorrelations(unittest2.TestCase):
                 corr_fun = corr_class(2.)
 
                 corr = np.fromfunction(corr_fun.correlation_from_index,
-                                       test_size*2, dtype=float)
-                corr_mat = corr.reshape((np.prod(test_size),)*2)
+                                       test_size * 2, dtype=float)
+                corr_mat = corr.reshape((np.prod(test_size),) * 2)
 
                 # test postitive definite
                 chol_upper = la.cholesky(corr_mat)
@@ -427,8 +442,8 @@ class TestCorrelations(unittest2.TestCase):
                 corr_fun = corr_class(2.)
 
                 corr = np.fromfunction(corr_fun.correlation_from_index,
-                                       test_size*2, dtype=float)
-                corr_mat = corr.reshape((np.prod(test_size),)*2)
+                                       test_size * 2, dtype=float)
+                corr_mat = corr.reshape((np.prod(test_size),) * 2)
 
                 # test postitive definite
                 chol_upper = la.cholesky(corr_mat)
@@ -548,7 +563,7 @@ class TestCorrelations(unittest2.TestCase):
                             # Gaussian(3) has FFT less
                             # well-conditioned than make_matrix
                             raise unittest2.SkipTest(
-                                "Gaussian({:d}) correlations ill-conditioned".
+                                "Gaussian({0:d}) correlations ill-conditioned".
                                 format(dist))
                         np_tst.assert_allclose(
                             corr_op.solve(
@@ -609,7 +624,7 @@ class TestCorrelations(unittest2.TestCase):
                             # Gaussian(3) has FFT less
                             # well-conditioned than make_matrix
                             raise unittest2.SkipTest(
-                                "Gaussian({:d}) correlations ill-conditioned".
+                                "Gaussian({0:d}) correlations ill-conditioned".
                                 format(dist))
                         np_tst.assert_allclose(
                             corr_op.solve(

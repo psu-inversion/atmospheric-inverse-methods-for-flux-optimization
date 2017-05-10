@@ -183,7 +183,7 @@ class ThreadedEnsembleIntegrator(EnsembleIntegrator):
         integrator = self._integrator
 
         def thread_fun(i):
-            """The function for the threads.
+            """Integrate ensemble member `i`.
 
             Assumes anything not thread-local is global.
 

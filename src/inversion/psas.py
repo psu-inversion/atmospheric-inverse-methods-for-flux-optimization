@@ -12,9 +12,12 @@ from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
 def simple(background, background_covariance,
            observations, observation_covariance,
            observation_operator):
-    """Simple PSAS implementation.
+    """Solve the inversion problem, using the equations directly.
 
     Assumes all arrays fit in memory with room to spare.
+    This uses the algorithm from
+    :func:`inversion.optimal_interpolation.simple`, except
+    the matrix inversion is done with an iterative solver.
 
     Parameters
     ----------
@@ -133,9 +136,12 @@ def simple(background, background_covariance,
 def fold_common(background, background_covariance,
                 observations, observation_covariance,
                 observation_operator):
-    """Simple direct matrix inversion.
+    """Solve the inversion problem, in a slightly optimized manner.
 
-    Assumes all arrays fit in memory with room to spare.
+    Assumes all arrays fit in memory with room to spare.  Evaluates
+    each sub-expression only once. Uses the algorithm from
+    :func:`inversion.optimal_interpolation.fold_common` with an
+    iterative solver for the matrix inversion.
 
     Parameters
     ----------
@@ -149,7 +155,6 @@ def fold_common(background, background_covariance,
     -------
     analysis: np.ndarray[N]
     analysis_covariance: np.ndarray[N,N]
-
     """
     background = np.atleast_1d(background)
     background_covariance = np.atleast_2d(background_covariance)
