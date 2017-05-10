@@ -293,6 +293,33 @@ class TestInversionSimple(unittest2.TestCase):
                 np_tst.assert_allclose(
                     post_cov1, post_cov2, rtol=cov_rtol)
 
+    def test_iterative_failures(self):
+        """Test failure modes of iterative solvers."""
+        bg_stds = np.logspace(-8, 1, 10)
+        bg_corr = scipy.linalg.toeplitz(
+            np.arange(1, .9, -.01))
+        bg_cov = np.diag(bg_stds).dot(bg_corr).dot(np.diag(bg_stds))
+
+        bg_vals = np.arange(10)
+
+        obs_op = np.eye(3, 10)
+        obs_vals = 10 - np.arange(3)
+        obs_cov = np.diag((10, 1e-3, 1e-6)) / 8
+
+        for method in ALL_METHODS[ITERATIVE_METHOD_START:]:
+            name = getname(method)
+
+            with self.subTest(method=name):
+                with self.assertRaises(inversion.ConvergenceError) as cxt_mgr:
+                    method(bg_vals, bg_cov, obs_vals, obs_cov, obs_op)
+
+                conv_err = cxt_mgr.exception
+                self.assertTrue(hasattr(conv_err, "guess"))
+                self.assertTrue(hasattr(conv_err, "result"))
+                self.assertIsInstance(conv_err.result,
+                                      scipy.optimize.OptimizeResult)
+                self.assertTrue(hasattr(conv_err, "hess_inv"))
+
 
 class TestGaussianNoise(unittest2.TestCase):
     """Test the properties of the gaussian noise."""
@@ -638,6 +665,30 @@ class TestCorrelations(unittest2.TestCase):
                              noncorr_dist:-noncorr_dist],
                             rtol=1e-3, atol=1e-5)
 
+    def test_homogeneous_from_array(self):
+        """Make sure from_array can be roundtripped.
+
+        Also tests that odd state sizes work.
+        """
+        test_size = 25
+
+        corr_class = inversion.correlations.ExponentialCorrelation
+        for dist in (1, 3, 5):
+            with self.subTest(dist=dist):
+                corr_fun = corr_class(dist)
+                corr_op1 = (
+                    inversion.correlations.HomogeneousIsotropicCorrelation.
+                    from_function(corr_fun, test_size))
+                first_column = corr_op1.dot(np.eye(test_size, 1)[:, 0])
+
+                corr_op2 = (
+                    inversion.correlations.HomogeneousIsotropicCorrelation.
+                    from_array(first_column))
+
+                np_tst.assert_allclose(
+                    corr_op1.dot(np.eye(test_size)),
+                    corr_op2.dot(np.eye(test_size)))
+
 
 class TestIntegrators(unittest2.TestCase):
     """Test the integrators."""
@@ -705,7 +756,8 @@ class TestCovarianceEstimation(unittest2.TestCase):
             # corr_mat = inversion.correlations.make_matrix(corr_fun,
             #                                               state_size)
             corr_op = (
-                inversion.correlations.HomogeneousIsotropicCorrelation(
+                inversion.correlations.HomogeneousIsotropicCorrelation.
+                from_function(
                     corr_fun, state_size))
             corr_mat = corr_op.dot(np.eye(state_size))
 
@@ -730,3 +782,41 @@ class TestCovarianceEstimation(unittest2.TestCase):
                     np_tst.assert_allclose(estimated_cov, corr_mat,
                                            rtol=1e-2, atol=1e-2)
 
+
+class TestEnsembleBase(unittest2.TestCase):
+    """Test the utility functions in inversion.ensemble."""
+
+    sample_size = int(1e6)
+    state_size = 10
+
+    def test_mean(self):
+        """Test whether ensemble mean is close."""
+        sample_data = np_rand.standard_normal((self.sample_size,
+                                               self.state_size))
+
+        np_tst.assert_allclose(inversion.ensemble.mean(sample_data),
+                               np.zeros(self.state_size),
+                               # Use 3 * standard error
+                               atol=3 / np.sqrt(self.sample_size))
+
+    def test_spread(self):
+        """Test whether ensemble spread is reasonable."""
+        sample_data = np_rand.standard_normal((self.sample_size,
+                                               self.state_size))
+        self.assertAlmostEqual(inversion.ensemble.spread(sample_data),
+                               # rtol is 10**(-places)/state_size
+                               self.state_size, places=1)
+
+    def test_mean_and_perturbations(self):
+        """Test if mean and perturbations combine to give original."""
+        sample_data = np_rand.standard_normal((self.sample_size,
+                                               self.state_size))
+
+        mean, perturbations = inversion.ensemble.mean_and_perturbations(
+            sample_data)
+
+        np_tst.assert_allclose(mean + perturbations, sample_data)
+
+
+if __name__ == "__main__":
+    unittest2.main()

@@ -8,7 +8,7 @@ import abc
 import functools
 
 from numpy import fromfunction, arange, atleast_1d, asanyarray
-from numpy import exp, dot, diag, prod, square, where, sqrt, newaxis
+from numpy import exp, dot, diag, prod, square, fmin, sqrt, newaxis
 from numpy import sum as np_sum
 from numpy.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
 from numpy.linalg import eigh, norm
@@ -49,10 +49,15 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         I stole the idea from here.
     """
 
-    def __init__(self, corr_func, shape):
+
+    def __init__(self, shape):
         """Set up the instance.
 
-        Assumes correlations are real.
+        .. note::
+
+            Do not invoke this directly. Use
+            :func:`HomogeneousIsotropicCorrelation.from_function` or
+            :func:`HomogeneousIsotropicCorrelaiton.from_array` instead.
 
         Parameters
         ----------
@@ -62,27 +67,65 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
             depend on the layout in some other shape, usually related to the
             physical layout. This is that shape.
         """
-        shape = atleast_1d(shape)
         state_size = prod(shape)
 
         super(HomogeneousIsotropicCorrelation, self).__init__(
             dtype=float, shape=(state_size, state_size))
 
+        self._fft, self._ifft = self._rfft_irfft(shape)
+        self._underlying_shape = shape
+
+    # noqa W0212
+    @staticmethod
+    def _rfft_irfft(shape):
+        """Get the forward and inverse rffts for the given dimensions.
+
+        Parameters
+        ----------
+        ndim: int
+
+        Returns
+        -------
+        fft, ifft: callable
+        """
         ndims = len(shape)
         if ndims == 1:
-            self._fft = rfft
-            self._ifft = functools.partial(irfft, n=state_size)
+            fft = rfft
+            ifft = functools.partial(irfft, n=shape[0])
         elif ndims == 2:
-            self._fft = rfft2
-            self._ifft = functools.partial(irfft2, s=shape)
+            fft = rfft2
+            ifft = functools.partial(irfft2, s=shape)
         else:
-            self._fft = functools.partial(
+            fft = functools.partial(
                 rfftn, axes=arange(-ndims, 0, dtype=int))
-            self._ifft = functools.partial(
+            ifft = functools.partial(
                 irfftn, axes=arange(-ndims, 0, dtype=int), s=shape)
+        return fft, ifft
+
+    # noqa W0212
+    @classmethod
+    def from_function(cls, corr_func, shape):
+        """Create an instance to apply the correlation function.
+
+        Parameters
+        ----------
+        corr_func: callable(dist) -> float
+        shape: tuple of int
+            The state is formally a vector, but the correlations are
+            assumed to depend on the layout in some other shape,
+            usually related to the physical layout. This is the other
+            shape.
+
+        Returns
+        -------
+        HomogeneousIsotropicCorrelation
+        """
+        shape = atleast_1d(shape)
+        ndims = len(shape)
+        self = cls(shape)
 
         broadcastable_shape = shape[:, newaxis]
-        while broadcastable_shape.ndim < len(shape) + 1:
+        while broadcastable_shape.ndim < ndims + 1:
             broadcastable_shape = broadcastable_shape[..., newaxis]
 
         def corr_from_index(*index):
@@ -108,33 +151,14 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
             comp2_2 = square(broadcastable_shape - index)
             # use the smaller components to get the distance to the
             # closest of the shifted origins
-            comp2 = where(comp2_1 < comp2_2, comp2_1, comp2_2)
+            comp2 = fmin(comp2_1, comp2_2)
             return corr_func(sqrt(np_sum(comp2, axis=0)))
 
         corr_struct = fromfunction(corr_from_index, shape)
         self._corr_fourier = self._fft(corr_struct)
         # This is also affected by roundoff
         self._fourier_near_zero = self._corr_fourier < FOURIER_NEAR_ZERO
-        self._underlying_shape = shape
-
-    @classmethod
-    def from_function(cls, corr_func, shape):
-        """Create an instance to apply the correlation function.
-
-        Parameters
-        ----------
-        corr_func: callable(dist) -> float
-        shape: tuple of int
-            The state is formally a vector, but the correlations are
-            assumed to depend on the layout in some other shape,
-            usually related to the physical layout. This is the other
-            shape.
-
-        Returns
-        -------
-        HomogeneousIsotropicCorrelation
-        """
-        return cls(corr_func, shape)
+        return self
 
     @classmethod
     def from_array(cls, corr_array):
@@ -148,7 +172,10 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         -------
         HomogeneousIsotropicCorrelation
         """
-        return cls(corr_array.__getitem__, corr_array.shape)
+        self = cls(corr_array.shape)
+        self._corr_fourier = self._fft(corr_array)
+        self._fourier_near_zero = self._corr_fourier < FOURIER_NEAR_ZERO
+        return self
 
     def _matvec(self, vec):
         """Evaluate the matrix product of this matrix and `vec`.
