@@ -24,7 +24,7 @@ setup(
     author=authors,
     author_email="dfw5129@psu.edu",
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 3 - Alpha",
         "Intended Audience :: Science/Research",
         "Topic :: Science/Engineering :: Atmospheric Science",
         "Programming Language :: Python :: 2",
@@ -32,6 +32,7 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.6",
+        "Operating System :: OS Independent",
     ],
     keywords="inversion underdetermined DA assimilation",
     package_dir={'': "src"},

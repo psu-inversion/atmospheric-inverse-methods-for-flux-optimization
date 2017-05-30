@@ -252,7 +252,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   ('index', 'Inversions', u'Inversions Documentation',
-   u'Daniel Wesloh', 'Inversions', 'One line description of project.',
+   u'Daniel Wesloh', 'Inversions', 'Functions for geophysical inversions.',
    'Miscellaneous'),
 ]
 
