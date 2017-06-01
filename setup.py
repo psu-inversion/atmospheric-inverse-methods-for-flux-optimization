@@ -41,9 +41,9 @@ setup(
         "six",
         "numpy",
         "scipy",
+        "dask[array]",
     ],
     extras_require=dict(
-        dask=["dask[array]"],
         homework=[
             "pandas",
             "statsmodels",

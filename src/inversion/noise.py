@@ -5,8 +5,12 @@ Generated values have zero mean unless specified.
 Mostly for use in testing.
 """
 import numpy as np
-from numpy.random import standard_normal as _standard_normal
-from numpy.dual import cholesky
+from dask.array.random import standard_normal as _standard_normal
+
+# import from scipy.linalg if not using dask
+from dask.array.linalg import cholesky
+
+from inversion.util import chunk_sizes
 
 
 def gaussian_noise(cov, size=None):
@@ -37,7 +41,9 @@ def gaussian_noise(cov, size=None):
     final_shape = list(shape[:])
     final_shape.append(sample_shape)
 
-    x = _standard_normal(size=final_shape).reshape(-1, sample_shape)
+    x = _standard_normal(
+        size=final_shape, chunks=chunk_sizes(final_shape)
+    ).reshape(-1, sample_shape)
 
     chol_upper = cholesky(cov)
 

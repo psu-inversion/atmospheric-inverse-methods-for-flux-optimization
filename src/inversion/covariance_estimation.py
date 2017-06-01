@@ -1,7 +1,7 @@
 """Estimate background error covariances from model runs."""
 
-from numpy.fft import rfft, irfft
-from numpy import cov, var, diff
+from dask.array.fft import rfft, irfft
+from dask.array import cov, var, asarray
 
 from scipy.linalg import toeplitz
 
@@ -38,6 +38,7 @@ def nmc_covariances(forecasts, difference_lag, assume_homogeneous=False):
     ----------
     Parrish and Derber 1992
     """
+    forecasts = asarray(forecasts)
     state_size = forecasts.shape[-1]
     differences = (forecasts[:-difference_lag, 1] -
                    forecasts[difference_lag:, 0])
@@ -83,7 +84,7 @@ def canadian_quick_covariances(free_run, assume_homogeneous=False):
     estimated_covariances: array_like[N, N]
     """
     state_size = free_run.shape[-1]
-    forecast_tendencies = diff(free_run)
+    forecast_tendencies = free_run[1:] - free_run[:-1]
 
     if not assume_homogeneous:
         result = cov(forecast_tendencies.T)

@@ -8,11 +8,15 @@ from __future__ import print_function, division
 import fractions
 
 import numpy as np
-import numpy.linalg as la
+import dask.array as da
+import dask.array.linalg as la
 import numpy.random as np_rand
 import numpy.testing as np_tst
 import scipy.optimize
 import unittest2
+
+# Import from scipy.linalg if not using dask
+from dask.array.linalg import cholesky
 
 import inversion.covariance_estimation
 import inversion.optimal_interpolation
@@ -22,6 +26,8 @@ import inversion.variational
 import inversion.ensemble
 import inversion.noise
 import inversion.psas
+import inversion.util
+from inversion.util import chunk_sizes
 
 # If adding other inexact methods to the list tested, be sure to add
 # those to the `if "var" in name or "psas" in name` and
@@ -404,15 +410,16 @@ class TestCorrelations(unittest2.TestCase):
             with self.subTest(corr_class=getname(corr_class)):
                 corr_fun = corr_class(2.)
 
-                corr = np.fromfunction(corr_fun.correlation_from_index,
-                                       test_size * 2, dtype=float)
+                corr = da.fromfunction(corr_fun.correlation_from_index,
+                                       shape=test_size * 2, dtype=float,
+                                       chunks=test_size * 2)
                 corr_mat = corr.reshape((np.prod(test_size),) * 2)
 
                 # test postitive definite
-                chol_upper = la.cholesky(corr_mat)
+                chol_upper = cholesky(corr_mat)
 
                 # test symmetry
-                np_tst.assert_allclose(chol_upper.dot(chol_upper.T),
+                np_tst.assert_allclose(chol_upper.T.dot(chol_upper),
                                        corr_mat,
                                        rtol=1e-4, atol=1e-4)
 
@@ -452,7 +459,7 @@ class TestCorrelations(unittest2.TestCase):
                         rtol=1e-12, atol=1e-14)
 
                     # check if it actually is positive definite
-                    la.cholesky(corr_mat)
+                    cholesky(corr_mat)
 
     def test_1d_np_fromfunction(self):
         """Test that the structure works with np.fromfunction.
@@ -468,15 +475,16 @@ class TestCorrelations(unittest2.TestCase):
                 # This fails with a correlation length of 5
                 corr_fun = corr_class(2.)
 
-                corr = np.fromfunction(corr_fun.correlation_from_index,
-                                       test_size * 2, dtype=float)
+                corr = da.fromfunction(corr_fun.correlation_from_index,
+                                       shape=test_size * 2, dtype=float,
+                                       chunks=chunk_sizes(test_size) * 2)
                 corr_mat = corr.reshape((np.prod(test_size),) * 2)
 
                 # test postitive definite
-                chol_upper = la.cholesky(corr_mat)
+                chol_upper = cholesky(corr_mat)
 
                 # test symmetry
-                np_tst.assert_allclose(chol_upper.dot(chol_upper.T),
+                np_tst.assert_allclose(chol_upper.T.dot(chol_upper),
                                        corr_mat,
                                        rtol=1e-4, atol=1e-4)
 
@@ -512,10 +520,10 @@ class TestCorrelations(unittest2.TestCase):
                         rtol=1e-12, atol=1e-14)
 
                     # check if it actually is positive definite
-                    chol_upper = la.cholesky(corr_mat)
+                    chol_upper = cholesky(corr_mat)
 
                     # test symmetry
-                    np_tst.assert_allclose(chol_upper.dot(chol_upper.T),
+                    np_tst.assert_allclose(chol_upper.T.dot(chol_upper),
                                            corr_mat,
                                            rtol=1e-4, atol=1e-4)
 
@@ -528,13 +536,15 @@ class TestCorrelations(unittest2.TestCase):
                 inversion.correlations.DistanceCorrelationFunction.
                 __subclasses__()):
             for test_shape in ((300,), (20, 30)):
+                test_size = int(np.prod(test_shape, dtype=int))
                 for dist in (1, 3, 10, 30):
                     corr_fun = corr_class(dist)
 
                     corr_op = (
                         inversion.correlations.HomogeneousIsotropicCorrelation.
                         from_function(corr_fun, test_shape))
-                    corr_mat = corr_op.dot(np.eye(np.prod(test_shape)))
+                    corr_mat = corr_op.dot(da.eye(test_size,
+                                                  chunks=test_size))
 
                     with self.subTest(corr_class=getname(corr_class),
                                       dist=dist, test_shape=test_shape,

@@ -7,13 +7,21 @@ the right and left to obtain covariance matrices.
 import abc
 import functools
 
-from numpy import fromfunction, arange, atleast_1d, asanyarray
-from numpy import exp, dot, diag, prod, square, fmin, sqrt, newaxis
-from numpy import sum as np_sum
-from numpy.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
+# Need to specify numpy versions in some instances.
+import numpy as np
+# Not in dask.array
 from numpy.linalg import eigh, norm
+# arange changes signature
+from numpy import arange, newaxis, asanyarray
+
+from dask.array import fromfunction, asarray
+from dask.array import exp, dot, diag, square, fmin, sqrt
+from dask.array import sum as np_sum
+from dask.array.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
 from scipy.sparse.linalg import LinearOperator
 import six
+
+from inversion.util import chunk_sizes
 
 ROUNDOFF = 1e-13
 """Approximate size of roundoff error for correlation matrices.
@@ -33,8 +41,12 @@ The method of assuring positive definiteness increases some values
 away from zero due to roundoff. Values that were originally smaller
 than this are reset to zero.
 """
-FOURIER_NEAR_ZERO = 1e-20
-"""Where fourier coefficients are treated as zero."""
+FOURIER_NEAR_ZERO = 1e-15
+"""Where fourier coefficients are treated as zero.
+
+1e-20 produces overflow with the dask tests
+"""
+DTYPE = np.float64
 
 
 class HomogeneousIsotropicCorrelation(LinearOperator):
@@ -67,7 +79,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
             depend on the layout in some other shape, usually related to the
             physical layout. This is that shape.
         """
-        state_size = prod(shape)
+        state_size = np.prod(shape)
 
         super(HomogeneousIsotropicCorrelation, self).__init__(
             dtype=float, shape=(state_size, state_size))
@@ -120,7 +132,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         -------
         HomogeneousIsotropicCorrelation
         """
-        shape = atleast_1d(shape)
+        shape = np.atleast_1d(shape)
         ndims = len(shape)
         self = cls(shape)
 
@@ -154,7 +166,10 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
             comp2 = fmin(comp2_1, comp2_2)
             return corr_func(sqrt(np_sum(comp2, axis=0)))
 
-        corr_struct = fromfunction(corr_from_index, shape)
+        corr_struct = fromfunction(
+            corr_from_index, shape=tuple(shape),
+            chunks=chunk_sizes(shape, matrix_side=False),
+            dtype=DTYPE)
         self._corr_fourier = self._fft(corr_struct)
         # This is also affected by roundoff
         self._fourier_near_zero = self._corr_fourier < FOURIER_NEAR_ZERO
@@ -173,7 +188,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         HomogeneousIsotropicCorrelation
         """
         self = cls(corr_array.shape)
-        self._corr_fourier = self._fft(corr_array)
+        self._corr_fourier = self._fft(asarray(corr_array))
         self._fourier_near_zero = self._corr_fourier < FOURIER_NEAR_ZERO
         return self
 
@@ -188,7 +203,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         -------
         array_like[N]
         """
-        field = vec.reshape(self._underlying_shape)
+        field = asarray(vec).reshape(self._underlying_shape)
 
         spectral_field = self._fft(field)
         spectral_field *= self._corr_fourier
@@ -208,7 +223,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         array_like[N]
             Solution of `self @ x = vec`
         """
-        field = vec.reshape(self._underlying_shape)
+        field = asarray(vec).reshape(self._underlying_shape)
 
         spectral_field = self._fft(field)
         spectral_field /= self._corr_fourier
@@ -237,13 +252,15 @@ def make_matrix(corr_func, shape):
     Returns
     -------
     corr: np.ndarray[N, N]
-
+        Dense array, entirely in memory
     """
-    shape = tuple(atleast_1d(shape))
-    n_points = prod(shape)
+    shape = tuple(np.atleast_1d(shape))
+    n_points = np.prod(shape)
+    chunks = chunk_sizes(shape)
 
     tmp_res = fromfunction(corr_func.correlation_from_index,
-                           2 * shape).reshape(
+                           shape=2 * shape, chunks=chunks * 2,
+                           dtype=DTYPE).reshape(
         (n_points, n_points))
     where_small = tmp_res < NEAR_ZERO
     where_small &= tmp_res > -NEAR_ZERO

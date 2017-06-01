@@ -1,8 +1,16 @@
 """Functions implementing 3D-Var.
 
 Signatures follow the functions in :mod:`inversion.optimal_interpolation`
+
+Note
+----
+Forces in-memory computations.  BFGS method requires this, and there
+are odd shape-mismatch errors if I just change to dask arrays.
+Conjugate gradient solvers may work better for dask arrays if we drop
+the covariance matrix from the return values.
 """
 import numpy as np
+import numpy.linalg as la
 import scipy.optimize
 import scipy.linalg
 
@@ -63,9 +71,9 @@ def simple(background, background_covariance,
         test_obs = observation_operator.dot(test_state)
         obs_mismatch = test_obs - observations
 
-        prior_fit = prior_mismatch.dot(np.linalg.solve(
+        prior_fit = prior_mismatch.dot(la.solve(
             background_covariance, prior_mismatch))
-        obs_fit = obs_mismatch.dot(np.linalg.solve(
+        obs_fit = obs_mismatch.dot(la.solve(
             observation_covariance, obs_mismatch))
         return prior_fit + obs_fit
 
@@ -84,11 +92,11 @@ def simple(background, background_covariance,
         test_obs = observation_operator.dot(test_state)
         obs_mismatch = test_obs - observations
 
-        prior_gradient = np.linalg.solve(background_covariance,
-                                         prior_mismatch)
+        prior_gradient = la.solve(background_covariance,
+                                  prior_mismatch)
         obs_gradient = observation_operator.T.dot(
-            np.linalg.solve(observation_covariance,
-                            obs_mismatch))
+            la.solve(observation_covariance,
+                     obs_mismatch))
 
         return prior_gradient + obs_gradient
 
@@ -104,11 +112,11 @@ def simple(background, background_covariance,
     #     -------
     #     hess_prod: np.ndarray[N]
     #     """
-    #     bg_prod = np.linalg.solve(background_covariance,
-    #                               test_step)
+    #     bg_prod = la.solve(background_covariance,
+    #                        test_step)
     #     obs_prod = observation_operator.T.dot(
-    #         np.linalg.solve(observation_covariance,
-    #                         observation_operator.dot(test_step)))
+    #         la.solve(observation_covariance,
+    #                  observation_operator.dot(test_step)))
     #     return bg_prod + obs_prod
 
     result = scipy.optimize.minimize(
@@ -186,9 +194,9 @@ def incremental(background, background_covariance,
         obs_change = observation_operator.dot(test_change)
         obs_mismatch = innovations - obs_change
 
-        prior_fit = test_change.dot(np.linalg.solve(
+        prior_fit = test_change.dot(la.solve(
             background_covariance, test_change))
-        obs_fit = obs_mismatch.dot(np.linalg.solve(
+        obs_fit = obs_mismatch.dot(la.solve(
             observation_covariance, obs_mismatch))
         return prior_fit + obs_fit
 
@@ -206,11 +214,11 @@ def incremental(background, background_covariance,
         obs_change = observation_operator.dot(test_change)
         obs_mismatch = innovations - obs_change
 
-        prior_gradient = np.linalg.solve(background_covariance,
-                                         test_change)
+        prior_gradient = la.solve(background_covariance,
+                                  test_change)
         obs_gradient = observation_operator.T.dot(
-            np.linalg.solve(observation_covariance,
-                            obs_mismatch))
+            la.solve(observation_covariance,
+                     obs_mismatch))
 
         return prior_gradient - obs_gradient
 
@@ -226,11 +234,11 @@ def incremental(background, background_covariance,
     #     -------
     #     hess_prod: np.ndarray[N]
     #     """
-    #     bg_prod = np.linalg.solve(background_covariance,
-    #                               test_step)
+    #     bg_prod = la.solve(background_covariance,
+    #                        test_step)
     #     obs_prod = observation_operator.T.dot(
-    #         np.linalg.solve(observation_covariance,
-    #                         observation_operator.dot(test_step)))
+    #         la.solve(observation_covariance,
+    #                  observation_operator.dot(test_step)))
     #     return bg_prod + obs_prod
 
     result = scipy.optimize.minimize(
@@ -359,11 +367,11 @@ def incr_chol(background, background_covariance,
     #     -------
     #     hess_prod: np.ndarray[N]
     #     """
-    #     bg_prod = np.linalg.solve(background_covariance,
-    #                               test_step)
+    #     bg_prod = la.solve(background_covariance,
+    #                        test_step)
     #     obs_prod = observation_operator.T.dot(
-    #         np.linalg.solve(observation_covariance,
-    #                         observation_operator.dot(test_step)))
+    #         la.solve(observation_covariance,
+    #                  observation_operator.dot(test_step)))
     #     return bg_prod + obs_prod
 
     result = scipy.optimize.minimize(

@@ -3,7 +3,8 @@
 Iterative observation-space algorithm.
 """
 import numpy as np
-import numpy.linalg as la
+from dask.array import asarray
+import dask.array.linalg as la
 import scipy.optimize
 
 from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
@@ -118,7 +119,7 @@ def simple(background, background_covariance,
 
     # Try a different approach to enforce invariants (symmetric
     # positive definite)
-    lower = la.cholesky(result.hess_inv)
+    lower = la.cholesky(asarray(result.hess_inv), lower=True)
     lower_decrease = background_covariance.dot(
         observation_operator.T.dot(lower))
     # this will be positive
@@ -230,7 +231,7 @@ def fold_common(background, background_covariance,
 
     # Try a different approach to enforce invariants (symmetric
     # positive definite)
-    lower = la.cholesky(result.hess_inv)
+    lower = la.cholesky(asarray(result.hess_inv), lower=True)
     lower_decrease = B_HT.dot(lower)
     # this will be positive
     decrease = lower_decrease.dot(lower_decrease.T)
