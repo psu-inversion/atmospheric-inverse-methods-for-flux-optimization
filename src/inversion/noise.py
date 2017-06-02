@@ -6,6 +6,7 @@ Mostly for use in testing.
 """
 import numpy as np
 from dask.array.random import standard_normal as _standard_normal
+from dask.array import asarray
 
 # import from scipy.linalg if not using dask
 from dask.array.linalg import cholesky
@@ -45,7 +46,7 @@ def gaussian_noise(cov, size=None):
         size=final_shape, chunks=chunk_sizes(final_shape)
     ).reshape(-1, sample_shape)
 
-    chol_upper = cholesky(cov)
+    chol_upper = cholesky(asarray(cov))
 
     x = x.dot(chol_upper)
     return x.reshape(final_shape)

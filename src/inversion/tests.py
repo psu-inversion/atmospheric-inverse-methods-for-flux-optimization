@@ -6,6 +6,7 @@ different methods agree for simple problems.
 """
 from __future__ import print_function, division
 import fractions
+import math
 
 import numpy as np
 import dask.array as da
@@ -543,8 +544,10 @@ class TestCorrelations(unittest2.TestCase):
                     corr_op = (
                         inversion.correlations.HomogeneousIsotropicCorrelation.
                         from_function(corr_fun, test_shape))
+                    # This is the fastest way to get column-major
+                    # order from da.eye.
                     corr_mat = corr_op.dot(da.eye(test_size,
-                                                  chunks=test_size))
+                                                  chunks=test_size).T)
 
                     with self.subTest(corr_class=getname(corr_class),
                                       dist=dist, test_shape=test_shape,
@@ -826,6 +829,97 @@ class TestEnsembleBase(unittest2.TestCase):
             sample_data)
 
         np_tst.assert_allclose(mean + perturbations, sample_data)
+
+
+class TestUtilFunctions(unittest2.TestCase):
+    """Test the utility functions in inversion.util."""
+
+    def test_chunk_size_single(self):
+        """Test chunk_sizes for a single dimension."""
+        chunk_sizes = inversion.util.chunk_sizes
+        side_max_size = inversion.util.OPTIMAL_ELEMENTS
+
+        for i in range(6):
+            with self.subTest(ten_power=i):
+                side_size = int(10 ** i)
+                proposed_size = chunk_sizes((side_size,))
+                self.assertEqual(
+                    proposed_size,
+                    (min(side_size, side_max_size),))
+
+    def test_chunk_size_state_single(self):
+        """Test chunk_sizes for 1D state vector with no matrix."""
+        chunk_sizes = inversion.util.chunk_sizes
+        state_max_size = inversion.util.OPTIMAL_ELEMENTS ** 2
+
+        for i in range(0, 12, 2):
+            with self.subTest(ten_power=i):
+                state_size = int(10 ** i)
+                proposed_size = chunk_sizes((state_size,), False)
+                self.assertEqual(proposed_size,
+                                 (min(state_size, state_max_size),))
+
+    def test_chunk_sizes_double(self):
+        """Test chunk_sizes for a rank two array."""
+        chunk_sizes = inversion.util.chunk_sizes
+        state_max_size = inversion.util.OPTIMAL_ELEMENTS
+        side_size = state_max_size // 10
+
+        shape = (side_size, side_size)
+        proposed_size = chunk_sizes(shape)
+        self.assertEqual(proposed_size, (10, side_size))
+
+    def test_chunk_sizes_many(self):
+        """Test chunk_sizes for a high rank array."""
+        chunk_sizes = inversion.util.chunk_sizes
+        state_max_size = inversion.util.OPTIMAL_ELEMENTS
+        side_size = 10 ** (math.floor(math.log10(state_max_size) - 1))
+
+        shape = [side_size for _ in range(15)]
+        proposed_size = chunk_sizes(shape)
+        chunk_size = np.prod(proposed_size, dtype=float)
+
+        self.assertLessEqual(chunk_size, state_max_size)
+        self.assertGreaterEqual(chunk_size, state_max_size / 15)
+
+    def test_chunk_sizes_double_exact(self):
+        """Check where a rank two array would exactly fill a chunk."""
+        second_size = inversion.util.OPTIMAL_ELEMENTS // 10
+        shape = (second_size, 10)
+        proposed_chunks = inversion.util.chunk_sizes(shape)
+
+        self.assertEqual(proposed_chunks, shape)
+
+
+class TestUtil_atleast_nd(unittest2.TestCase):
+    """Test the atleast_nd functions in inversion.util."""
+
+    test_values = (4, (1, 2, 3), ((1, 2), (3, 4)), [1, 2],
+                   np.array(1), np.arange(3), np.eye(4),
+                   da.asarray(1),
+                   da.arange(5, chunks=5),
+                   da.arange(9, chunks=9).reshape(3, 3),
+                   da.zeros((3, 3, 3), chunks=(3, 3, 3)))
+
+    def test_atleast_1d(self):
+        """Ensure atleast_1d works."""
+        for test_val in self.test_values:
+            with self.subTest(test_val=test_val):
+                tst_arry = inversion.util.atleast_1d(test_val)
+
+                self.assertIsInstance(tst_arry, da.Array)
+                self.assertGreaterEqual(tst_arry.ndim, 1)
+                self.assertEqual(tst_arry.shape, np.atleast_1d(test_val).shape)
+
+    def test_atleast_2d(self):
+        """Ensure atleast_1d works."""
+        for test_val in self.test_values:
+            with self.subTest(test_val=test_val):
+                tst_arry = inversion.util.atleast_2d(test_val)
+
+                self.assertIsInstance(tst_arry, da.Array)
+                self.assertGreaterEqual(tst_arry.ndim, 2)
+                self.assertEqual(tst_arry.shape, np.atleast_2d(test_val).shape)
 
 
 if __name__ == "__main__":

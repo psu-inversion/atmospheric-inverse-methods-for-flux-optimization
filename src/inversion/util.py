@@ -2,13 +2,15 @@
 
 These functions mirror :mod:`numpy` functions but produce dask output.
 """
+import itertools
 import numbers
+import math
 
 import numpy as np
 import dask.array as da
 import dask.array.linalg as la
 
-OPTIMAL_ELEMENTS = int(1e4)
+OPTIMAL_ELEMENTS = int(2e4)
 """Optimal elements per chunk in a dask array.
 
 Magic number, arbitrarily chosen.  Dask documentation mentions many
@@ -42,12 +44,17 @@ def chunk_sizes(shape, matrix_side=True):
     if not matrix_side:
         here_max **= 2
 
+    if np.prod(shape) <= here_max:
+        # The total number of elements is smaller than the recommended
+        # chunksize, so the whole thing is a single chunk
+        return tuple(shape)
+
     for dim_size in reversed(shape):
         nelements *= dim_size
         chunk_start -= 1
 
         if nelements > here_max:
-            nelements /= dim_size
+            nelements //= dim_size
             break
 
     chunks = [1 if i < chunk_start else dim_size
@@ -55,11 +62,15 @@ def chunk_sizes(shape, matrix_side=True):
     next_dimsize = shape[chunk_start]
 
     # I happen to like neatness
-    if chunk_start > 0:
-        chunks[chunk_start - 1] = max(
-            i for i in range(
-                1,
-                here_max // nelements)
+    # And cholesky requires square chunks.
+    if here_max > nelements:
+        max_to_check = int(here_max // nelements)
+        check_step = int(min(10 ** math.floor(math.log10(max_to_check) - .1),
+                             here_max))
+        chunks[chunk_start] = max(
+            i for i in itertools.chain(
+                (1,),
+                range(check_step, max_to_check + 1, check_step))
             if next_dimsize % i == 0)
     return tuple(chunks)
 
@@ -79,7 +90,7 @@ def atleast_1d(arry):
         if arry.ndim >= 1:
             return arry
         return arry[np.newaxis]
-    if isinstance(arry, (list, tuple)):
+    if isinstance(arry, (list, tuple, np.ndarray)):
         arry = np.atleast_1d(arry)
     if isinstance(arry, numbers.Number):
         arry = np.atleast_1d(arry)
@@ -105,7 +116,7 @@ def atleast_2d(arry):
         elif arry.ndim == 1:
             return arry[np.newaxis, :]
         return arry[np.newaxis, np.newaxis]
-    if isinstance(arry, (list, tuple)):
+    if isinstance(arry, (list, tuple, np.ndarray)):
         arry = np.atleast_2d(arry)
     if isinstance(arry, numbers.Number):
         arry = np.atleast_2d(arry)
