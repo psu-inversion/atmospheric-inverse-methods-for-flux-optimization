@@ -61,7 +61,6 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         I stole the idea from here.
     """
 
-
     def __init__(self, shape):
         """Set up the instance.
 
@@ -85,7 +84,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
             dtype=float, shape=(state_size, state_size))
 
         self._fft, self._ifft = self._rfft_irfft(shape)
-        self._underlying_shape = shape
+        self._underlying_shape = tuple(shape)
 
     # noqa W0212
     @staticmethod
@@ -102,16 +101,16 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         """
         ndims = len(shape)
         if ndims == 1:
-            fft = rfft
-            ifft = functools.partial(irfft, n=shape[0])
+            fft = functools.partial(rfft, axis=0)
+            ifft = functools.partial(irfft, n=shape[0], axis=0)
         elif ndims == 2:
-            fft = rfft2
-            ifft = functools.partial(irfft2, s=shape)
+            fft = functools.partial(rfft2, axes=(0, 1))
+            ifft = functools.partial(irfft2, s=shape, axes=(0, 1))
         else:
             fft = functools.partial(
-                rfftn, axes=arange(-ndims, 0, dtype=int))
+                rfftn, axes=arange(0, ndims, dtype=int))
             ifft = functools.partial(
-                irfftn, axes=arange(-ndims, 0, dtype=int), s=shape)
+                irfftn, axes=arange(0, ndims, dtype=int), s=shape)
         return fft, ifft
 
     # noqa W0212
@@ -210,6 +209,36 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         result = self._ifft(spectral_field)
 
         return result.reshape(self.shape[-1])
+
+    _rmatvec = _matvec
+    # Matrix is symmetric, so self.T @ x = self @ x
+
+    def _matmat(self, mat):
+        """Evaluate the matrix product of self and `mat`.
+
+        Parameters
+        ----------
+        mat: array_like[N, K]
+
+        Returns
+        -------
+        array_like[N, K]
+        """
+        fields = asarray(mat).reshape(self._underlying_shape + (-1,))
+
+        spectral_fields = self._fft(fields)
+        spectral_fields *= self._corr_fourier[..., np.newaxis]
+        results = self._ifft(spectral_fields)
+
+        return results.reshape(mat.shape)
+
+    def _transpose(self):
+        """Evaluate the transpose of this operator."""
+        # Correlation matrices are symmetric.
+        return self
+
+    _adjoint = _transpose
+    # Correlation matrices are also real
 
     def solve(self, vec):
         """Solve A x = vec.
