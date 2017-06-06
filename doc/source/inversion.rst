@@ -14,6 +14,7 @@ Submodules
 .. toctree::
 
    inversion.correlations
+   inversion.covariance_estimation
    inversion.integrators
    inversion.models
    inversion.noise
@@ -21,6 +22,7 @@ Submodules
    inversion.osse
    inversion.psas
    inversion.tests
+   inversion.util
    inversion.variational
 
 Module contents
