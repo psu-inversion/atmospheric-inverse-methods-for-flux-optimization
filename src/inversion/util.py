@@ -9,6 +9,7 @@ import math
 import numpy as np
 import dask.array as da
 import dask.array.linalg as la
+from dask.array import asarray
 
 OPTIMAL_ELEMENTS = int(2e4)
 """Optimal elements per chunk in a dask array.
@@ -141,3 +142,39 @@ def solve(arr1, arr2):
         return arr1.solve(arr2)
     # Shorter method for assuring dask arrays
     return la.solve(da.asarray(arr1), da.asarray(arr2))
+
+
+def schmidt_decomposition(vector, dim1, dim2):
+    """Decompose a state vector into a sum of Kronecker products.
+
+    Parameters
+    ----------
+    vector: array_like[dim1 * dim2]
+    dim1, dim2: int
+
+    Returns
+    -------
+    tuple of (weights, unit_vecs[dim1], unit_vecs[dim2]
+        The rows form the separate vectors.
+
+    Note
+    ----
+    Algorithm from here:
+    https://physics.stackexchange.com/questions/251522/
+        how-do-you-find-a-schmidt-basis-and-how-can-the-schmidt-decomposition-be-used-f
+    Also from Mathematica code I wrote based on description in the green
+    Quantum Computation book in the reading library
+    """
+    if vector.ndim == 2 and vector.shape[1] != 1:
+        raise ValueError("Schmidt decomposition only valid for vectors")
+    state_matrix = asarray(vector).reshape(dim1, dim2)
+
+    if dim1 > dim2:
+        vecs1, lambdas, vecs2 = la.svd(state_matrix)
+    else:
+        # Transpose, because dask expects tall and skinny
+        vecs2T, lambdas, vecs1T = la.svd(state_matrix.T)
+        vecs1 = vecs1T.T
+        vecs2 = vecs2T.T
+
+    return lambdas, vecs1.T[:len(lambdas), :], vecs2[:len(lambdas), :]

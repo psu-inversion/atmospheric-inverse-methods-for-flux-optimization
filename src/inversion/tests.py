@@ -5,6 +5,7 @@ different methods agree for simple problems.
 
 """
 from __future__ import print_function, division
+import itertools
 import fractions
 import math
 
@@ -13,6 +14,7 @@ import dask.array as da
 import dask.array.linalg as la
 import numpy.random as np_rand
 import numpy.testing as np_tst
+import scipy.linalg
 import scipy.optimize
 import unittest2
 
@@ -920,6 +922,83 @@ class TestUtil_atleast_nd(unittest2.TestCase):
                 self.assertIsInstance(tst_arry, da.Array)
                 self.assertGreaterEqual(tst_arry.ndim, 2)
                 self.assertEqual(tst_arry.shape, np.atleast_2d(test_val).shape)
+
+
+class TestUtilSchmidtDecomposition(unittest2.TestCase):
+    """Test the Schimdt decomposition code in inversion.util."""
+
+    def setUp(self):
+        """Set up the test vectors."""
+        # The notation here is borrowed from quantum computation.  I
+        # use the k prefix to indicate the vector has precisely one
+        # nonzero entry, a one.  The digits following are the binary
+        # representation of the zero-based index of that one.
+        self.k0 = np.array((1, 0)).reshape(-1, 1)
+        self.k1 = np.array((0, 1)).reshape(-1, 1)
+
+        self.k00 = scipy.linalg.kron(self.k0, self.k0)
+        self.k01 = scipy.linalg.kron(self.k0, self.k1)
+        self.k10 = scipy.linalg.kron(self.k1, self.k0)
+        self.k11 = scipy.linalg.kron(self.k1, self.k1)
+
+        self.k000 = scipy.linalg.kron(self.k0, self.k00)
+        self.k001 = scipy.linalg.kron(self.k0, self.k01)
+        self.k010 = scipy.linalg.kron(self.k0, self.k10)
+        self.k011 = scipy.linalg.kron(self.k0, self.k11)
+        self.k100 = scipy.linalg.kron(self.k1, self.k00)
+        self.k101 = scipy.linalg.kron(self.k1, self.k01)
+        self.k110 = scipy.linalg.kron(self.k1, self.k10)
+        self.k111 = scipy.linalg.kron(self.k1, self.k11)
+
+    def test_simple_combinations(self):
+        """Test many combinations of vectors."""
+        possibilities = (
+            self.k0, self.k1,
+            self.k00, self.k01, self.k10, self.k11)
+
+        for vec1, vec2 in itertools.product(possibilities, possibilities):
+            with self.subTest(vec1=vec1[:, 0], vec2=vec2[:, 0]):
+                composite_state = scipy.linalg.kron(vec1, vec2)
+
+                reported_decomposition = inversion.util.schmidt_decomposition(
+                    composite_state, vec1.shape[0], vec2.shape[0])
+
+                np_tst.assert_allclose(np.where(reported_decomposition[0]),
+                                       ((0,),))
+                np_tst.assert_allclose(np.abs(reported_decomposition[1][0]),
+                                       vec1[:, 0])
+                np_tst.assert_allclose(np.abs(reported_decomposition[2][0]),
+                                       vec2[:, 0])
+                np_tst.assert_allclose(
+                    reported_decomposition[0][0] *
+                    scipy.linalg.kron(
+                        np.asarray(reported_decomposition[1][:1].T),
+                        np.asarray(reported_decomposition[2][:1].T)),
+                    composite_state)
+
+    def test_composite_compination(self):
+        """Test composite combinations."""
+        sqrt2 = math.sqrt(2)
+        rsqrt2 = 1 / sqrt2
+        # b00 = (k00 + k11) / sqrt2
+        # b01 = (k00 - k11) / sqrt2
+        # b10 = (k01 + k10) / sqrt2
+        # b11 = (k01 - k10) / sqrt2
+        composite_state = (
+            scipy.linalg.kron(self.k0, self.k00) +
+            scipy.linalg.kron(self.k1, self.k01)) / sqrt2
+        res_lambda, res_vec1, res_vec2 = inversion.util.schmidt_decomposition(
+            composite_state, 2, 4)
+
+        self.assertEqual(res_vec1.shape, (2, 2))
+        self.assertEqual(res_vec2.shape, (2, 4))
+        np_tst.assert_allclose(res_lambda, (rsqrt2, rsqrt2))
+        np_tst.assert_allclose(
+            sum(lambd * scipy.linalg.kron(
+                np.asarray(vec1).reshape(-1, 1),
+                np.asarray(vec2).reshape(-1, 1))
+                for lambd, vec1, vec2 in zip(res_lambda, res_vec1, res_vec2)),
+            composite_state)
 
 
 if __name__ == "__main__":
