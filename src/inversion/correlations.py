@@ -15,8 +15,8 @@ from numpy.linalg import eigh, norm
 from numpy import arange, newaxis, asanyarray
 
 from dask.array import fromfunction, asarray
-from dask.array import exp, dot, diag, square, fmin, sqrt
-from dask.array import sum as np_sum
+from dask.array import exp, square, fmin, sqrt
+from dask.array import sum as da_sum
 from dask.array.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
 from scipy.sparse.linalg import LinearOperator
 import six
@@ -163,7 +163,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
             # use the smaller components to get the distance to the
             # closest of the shifted origins
             comp2 = fmin(comp2_1, comp2_2)
-            return corr_func(sqrt(np_sum(comp2, axis=0)))
+            return corr_func(sqrt(da_sum(comp2, axis=0)))
 
         corr_struct = fromfunction(
             corr_from_index, shape=tuple(shape),
@@ -285,11 +285,15 @@ def make_matrix(corr_func, shape):
     """
     shape = tuple(np.atleast_1d(shape))
     n_points = np.prod(shape)
-    chunks = chunk_sizes(shape)
+    # chunks = chunk_sizes(shape)
 
-    tmp_res = fromfunction(corr_func.correlation_from_index,
-                           shape=2 * shape, chunks=chunks * 2,
-                           dtype=DTYPE).reshape(
+    # Since dask doesn't have eigh, using dask in this section slows
+    # the test suite by about 25%.  Since it all ends up in memory,
+    # may as well start with it there instead of converting back and
+    # forth a few times.
+    tmp_res = np.fromfunction(corr_func.correlation_from_index,
+                              shape=2 * shape,  # chunks=chunks * 2,
+                              dtype=DTYPE).reshape(
         (n_points, n_points))
     where_small = tmp_res < NEAR_ZERO
     where_small &= tmp_res > -NEAR_ZERO
@@ -300,12 +304,12 @@ def make_matrix(corr_func, shape):
     del tmp_res
     vals[vals < ROUNDOFF] = ROUNDOFF
 
-    result = dot(vecs, diag(vals).dot(vecs.T))
+    result = np.dot(vecs, np.diag(vals).dot(vecs.T))
 
     # Now, there's more roundoff
     # make the values that were originally small zero
     result[where_small] = 0
-    return result
+    return asarray(result)
 
 
 class DistanceCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
