@@ -34,6 +34,8 @@ import inversion.psas
 import inversion.util
 from inversion.util import chunk_sizes
 
+dask.set_options(get=dask.get)
+
 # If adding other inexact methods to the list tested, be sure to add
 # those to the `if "var" in name or "psas" in name` and
 # `if "psas" in name` tests as applicable.
@@ -955,8 +957,9 @@ class TestEnsembleBase(unittest2.TestCase):
 
         np_tst.assert_allclose(inversion.ensemble.mean(sample_data),
                                np.zeros(self.state_size),
-                               # Use 3 * standard error
-                               atol=3 / np.sqrt(self.sample_size))
+                               # Use 5 * standard error
+                               # 3 fails a tad too often for my taste.
+                               atol=5 / np.sqrt(self.sample_size))
 
     def test_spread(self):
         """Test whether ensemble spread is reasonable."""
@@ -1073,6 +1076,7 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
 
     def setUp(self):
         """Set up the test vectors."""
+        from scipy.linalg import kron
         # The notation here is borrowed from quantum computation.  I
         # use the k prefix to indicate the vector has precisely one
         # nonzero entry, a one.  The digits following are the binary
@@ -1080,19 +1084,19 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
         self.k0 = np.array((1, 0)).reshape(-1, 1)
         self.k1 = np.array((0, 1)).reshape(-1, 1)
 
-        self.k00 = scipy.linalg.kron(self.k0, self.k0)
-        self.k01 = scipy.linalg.kron(self.k0, self.k1)
-        self.k10 = scipy.linalg.kron(self.k1, self.k0)
-        self.k11 = scipy.linalg.kron(self.k1, self.k1)
+        self.k00 = kron(self.k0, self.k0)
+        self.k01 = kron(self.k0, self.k1)
+        self.k10 = kron(self.k1, self.k0)
+        self.k11 = kron(self.k1, self.k1)
 
-        self.k000 = scipy.linalg.kron(self.k0, self.k00)
-        self.k001 = scipy.linalg.kron(self.k0, self.k01)
-        self.k010 = scipy.linalg.kron(self.k0, self.k10)
-        self.k011 = scipy.linalg.kron(self.k0, self.k11)
-        self.k100 = scipy.linalg.kron(self.k1, self.k00)
-        self.k101 = scipy.linalg.kron(self.k1, self.k01)
-        self.k110 = scipy.linalg.kron(self.k1, self.k10)
-        self.k111 = scipy.linalg.kron(self.k1, self.k11)
+        self.k000 = kron(self.k0, self.k00)
+        self.k001 = kron(self.k0, self.k01)
+        self.k010 = kron(self.k0, self.k10)
+        self.k011 = kron(self.k0, self.k11)
+        self.k100 = kron(self.k1, self.k00)
+        self.k101 = kron(self.k1, self.k01)
+        self.k110 = kron(self.k1, self.k10)
+        self.k111 = kron(self.k1, self.k11)
 
     def test_simple_combinations(self):
         """Test many combinations of vectors."""
@@ -1107,7 +1111,7 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
                 reported_decomposition = inversion.util.schmidt_decomposition(
                     composite_state, vec1.shape[0], vec2.shape[0])
 
-                np_tst.assert_allclose(np.where(reported_decomposition[0]),
+                np_tst.assert_allclose(np.nonzero(reported_decomposition[0]),
                                        ((0,),))
                 np_tst.assert_allclose(np.abs(reported_decomposition[1][0]),
                                        vec1[:, 0])

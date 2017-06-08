@@ -158,12 +158,12 @@ def schmidt_decomposition(vector, dim1, dim2):
     -------
     tuple of (weights, unit_vecs[dim1], unit_vecs[dim2]
         The rows form the separate vectors.
+        The weights are guaranteed to be greater than zero
 
     Note
     ----
-    Algorithm from here:
-    https://physics.stackexchange.com/questions/251522/
-        how-do-you-find-a-schmidt-basis-and-how-can-the-schmidt-decomposition-be-used-f
+    Algorithm from stackexchange:
+    https://physics.stackexchange.com/questions/251522/how-do-you-find-a-schmidt-basis-and-how-can-the-schmidt-decomposition-be-used-f
     Also from Mathematica code I wrote based on description in the green
     Quantum Computation book in the reading library
     """
