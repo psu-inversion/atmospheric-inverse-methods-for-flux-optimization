@@ -6,6 +6,7 @@ the right and left to obtain covariance matrices.
 """
 import abc
 import functools
+from itertools import islice
 
 # Need to specify numpy versions in some instances.
 import numpy as np
@@ -14,14 +15,16 @@ from numpy.linalg import eigh, norm
 # arange changes signature
 from numpy import arange, newaxis, asanyarray
 
-from dask.array import fromfunction, asarray
+from dask.array import fromfunction, asarray, hstack
 from dask.array import exp, square, fmin, sqrt
 from dask.array import sum as da_sum
 from dask.array.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
 from scipy.sparse.linalg import LinearOperator
+from scipy.linalg import kron
 import six
 
-from inversion.util import chunk_sizes
+from inversion.util import chunk_sizes, schmidt_decomposition, is_odd
+from inversion.util import tolinearoperator
 
 ROUNDOFF = 1e-13
 """Approximate size of roundoff error for correlation matrices.
@@ -33,6 +36,9 @@ cells need `ROUNDOFF` greater than 1e-15 to be numerically positive
 definite.
 
 Gaussian(15) needs 1e-13 > ROUNDOFF > 1e-14
+
+Also used in KroneckerProduct to determine how many terms in the
+Schmidt decomposition should be used.
 """
 NEAR_ZERO = 1e-20
 """Where correlations are rounded to zero.
@@ -186,6 +192,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         -------
         HomogeneousIsotropicCorrelation
         """
+        corr_array = asarray(corr_array)
         self = cls(corr_array.shape)
         self._corr_fourier = self._fft(asarray(corr_array))
         self._fourier_near_zero = self._corr_fourier < FOURIER_NEAR_ZERO
@@ -208,7 +215,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         spectral_field *= self._corr_fourier
         result = self._ifft(spectral_field)
 
-        return result.reshape(self.shape[-1])
+        return result.reshape(vec.shape)
 
     _rmatvec = _matvec
     # Matrix is symmetric, so self.T @ x = self @ x
@@ -262,6 +269,162 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         result = self._ifft(spectral_field)
 
         return result.reshape(self.shape[-1])
+
+    def kron(self, other):
+        """Construct the Kronecker product of this operator and other.
+
+        Parameters
+        ----------
+        other: HomogeneousIsotropicCorrelation
+            The other operator for the Kronecker product.
+            This implementation will accept other objects,
+            passing them along to :class:`KroneckerProduct`.
+
+        Returns
+        -------
+        scipy.sparse.linalg.LinearOperator
+        """
+        if not isinstance(other, HomogeneousIsotropicCorrelation):
+            return KroneckerProduct(self, other)
+        shape = self._underlying_shape + other._underlying_shape
+        shift = len(self._underlying_shape)
+
+        self_index = tuple(slice(None) if i < shift else np.newaxis
+                           for i in range(len(shape)))
+        other_index = tuple(np.newaxis if i < shift else slice(None)
+                            for i in range(len(shape)))
+
+        # rfft makes the first axis half the size
+        # When combining things like this, I need to re-double that size again
+        if is_odd(self._underlying_shape[-1]):
+            reverse_start = -1
+        else:
+            reverse_start = -2
+        expanded_fft = hstack(
+            (self._corr_fourier,
+             self._corr_fourier[..., reverse_start:0:-1].conj()))
+        expanded_fft = expanded_fft.rechunk(expanded_fft.shape)
+
+        newinst = HomogeneousIsotropicCorrelation(shape)
+        newinst._corr_fourier = (expanded_fft[self_index] *
+                                 other._corr_fourier[other_index])
+        newinst._fourier_near_zero = (self._fourier_near_zero[self_index] |
+                                      other._fourier_near_zero[other_index])
+        return newinst
+
+
+class KroneckerProduct(LinearOperator):
+    """Kronecker product of two operators using Schmidt decomposition.
+
+    This works best when the input vectors are nearly Kronecker
+    products as well, dominated by some underlying structure with
+    small variations.  One example would be average net flux + trend
+    in net flux + average daily cycle + daily cycle timing variations
+    across domain + localized events + ...
+
+    Multiplications are roughly the same time complexity class as with
+    an explicit Kronecker Product, perhaps a factor of two or three
+    slower in the best case, but the memory requirements are
+    :math:`N_1^2 + N_2^2` rather than :math:`(N_1 * N_2)^2`, plus this
+    approach works with sparse matrices and other LinearOperators
+    which can further reduce the memory requirements and may decrease
+    the time complexity.
+
+    Forming the Kronecker product from the component vectors currently
+    requires the whole thing to be in memory, so a new implementation
+    of kron would be needed to take advantage of this. There may be
+    some difficulties with the dask cache getting flushed and causing
+    repeat work in this case. I don't know how to get around this.
+    """
+
+    def __init__(self, operator1, operator2):
+        """Set up the instance.
+
+        Parameters
+        ----------
+        operator1, operator2: scipy.sparse.linalg.LinearOperator
+            The operators input to the Kronecker product.
+        """
+        operator1 = tolinearoperator(operator1)
+        operator2 = tolinearoperator(operator2)
+        total_shape = np.multiply(operator1.shape, operator2.shape)
+
+        super(KroneckerProduct, self).__init__(
+            shape=tuple(total_shape),
+            dtype=np.result_type(operator1.dtype, operator2.dtype))
+
+        self._inshape1 = operator1.shape[1]
+        self._inshape2 = operator2.shape[1]
+        self._operator1 = operator1
+        self._operator2 = operator2
+
+    def _matvec(self, vector):
+        """Evaluate the indicated matrix-vector product.
+
+        Parameters
+        ----------
+        vector: array_like[N]
+
+        Returns
+        -------
+        array_like[M]
+        """
+        lambdas, vecs1, vecs2 = schmidt_decomposition(
+            asarray(vector), self._inshape1, self._inshape2)
+
+        # kron forces everything to be in memory anyway, so do
+        # everything there.
+        lambdas = np.asarray(lambdas)
+        vecs1 = np.asarray(vecs1)
+        vecs2 = np.asarray(vecs2)
+
+        small_lambdas = np.nonzero(lambdas < lambdas[0] * ROUNDOFF)[0]
+        if small_lambdas.any():
+            last_lambda = int(small_lambdas[0])
+        else:
+            last_lambda = len(lambdas)
+
+        if vector.ndim == 1:
+            result_shape = self.shape[0]
+        else:
+            result_shape = (self.shape[0], 1)
+
+        result = np.zeros(shape=result_shape,
+                          dtype=np.result_type(self.dtype, vector.dtype))
+        for lambd, vec1, vec2 in islice(zip(lambdas, vecs1, vecs2),
+                                        0, last_lambda):
+            result += kron(
+                np.asarray(lambd * self._operator1.dot(vec1).reshape(-1, 1)),
+                np.asarray(self._operator2.dot(vec2).reshape(-1, 1))
+            ).reshape(result_shape)
+
+        return asarray(result)
+
+    def _matmat(self, matrix):
+        """Evaluate the indicated matrix-matrix product.
+
+        Parameters
+        ----------
+        matrix: array_like
+
+        Returns
+        -------
+        array_like
+        """
+        # TODO: look into Kronecker decomposition of matrix
+        # as indicated in references below.
+        # Mathematica code here:
+        # https://mathematica.stackexchange.com/
+        # questions/91651/nearest-kronecker-product,
+        # drawn from Pitsianis-Van Loan algorithm from here:
+        # https://link.springer.com/chapter/10.1007%2F978-94-015-8196-7_17
+        return hstack([self.matvec(column.reshape(-1, 1))
+                       for column in matrix.T])
+    #     result = zeros(shape=(self.shape[0], matrix.shape[1]),
+    #                    dtype=np.result_type(self.dtype, matrix.dtype))
+    #     for i, column in enumerate(matrix.T):
+    #         result[:, i] = self._matvec(column)
+    #     return result
 
 
 def make_matrix(corr_func, shape):

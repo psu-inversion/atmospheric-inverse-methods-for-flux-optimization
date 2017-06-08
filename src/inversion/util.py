@@ -7,6 +7,8 @@ import numbers
 import math
 
 import numpy as np
+from scipy.sparse.linalg import aslinearoperator
+from scipy.sparse.linalg.interface import MatrixLinearOperator
 import dask.array as da
 import dask.array.linalg as la
 from dask.array import asarray
@@ -178,3 +180,54 @@ def schmidt_decomposition(vector, dim1, dim2):
         vecs2 = vecs2T.T
 
     return lambdas, vecs1.T[:len(lambdas), :], vecs2[:len(lambdas), :]
+
+
+def kronecker_product(operator1, operator2):
+    """Form the Kronecker product of the given operators.
+
+    Delegates to ``operator1.kron()`` if possible,
+    :class:`inversion.correlations.KroneckerProduct` if not.
+
+    Parameters
+    ----------
+    operator1, operator2: scipy.sparse.linalg.LinearOperator
+
+    Returns
+    -------
+    scipy.sparse.linalg.LinearOperator
+    """
+    if hasattr(operator1, "kron"):
+        return operator1.kron(operator2)
+    from inversion.correlations import KroneckerProduct
+    return KroneckerProduct(operator1, operator2)
+
+
+def is_odd(num):
+    """Return oddity of num.
+
+    Parameters
+    ----------
+    num
+
+    Returns
+    -------
+    bool
+    """
+    return num & 1 == 1
+
+
+def tolinearoperator(operator):
+    """Return operator as a LinearOperator.
+
+    Parameters
+    ----------
+    operator: array_like or scipy.sparse.linalg.LinearOperator
+
+    Returns
+    -------
+    scipy.sparse.linalg.LinearOperator
+    """
+    try:
+        return aslinearoperator(operator)
+    except TypeError:
+        return aslinearoperator(MatrixLinearOperator(atleast_2d(operator)))

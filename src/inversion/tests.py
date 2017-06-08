@@ -10,14 +10,16 @@ import fractions
 import math
 
 import numpy as np
-import dask.array as da
-import dask.array.linalg as la
 import numpy.random as np_rand
 import numpy.testing as np_tst
 import scipy.linalg
+import scipy.sparse
 import scipy.optimize
 import unittest2
 
+import dask
+import dask.array as da
+import dask.array.linalg as la
 # Import from scipy.linalg if not using dask
 from dask.array.linalg import cholesky
 
@@ -704,6 +706,148 @@ class TestCorrelations(unittest2.TestCase):
                     corr_op1.dot(np.eye(test_size)),
                     corr_op2.dot(np.eye(test_size)))
 
+    def test_kron(self):
+        """Test the Kronecker product implementation."""
+        HomogeneousIsotropicCorrelation = (
+            inversion.correlations.HomogeneousIsotropicCorrelation)
+        corr_class = inversion.correlations.ExponentialCorrelation
+        test_shapes = (20, 25, (5, 6))
+        distances = (3, 5,)
+
+        for dist1, shape1, dist2, shape2 in itertools.product(
+                distances, test_shapes, repeat=2):
+            with self.subTest(dist1=dist1, dist2=dist2):
+                corr_fun1 = corr_class(dist1)
+                corr_fun2 = corr_class(dist2)
+
+                corr_op1 = (
+                    HomogeneousIsotropicCorrelation.
+                    from_function(corr_fun1, shape1))
+                corr_op2 = (
+                    HomogeneousIsotropicCorrelation.
+                    from_function(corr_fun2, shape2))
+
+                size1 = np.prod(shape1)
+                size2 = np.prod(shape2)
+                corr_mat1 = corr_op1.dot(np.eye(size1))
+                corr_mat2 = corr_op2.dot(np.eye(size2))
+
+                full_corr1 = corr_op1.kron(corr_op2)
+                full_corr2 = scipy.linalg.kron(np.asarray(corr_mat1),
+                                               np.asarray(corr_mat2))
+
+                self.assertIsInstance(
+                    corr_op1, HomogeneousIsotropicCorrelation)
+
+                test_vec = np.arange(size1 * size2)
+                np_tst.assert_allclose(
+                    full_corr1.dot(test_vec),
+                    full_corr2.dot(test_vec))
+
+                test_mat = np.eye(size1 * size2)
+                np_tst.assert_allclose(
+                    full_corr1.dot(test_mat),
+                    full_corr2.dot(test_mat))
+
+    def test_kron_delegate(self):
+        """Test that kron delegates where appropriate."""
+        op1 = (inversion.correlations.HomogeneousIsotropicCorrelation.
+               from_array((1, .5, .25)))
+        mat2 = np.eye(5)
+
+        combined_op = op1.kron(mat2)
+
+        self.assertIsInstance(combined_op,
+                              inversion.correlations.KroneckerProduct)
+
+
+class TestKroneckerProduct(unittest2.TestCase):
+    """Test the Kronecker product implementation for LinearOperators."""
+
+    def test_identity(self):
+        """Test that the implementation works with identity matrices."""
+        test_sizes = (4, 5)
+        KroneckerProduct = inversion.correlations.KroneckerProduct
+
+        # I want to be sure either being smaller works.
+        # Even versus odd also causes problems occasionally
+        for size1, size2 in itertools.product(test_sizes, repeat=2):
+            with self.subTest(size1=size1, size2=size2):
+                mat1 = np.eye(size1)
+                mat2 = np.eye(size2)
+
+                full_mat = KroneckerProduct(
+                    mat1, mat2)
+                big_ident = np.eye(size1 * size2)
+
+                np_tst.assert_allclose(
+                    full_mat.dot(big_ident),
+                    big_ident)
+
+    def test_identical_submatrices(self):
+        """Test whether the implementation will generate identical blocks."""
+        mat1 = np.ones((3, 3))
+        mat2 = ((1, .5, .25), (.5, 1, .5), (.25, .5, 1))
+
+        np_tst.assert_allclose(
+            inversion.correlations.KroneckerProduct(
+                mat1, mat2).dot(np.eye(9)),
+            np.tile(mat2, (3, 3)))
+
+    def test_constant_blocks(self):
+        """Test whether the implementation will produce constant blocks."""
+        mat1 = ((1, .5, .25), (.5, 1, .5), (.25, .5, 1))
+        mat2 = np.ones((3, 3))
+
+        np_tst.assert_allclose(
+            inversion.correlations.KroneckerProduct(
+                mat1, mat2).dot(np.eye(9)),
+            np.repeat(np.repeat(mat1, 3, 0), 3, 1))
+
+    def test_entangled_state(self):
+        """Test whether the implementation works with entangled states."""
+        sigmax = np.array(((0, 1), (1, 0)))
+        sigmaz = np.array(((1, 0), (0, -1)))
+
+        operator = inversion.correlations.KroneckerProduct(
+            sigmax, sigmaz)
+        matrix = scipy.linalg.kron(sigmax, sigmaz)
+
+        # (k01 - k10) / sqrt(2)
+        epr_state = (0, .7071, -.7071, 0)
+
+        np_tst.assert_allclose(
+            operator.dot(epr_state),
+            matrix.dot(epr_state))
+
+
+class TestUtilKroneckerProduct(unittest2.TestCase):
+    """Test inversion.util.kronecker_product."""
+
+    def test_delegation(self):
+        """Test that it delegates to subclasses where appropriate."""
+        HomogeneousIsotropicCorrelation = (
+            inversion.correlations.HomogeneousIsotropicCorrelation)
+        corr_class = inversion.correlations.ExponentialCorrelation
+        corr_fun = corr_class(5)
+
+        op1 = HomogeneousIsotropicCorrelation.from_function(corr_fun, 15)
+        op2 = HomogeneousIsotropicCorrelation.from_function(corr_fun, 20)
+
+        combined_op = inversion.util.kronecker_product(op1, op2)
+
+        self.assertIsInstance(combined_op, HomogeneousIsotropicCorrelation)
+
+    def test_direct(self):
+        """Test Kronecker product without special method."""
+        mat1 = np.eye(2)
+        mat2 = np.eye(3)
+
+        combined_op = inversion.util.kronecker_product(mat1, mat2)
+
+        self.assertIsInstance(combined_op,
+                              inversion.correlations.KroneckerProduct)
+
 
 class TestIntegrators(unittest2.TestCase):
     """Test the integrators."""
@@ -999,6 +1143,74 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
                 np.asarray(vec2).reshape(-1, 1))
                 for lambd, vec1, vec2 in zip(res_lambda, res_vec1, res_vec2)),
             composite_state)
+
+    def test_epr_state(self):
+        """Test that it correctly decomposes the EPR state."""
+        sqrt2o2 = math.sqrt(2) / 2
+        epr_state = (self.k01 - self.k10) * sqrt2o2
+
+        lambdas, vecs1, vecs2 = inversion.util.schmidt_decomposition(
+            epr_state, 2, 2)
+
+        lambdas = np.asarray(lambdas)
+        vecs1 = np.asarray(vecs1)
+        vecs2 = np.asarray(vecs2)
+
+        # This will not recover the original decomposition
+        np_tst.assert_allclose(lambdas, (sqrt2o2, sqrt2o2))
+        self.assertAlmostEqual(np.prod(lambdas), .5)
+
+        for vec1, vec2 in zip(vecs1, vecs2):
+            if np.allclose(np.abs(vec1), self.k0[:, 0]):
+                sign = 1
+            else:
+                sign = -1
+            np_tst.assert_allclose(vec1, sign * vec2[-1::-1])
+
+        np_tst.assert_allclose(
+            sum(lambd * scipy.linalg.kron(
+                np.asarray(vec1).reshape(-1, 1),
+                np.asarray(vec2).reshape(-1, 1))
+                for lambd, vec1, vec2 in zip(lambdas, vecs1, vecs2)),
+            epr_state)
+
+
+class TestUtilIsOdd(unittest2.TestCase):
+    """Test inversion.util.is_odd."""
+
+    MAX_TO_TEST = 100
+
+    def test_known_odd(self):
+        """Test known odd numbers."""
+        is_odd = inversion.util.is_odd
+
+        for i in range(1, self.MAX_TO_TEST, 2):
+            with self.subTest(i=i):
+                self.assertTrue(is_odd(i))
+
+    def test_known_even(self):
+        """Test known even numbers."""
+        is_odd = inversion.util.is_odd
+
+        for i in range(0, self.MAX_TO_TEST, 2):
+            with self.subTest(i=i):
+                self.assertFalse(is_odd(i))
+
+
+class TestUtilToLinearOperator(unittest2.TestCase):
+    """Test inversion.util.tolinearoperator."""
+
+    def test_tolinearoperator(self):
+        """Test that tolinearoperator returns LinearOperators."""
+        tolinearoperator = inversion.util.tolinearoperator
+        LinearOperator = scipy.sparse.linalg.LinearOperator
+
+        for trial in (0, 1., (0, 1), [0, 1], ((1, 0), (0, 1)),
+                      [[0, 1.], [1., 0]], np.arange(5),
+                      scipy.sparse.identity(8), da.arange(10, chunks=10)):
+            with self.subTest(trial=trial):
+                self.assertIsInstance(tolinearoperator(trial),
+                                      LinearOperator)
 
 
 if __name__ == "__main__":
