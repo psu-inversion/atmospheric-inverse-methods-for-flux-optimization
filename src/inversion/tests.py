@@ -8,6 +8,7 @@ from __future__ import print_function, division
 import itertools
 import fractions
 import math
+import sys
 
 import numpy as np
 import numpy.random as np_rand
@@ -25,6 +26,7 @@ from dask.array.linalg import cholesky
 
 import inversion.covariance_estimation
 import inversion.optimal_interpolation
+import inversion.ensemble.integrators
 import inversion.correlations
 import inversion.integrators
 import inversion.variational
@@ -874,6 +876,55 @@ class TestIntegrators(unittest2.TestCase):
                                        np.exp(1.), rtol=1e-5)
 
 
+class TestEnsembleIntegrators(unittest2.TestCase):
+    """Test the ensemble integrators."""
+
+    IMPLEMENTATIONS = (inversion.ensemble.integrators.
+                       EnsembleIntegrator.__subclasses__())
+
+    if sys.version_info > (3, 4) or sys.platform != "cygwin":
+        OS_ISSUES = ()
+    else:
+        OS_ISSUES = (inversion.ensemble.integrators.
+                     MultiprocessEnsembleIntegrator,)
+
+    @staticmethod
+    def trial_function(y, t):
+        r"""Evaluate derivative given y and t.
+
+        This is f(y, t) in :math:`y^\prime = f(y, t)`.
+        Here :math:`f(y, t) = y`.
+
+        Parameters
+        ----------
+        y: array_like[N]
+        t: float
+
+        Returns
+        -------
+        yprime: array_like[N]
+        """
+        return y
+
+    def test_working(self):
+        """Test if the integrators work."""
+        start_state = np.arange(2.).reshape(2, 1)
+        end_state = np.array((0, np.exp(1))).reshape(2, 1)
+
+        for int_cls in self.IMPLEMENTATIONS:
+            if int_cls in self.OS_ISSUES:
+                raise unittest2.SkipTest(
+                    "OS has trouble with integrator class {name:s}"
+                    .format(name=getname(int_cls)))
+
+            with self.subTest(int_cls=getname(int_cls)):
+                int_inst = int_cls(inversion.integrators.forward_euler)
+                solns = int_inst(self.trial_function, start_state,
+                                 (0, 1), 1e-5)
+
+                np_tst.assert_allclose(solns[1, :, :], end_state, rtol=1e-4)
+
+
 class TestCovarianceEstimation(unittest2.TestCase):
     """Test the background error covariance estimators.
 
@@ -900,7 +951,7 @@ class TestCovarianceEstimation(unittest2.TestCase):
                     inversion.covariance_estimation.nmc_covariances(
                         sim_forecasts, 4, assume_homogeneous))
                 np_tst.assert_allclose(estimated_cov, sample_cov,
-                                       rtol=1e-2, atol=1e-2)
+                                       rtol=1e-2, atol=3e-3)
 
     def test_nmc_generated(self):
         """Test NMC method for a more complicated case.
@@ -941,7 +992,58 @@ class TestCovarianceEstimation(unittest2.TestCase):
                     # covariance matrices, but they tend to be more
                     # finicky.
                     np_tst.assert_allclose(estimated_cov, corr_mat,
-                                           rtol=1e-2, atol=1e-2)
+                                           rtol=1e-2, atol=3e-3)
+
+    def test_cq_identity(self):
+        """Test Canadian Quick covariances for identity."""
+        state_size = 7
+        sample_size = int(1e6)
+        state_cov = np.eye(state_size) / 2
+
+        forecast_tendencies = np_rand.standard_normal(
+            (sample_size, state_size))
+        climatology = np.cumsum(forecast_tendencies, axis=0)
+
+        for assume_homogeneous in (False, True):
+            with self.subTest(assume_homogeneous=assume_homogeneous):
+                estimated_covariances = (
+                    inversion.covariance_estimation.canadian_quick_covariances(
+                        climatology, assume_homogeneous))
+
+                np_tst.assert_allclose(estimated_covariances, state_cov,
+                                       rtol=2e-3, atol=2e-3)
+
+    def test_cq_expon(self):
+        """Test Canadian Quick covariances with exponential truth."""
+        state_size = 5
+        sample_size = int(1e6)
+
+        corr_cls = inversion.correlations.ExponentialCorrelation
+        for dist in (1, 3):
+            corr_fun = corr_cls(dist)
+
+            # assume_homogeneous forces this structure
+            # using it simplifies the tests
+            corr_op = (
+                inversion.correlations.HomogeneousIsotropicCorrelation.
+                from_function(corr_fun, state_size))
+            corr_mat = corr_op.dot(np.eye(state_size))
+
+            forecast_tendencies = np_rand.multivariate_normal(
+                np.zeros(state_size), corr_mat * 2,
+                sample_size)
+            climatology = np.cumsum(forecast_tendencies, axis=0)
+
+            for assume_homogeneous in (False, True):
+                with self.subTest(assume_homogeneous=assume_homogeneous,
+                                  dist=dist):
+                    estimated_covariances = (
+                        inversion.covariance_estimation.
+                        canadian_quick_covariances(
+                            climatology, assume_homogeneous))
+
+                    np_tst.assert_allclose(estimated_covariances, corr_mat,
+                                           rtol=3e-3, atol=3e-3)
 
 
 class TestEnsembleBase(unittest2.TestCase):

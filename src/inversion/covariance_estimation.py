@@ -73,6 +73,8 @@ def canadian_quick_covariances(free_run, assume_homogeneous=False):
     Does poorly with phenomena that have a frequency that is a
     multiple of the reporting frequency.
 
+    Assumes each forecast is truth + background error.
+
     Parameters
     ----------
     free_run: array_like[N_climo, N]
@@ -83,6 +85,7 @@ def canadian_quick_covariances(free_run, assume_homogeneous=False):
     -------
     estimated_covariances: array_like[N, N]
     """
+    free_run = asarray(free_run)
     state_size = free_run.shape[-1]
     forecast_tendencies = free_run[1:] - free_run[:-1]
 
