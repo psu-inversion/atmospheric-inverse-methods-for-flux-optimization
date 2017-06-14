@@ -5,6 +5,9 @@ accordance with the observation covariances for each ensemble member,
 and pass these off to one of the
 :mod:`inversion.optimal_interpolation`, :mod:`inversion.variational`,
 or :mod:`inversion.psas` implementations.
+
+This is a stochastic filter, using randomized observations to account
+for the filter updating perturbations rather than covariances.
 """
 
 from __future__ import absolute_import, print_function, division
@@ -54,7 +57,7 @@ class SimplePerturbedObsFilter:
         localization_matrix: np.ndarray[N, N]
             Classes in :mod:`inversion.correlations` are an easy way to
             get this.  Unfortunately, building this here for the 2D
-            correlations requires the domain size, so this takes the matrix.
+            correlations requires the domain shape, so this takes the matrix.
         observations: np.ndarray[M]
         observation_error_covariance: np.ndarray[M,M]
         observation_operator: np.ndarray[M,N]
@@ -66,7 +69,7 @@ class SimplePerturbedObsFilter:
         ensemble_size = ensemble.shape[0]
         perturbations = inversion.ensemble.perturbations(ensemble)
 
-        # If I assume the ROI for observations << localization length and
+        # If I assume the ROI for observations << localization length or
         # can somehow get (L * (X @ X.T)) @ H.T in terms of X @ (H @ X).T,
         # I can reduce the memory footprint.  Until then, I do things this way.
         # Using dask arrays may also help with this.

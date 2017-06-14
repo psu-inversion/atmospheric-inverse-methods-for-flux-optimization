@@ -1,12 +1,13 @@
 """Models for identical twin experiments and similar."""
+from __future__ import division
 
-import numpy as np
+from numpy import empty_like, array
 
 
 class Lorenz63:
     """Classic Lorenz '63 model."""
 
-    def __init__(self, sigma=10, r=28, b=8./3):
+    def __init__(self, sigma=10, r=28, b=8/3):
         """Set up instance with parameters.
 
         Parameters
@@ -20,17 +21,17 @@ class Lorenz63:
         self._b = b
 
     def __call__(self, state):
-        """The derivative at state.
+        """Get the derivative at state.
 
         Parameters
         ----------
-        state: np.ndarray[3]
+        state: array_like[3]
 
         Returns
         -------
-        deriv: np.ndarray[3]
+        deriv: array_like[3]
         """
-        return np.array((
+        return array((
             self._sigma * (state[1] - state[0]),
             self._r * state[0] - state[1] - state[0] * state[2],
             state[0] * state[1] - self._b * state[2]
@@ -52,7 +53,7 @@ class Lorenz96:
         self._size = size
 
     def __call__(self, state):
-        """The derivative at `state`.
+        """Get the derivative at `state`.
 
         Parameters
         ----------
@@ -62,10 +63,14 @@ class Lorenz96:
         -------
         deriv: np.ndarray[`size`]
         """
-        xkm1 = np.roll(state, 1)
-        xkm2 = np.roll(state, 2)
-        xkp1 = np.roll(state, -1)
-        res = xkm1 * (xkp1 - xkm2) - state + self._forcing
+        res = empty_like(state)
+        res[2:-1] = state[1:-2] * (state[3:] - state[:-3])
+
+        # fill in -1, 0, 1
+        for i in range(-1, 2):
+            res[i] = state[i - 1] * (state[i + 1] - state[i - 2])
+        res -= state
+        res += self._forcing
 
         return res
 

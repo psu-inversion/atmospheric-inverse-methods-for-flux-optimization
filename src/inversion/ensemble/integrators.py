@@ -12,6 +12,10 @@ import abc
 import numpy as np
 import six
 
+# Should this module be set up to use dask?
+from numpy import transpose
+from numpy import atleast_1d, atleast_2d
+
 MAX_PARALLEL = None
 """Passed to :class:`multiprocessing.Pool` constructor
 
@@ -41,7 +45,7 @@ class EnsembleIntegrator(six.with_metaclass(abc.ABCMeta)):
         Parameters
         ----------
         func: callable(y, t)
-        y0s: np.ndarray[K, N]
+        y0s: array_like[K, N]
         tseq: sequence[M]
             tseq[0] := t0
         Dfunc: callable(y, t)
@@ -49,7 +53,7 @@ class EnsembleIntegrator(six.with_metaclass(abc.ABCMeta)):
 
         Returns
         -------
-        sol_seqs: np.ndarray[M, K, N]
+        sol_seqs: array_like[M, K, N]
             Array of solutions to y' = func(y, t)
         """
         pass
@@ -64,7 +68,7 @@ class SerialEnsembleIntegrator(EnsembleIntegrator):
         Parameters
         ----------
         func: callable(y, t)
-        y0s: np.ndarray[K, N]
+        y0s: array_like[K, N]
         tseq: sequence[M]
             tseq[0] := t0
         Dfunc: callable(y, t)
@@ -72,11 +76,11 @@ class SerialEnsembleIntegrator(EnsembleIntegrator):
 
         Returns
         -------
-        sol_seqs: np.ndarray[M, K, N]
+        sol_seqs: array_like[M, K, N]
             Array of solutions to y' = func(y, t)
         """
-        tseq = np.atleast_1d(tseq)
-        y0s = np.atleast_2d(y0s)
+        tseq = atleast_1d(tseq)
+        y0s = atleast_2d(y0s)
 
         res = np.empty((len(tseq),) + y0s.shape, y0s.dtype)
 
@@ -103,7 +107,7 @@ class MultiprocessEnsembleIntegrator(EnsembleIntegrator):
         Parameters
         ----------
         func: callable(y, t)
-        y0s: np.ndarray[K, N]
+        y0s: array_like[K, N]
         tseq: sequence[M]
             tseq[0] := t0
         Dfunc: callable(y, t)
@@ -113,11 +117,11 @@ class MultiprocessEnsembleIntegrator(EnsembleIntegrator):
 
         Returns
         -------
-        sol_seqs: np.ndarray[M, K, N]
+        sol_seqs: array_like[M, K, N]
             Array of solutions to y' = func(y, t)
 
         """
-        y0s = np.atleast_2d(y0s)
+        y0s = atleast_2d(y0s)
 
         # Need the function to be picklable,
         # so need to set these here.
@@ -134,18 +138,18 @@ class MultiprocessEnsembleIntegrator(EnsembleIntegrator):
         pool.join()
         # res_list is currently K, M, N
 
-        return np.swapaxes(res_list, 0, 1)
+        return transpose(res_list, (1, 0, 2))
 
     def _integrate_one(self, y0):
         """Integrate a single member.
 
         Parameters
         ----------
-        y0: np.ndarray[N]
+        y0: array_like[N]
 
         Returns
         -------
-        np.ndarray[M, N]
+        array_like[M, N]
         """
         return self._integrator(self._func, y0, self._tseq,
                                 self._dt, self._Dfunc)
@@ -164,7 +168,7 @@ class ThreadedEnsembleIntegrator(EnsembleIntegrator):
         Parameters
         ----------
         func: callable(y, t)
-        y0s: np.ndarray[K, N]
+        y0s: array_like[K, N]
         tseq: sequence[T]
             tseq[0] := t0
         Dfunc: callable(y, t)
@@ -174,16 +178,16 @@ class ThreadedEnsembleIntegrator(EnsembleIntegrator):
 
         Returns
         -------
-        sol_seqs: np.ndarray[T, K, N]
+        sol_seqs: array_like[T, K, N]
             Array of solutions to y' = func(y, t)
         """
-        y0s = np.atleast_2d(y0s)
+        y0s = atleast_2d(y0s)
         res = np.empty((len(tseq),) + y0s.shape, y0s.dtype)
 
         integrator = self._integrator
 
         def thread_fun(i):
-            """The function for the threads.
+            """Integrate ensemble member `i`.
 
             Assumes anything not thread-local is global.
 

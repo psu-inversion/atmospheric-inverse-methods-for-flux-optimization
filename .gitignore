@@ -1,13 +1,31 @@
 *.pyc
 __pycache__
-.tox/
 dist/
 build/
 setup.cfg
 *.egg-info
 .eggs/
 
+# Test artifacts
+.tox/
+.coverage
+
 # Emacs editing artifacts
 \#*#
 .#*
 *~
+
+# Other backup files
+*.bak
+
+# LaTeX-specific
+auto/
+
+# R history files
+.Rhistory
+
+# IPython notebook checkpoints
+.ipynb_checkpoints
+
+# crashes
+*.stackdump

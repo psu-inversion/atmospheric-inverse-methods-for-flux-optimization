@@ -2,11 +2,10 @@
 import collections
 
 import numpy as np
-from numpy.fft import rfft, irfft
+from dask.array.fft import rfft, irfft
 import scipy.linalg
 
-import iris.cube
-import iris.coords
+import xarray
 
 import inversion.models
 from inversion.noise import gaussian_noise
@@ -268,8 +267,7 @@ def ensemble_osse(
 
     Returns
     -------
-    ensemble_forecast_trajectory: iris.cube.Cube[N_CYCLES, LEAD_TIME, K, N]
-
+    ensemble_forecast_trajectory: xarray.Dataset[N_CYCLES, LEAD_TIME, K, N]
     """
     n_cycles = int(np.rint(experiment_length / assimilation_cycle_time))
     ensemble_size, state_size = initial_ensemble.shape
@@ -286,7 +284,7 @@ def ensemble_osse(
         dtype=initial_ensemble.dtype)
 
     forecast_init_times = np.arange(
-            0, experiment_length, assimilation_cycle_time)
+        0, experiment_length, assimilation_cycle_time)
 
     for i, init_time in enumerate(forecast_init_times):
         curr_obs = observations[i, :]
@@ -311,28 +309,38 @@ def ensemble_osse(
         ensemble_forecast_trajectory[i, :, :, :] = forecasts[:, :, :]
         curr_ensemble = forecasts[next_background_index, :, :]
 
-    result = iris.cube.Cube(
-        ensemble_forecast_trajectory,
-        dim_coords_and_dims=(
-            (iris.coords.DimCoord(
+    result = xarray.Dataset(
+        dict(
+            ensemble_forecasts=(
+                ("forecast_reference_time", "forecast_lead_time",
+                 "ensemble_member", "state_vec_index"),
+                ensemble_forecast_trajectory,
+                dict(long_name="OSSE_results"))),
+        dict(
+            forecast_reference_time=(
+                ("forecast_reference_time",),
                 forecast_init_times,
-                standard_name="forecast_reference_time"), 0),
-            (iris.coords.DimCoord(
+                dict(standard_name="forecast_reference_time")),
+            forecast_lead_time=(
+                ("forecast_lead_time",),
                 forecast_times,
-                long_name="forecast_lead_time"), 1),
-            (iris.coords.DimCoord(
+                dict(long_name="forecast_lead_time")),
+            ensemble_member=(
+                ("ensemble_member",),
                 range(ensemble_size),
-                long_name="ensemble_member"), 2),
-            (iris.coords.DimCoord(
+                dict(long_name="ensemble_member",
+                     standard_name="realization")),
+            state_vec_index=(
+                ("state_vec_index",),
                 range(state_size),
-                long_name="state_vec_index"), 3),
-        ),
-        aux_coords_and_dims=(
-            (iris.coords.AuxCoord(
+                dict(long_name="state_vector_index")),
+            time=(
+                ("forecast_reference_time", "forecast_lead_time"),
                 forecast_init_times[:, np.newaxis] +
                 forecast_times[np.newaxis, :],
-                standard_name="time"), (0, 1)),
+                dict(standard_name="time")),
         ),
+        attrs=dict(Conventions="CF-1.6"),
     )
     return result
 
@@ -390,9 +398,8 @@ def hybrid_osse(
 
     Returns
     -------
-    control_forecast_trajectory: iris.cube.Cube[N_CYCLES, LEAD_TIME, N]
-    ensemble_forecast_trajectory: iris.cube.Cube[N_CYCLES, LEAD_TIME, K, N]
-
+    xarray.Dataset
+        Contains control and ensemble trajectories.
     """
     n_cycles = int(np.rint(experiment_length / assimilation_cycle_time))
     ensemble_size, state_size = initial_ensemble.shape
@@ -413,7 +420,7 @@ def hybrid_osse(
         dtype=initial_ensemble.dtype)
 
     forecast_init_times = np.arange(
-            0, experiment_length, assimilation_cycle_time)
+        0, experiment_length, assimilation_cycle_time)
 
     for i, init_time in enumerate(forecast_init_times):
         curr_obs = observations[i, :]
@@ -446,38 +453,43 @@ def hybrid_osse(
         curr_control = control_forecasts[next_background_index, :]
         curr_ensemble = ens_forecasts[next_background_index, :, :]
 
-    ens_result = iris.cube.Cube(
-        ensemble_forecast_trajectory,
-        dim_coords_and_dims=(
-            (iris.coords.DimCoord(
-                forecast_init_times,
-                standard_name="forecast_reference_time"), 0),
-            (iris.coords.DimCoord(
-                forecast_times,
-                long_name="forecast_lead_time"), 1),
-            (iris.coords.DimCoord(
-                range(ensemble_size),
-                long_name="ensemble_member"), 2),
-            (iris.coords.DimCoord(
-                range(state_size),
-                long_name="state_vec_index"), 3),
+    result = xarray.Dataset(
+        dict(
+            ensemble_forecasts=(
+                ("forecast_reference_time", "forecast_lead_time",
+                 "ensemble_member", "state_vec_index"),
+                ensemble_forecast_trajectory,
+                dict(long_name="OSSE_ensemble_trajectories")),
+            control_forecast=(
+                ("forecast_reference_time", "forecast_lead_time",
+                 "state_vec_index"),
+                control_forecast_trajectory,
+                dict(long_name="OSSE_control_trajectory")),
         ),
-        aux_coords_and_dims=(
-            (iris.coords.AuxCoord(
+        dict(
+            forecast_reference_time=(
+                ("forecast_reference_time",),
+                forecast_init_times,
+                dict(standard_name="forecast_reference_time")),
+            forecast_lead_time=(
+                ("forecast_lead_time",),
+                forecast_times,
+                dict(long_name="forecast_lead_time")),
+            ensemble_member=(
+                ("ensemble_member",),
+                range(ensemble_size),
+                dict(long_name="ensemble_member",
+                     standard_name="realization")),
+            state_vec_index=(
+                ("state_vec_index",),
+                range(state_size),
+                dict(long_name="state_vector_index")),
+            time=(
+                ("forecast_reference_time", "forecast_lead_time"),
                 forecast_init_times[:, np.newaxis] +
                 forecast_times[np.newaxis, :],
-                standard_name="time"), (0, 1)),
+                dict(standard_name="time", long_name="forecast_valid_time")),
         ),
+        attrs=dict(Conventions="CF-1.6"),
     )
-    control_result = iris.cube.Cube(
-        control_forecast_trajectory,
-        dim_coords_and_dims=(
-            (ens_result.coord("forecast_reference_time"), 0),
-            (ens_result.coord("forecast_lead_time"), 1),
-            (ens_result.coord("state_vec_index"), 2),
-        ),
-        aux_coords_and_dims=(
-            (ens_result.coord("time"), (0, 1)),
-        ),
-    )
-    return iris.cube.CubeList((control_result, ens_result))
+    return result

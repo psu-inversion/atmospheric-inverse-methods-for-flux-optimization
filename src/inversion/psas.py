@@ -3,38 +3,22 @@
 Iterative observation-space algorithm.
 """
 import numpy as np
-import numpy.linalg as la
+from dask.array import asarray
+import dask.array.linalg as la
 import scipy.optimize
 
-from inversion import ConvergenceError
-
-MAX_ITERATIONS = 40
-"""Max. iterations allowed during the minimization.
-
-I think 40 is what the operational centers use.
-
-Note
-----
-Must change test tolerances if this changes.
-"""
-GRAD_TOL = 1e-5
-"""How small the gradient norm must be to declare convergence.
-
-From `gtol` option to the BFGS method of
-:func:`scipy.optimize.minimize`
-
-Note
-----
-Must change test tolerances if this changes.
-"""
+from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
 
 
 def simple(background, background_covariance,
            observations, observation_covariance,
            observation_operator):
-    """Simple PSAS implementation.
+    """Solve the inversion problem, using the equations directly.
 
     Assumes all arrays fit in memory with room to spare.
+    This uses the algorithm from
+    :func:`inversion.optimal_interpolation.simple`, except
+    the matrix inversion is done with an iterative solver.
 
     Parameters
     ----------
@@ -135,7 +119,7 @@ def simple(background, background_covariance,
 
     # Try a different approach to enforce invariants (symmetric
     # positive definite)
-    lower = la.cholesky(result.hess_inv)
+    lower = la.cholesky(asarray(result.hess_inv), lower=True)
     lower_decrease = background_covariance.dot(
         observation_operator.T.dot(lower))
     # this will be positive
@@ -153,9 +137,12 @@ def simple(background, background_covariance,
 def fold_common(background, background_covariance,
                 observations, observation_covariance,
                 observation_operator):
-    """Simple direct matrix inversion.
+    """Solve the inversion problem, in a slightly optimized manner.
 
-    Assumes all arrays fit in memory with room to spare.
+    Assumes all arrays fit in memory with room to spare.  Evaluates
+    each sub-expression only once. Uses the algorithm from
+    :func:`inversion.optimal_interpolation.fold_common` with an
+    iterative solver for the matrix inversion.
 
     Parameters
     ----------
@@ -169,7 +156,6 @@ def fold_common(background, background_covariance,
     -------
     analysis: np.ndarray[N]
     analysis_covariance: np.ndarray[N,N]
-
     """
     background = np.atleast_1d(background)
     background_covariance = np.atleast_2d(background_covariance)
@@ -245,7 +231,7 @@ def fold_common(background, background_covariance,
 
     # Try a different approach to enforce invariants (symmetric
     # positive definite)
-    lower = la.cholesky(result.hess_inv)
+    lower = la.cholesky(asarray(result.hess_inv), lower=True)
     lower_decrease = B_HT.dot(lower)
     # this will be positive
     decrease = lower_decrease.dot(lower_decrease.T)

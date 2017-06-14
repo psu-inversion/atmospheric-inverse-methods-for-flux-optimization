@@ -1,3 +1,7 @@
+"""Describe package metadata for inclusion in a package.
+
+Not yet ready for PyPI.
+"""
 import os.path
 import sys
 
@@ -6,7 +10,7 @@ from setuptools import setup, find_packages
 sys.path.append(os.path.join(
     os.path.abspath(os.path.dirname(__file__)),
     "doc", "source"))
-from conf import man_pages, release
+from conf import man_pages, release  # noqa: E402
 authors = man_pages[0][3]
 
 with open("README.rst", "r") as in_file:
@@ -20,13 +24,15 @@ setup(
     author=authors,
     author_email="dfw5129@psu.edu",
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 3 - Alpha",
         "Intended Audience :: Science/Research",
         "Topic :: Science/Engineering :: Atmospheric Science",
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.4",
+        "Programming Language :: Python :: 3.6",
+        "Operating System :: OS Independent",
     ],
     keywords="inversion underdetermined DA assimilation",
     package_dir={'': "src"},
@@ -35,9 +41,9 @@ setup(
         "six",
         "numpy",
         "scipy",
+        "dask[array]",
     ],
     extras_require=dict(
-        dask=["dask[array]"],
         homework=[
             "pandas",
             "statsmodels",
