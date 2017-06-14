@@ -1319,5 +1319,23 @@ class TestUtilToLinearOperator(unittest2.TestCase):
                                       LinearOperator)
 
 
+class TestUtilKron(unittest2.TestCase):
+    """Test inversion.util.kron against scipy.linalg.kron."""
+
+    def test_util_kron(self):
+        """Test my kronecker implementation against scipy's."""
+        trial_inputs = (1, (1,), [0], np.arange(10), np.eye(5),
+                        da.arange(10, chunks=10), da.eye(5, chunks=5))
+        my_kron = inversion.util.kron
+        scipy_kron = scipy.linalg.kron
+
+        for input1, input2 in itertools.product(trial_inputs, repeat=2):
+            my_result = my_kron(input1, input2)
+            scipy_result = scipy_kron(
+                np.atleast_2d(input1), np.atleast_2d(input2))
+
+            np_tst.assert_allclose(my_result, scipy_result)
+
+
 if __name__ == "__main__":
     unittest2.main()

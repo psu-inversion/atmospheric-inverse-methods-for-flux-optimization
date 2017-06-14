@@ -11,7 +11,7 @@ from scipy.sparse.linalg import aslinearoperator
 from scipy.sparse.linalg.interface import MatrixLinearOperator
 import dask.array as da
 import dask.array.linalg as la
-from dask.array import asarray
+from dask.array import asarray, concatenate
 
 OPTIMAL_ELEMENTS = int(2e4)
 """Optimal elements per chunk in a dask array.
@@ -231,3 +231,36 @@ def tolinearoperator(operator):
         return aslinearoperator(operator)
     except TypeError:
         return aslinearoperator(MatrixLinearOperator(atleast_2d(operator)))
+
+
+def kron(matrix1, matrix2):
+    """Kronecker product of two matrices.
+
+    Parameters
+    ----------
+    matrix1: array_like[M, N]
+    matrix2: array_like[J, K]
+
+    Returns
+    -------
+    array_like[M*J, N*K]
+
+    See Also
+    --------
+    scipy.linalg.kron
+        Where I got the overview of the implementation.
+    """
+    matrix1 = atleast_2d(matrix1)
+    matrix2 = atleast_2d(matrix2)
+
+    total_shape = matrix1.shape + matrix2.shape
+    change = matrix1.ndim
+
+    matrix1_index = tuple(slice(None) if i < change else np.newaxis
+                          for i in range(len(total_shape)))
+    matrix2_index = tuple(np.newaxis if i < change else slice(None)
+                          for i in range(len(total_shape)))
+
+    product = matrix1[matrix1_index] * matrix2[matrix2_index]
+
+    return concatenate(concatenate(product, axis=1), axis=1)

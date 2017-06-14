@@ -20,11 +20,10 @@ from dask.array import exp, square, fmin, sqrt
 from dask.array import sum as da_sum
 from dask.array.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
 from scipy.sparse.linalg import LinearOperator
-from scipy.linalg import kron
 import six
 
 from inversion.util import chunk_sizes, schmidt_decomposition, is_odd
-from inversion.util import tolinearoperator
+from inversion.util import tolinearoperator, kron
 
 ROUNDOFF = 1e-13
 """Approximate size of roundoff error for correlation matrices.
