@@ -247,7 +247,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
     # Correlation matrices are also real
 
     def solve(self, vec):
-        """Solve A x = vec.
+        """Solve A @ x = vec.
 
         Parameters
         ----------

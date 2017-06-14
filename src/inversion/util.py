@@ -87,7 +87,7 @@ def atleast_1d(arry):
 
     Returns
     -------
-    new_arry: dask.array.Array
+    new_arry: dask.array.core.Array
     """
     if isinstance(arry, da.Array):
         if arry.ndim >= 1:
@@ -111,7 +111,7 @@ def atleast_2d(arry):
 
     Returns
     -------
-    new_arry: dask.array.Array
+    new_arry: dask.array.core.Array
     """
     if isinstance(arry, da.Array):
         if arry.ndim >= 2:
@@ -226,11 +226,18 @@ def tolinearoperator(operator):
     Returns
     -------
     scipy.sparse.linalg.LinearOperator
+
+    See Also
+    --------
+    scipy.sparse.linalg.aslinearoperator
+        A similar function without as wide a range of inputs.
+        Used for everything but array_likes that are not
+        :class:`np.ndarrays` or :class:`scipy.sparse.spmatrix`.
     """
     try:
         return aslinearoperator(operator)
     except TypeError:
-        return aslinearoperator(MatrixLinearOperator(atleast_2d(operator)))
+        return MatrixLinearOperator(atleast_2d(operator))
 
 
 def kron(matrix1, matrix2):

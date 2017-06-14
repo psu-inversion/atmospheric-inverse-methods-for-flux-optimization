@@ -914,7 +914,7 @@ class TestEnsembleIntegrators(unittest2.TestCase):
         for int_cls in self.IMPLEMENTATIONS:
             if int_cls in self.OS_ISSUES:
                 raise unittest2.SkipTest(
-                    "OS has trouble with integrator class {name:s}"
+                    "OS has trouble with {name:s}"
                     .format(name=getname(int_cls)))
 
             with self.subTest(int_cls=getname(int_cls)):
