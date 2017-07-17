@@ -180,6 +180,7 @@ OBS_ROUGH_LEVEL = 11
 OBS_ROUGH_SIGMA = 0.9486
 """Also eyeballed from a single time."""
 
+print(datetime.datetime.now(UTC).strftime("%c"), "Have constants, getting priors")
 ############################################################
 # Read prior fluxes
 FLUX_DATASET = xarray.open_mfdataset(
@@ -230,6 +231,7 @@ WRF_OBS_SITE = (
 WRF_OBS_START = WRF_OBS_MATCHED.indexes["observation_time"][0]
 WRF_OBS_INTERVAL = WRF_OBS_START - WRF_OBS_MATCHED.indexes["observation_time"][1]
 
+print(datetime.datetime.now(UTC).strftime("%c"), "Getting solar times")
 ############################################################
 # Get time zone representing local solar time for each site
 LOCAL_TIME_ZONES = list(map(
@@ -239,12 +241,15 @@ LOCAL_TIME_ZONES = list(map(
     [round(offset_hr * SECONDS_PER_HOUR)
      for offset_hr in INFLUENCE_FUNCTIONS.coords["site_lons"].values / 15]))
 
+print(datetime.datetime.now(UTC).strftime("%c"),
+      "Converting influence function to have alignment necessary for H")
 ############################################################
 # Do the inversion
 obs_times = (INFLUENCE_FUNCTIONS.indexes["observation_time"][::-1])
 # Take care of missing obs
 # Also subsetting for late afternoon steady convective boundary layer
 site_obs_index = []
+print(datetime.datetime.now(UTC).strftime("%c"), "Selecting observations")
 for i, site in enumerate(INFLUENCE_FUNCTIONS.indexes["site"]):
     local_times = pd.Index([
         obs_time.tz_localize(UTC)
@@ -272,6 +277,7 @@ aligned_influences = xarray.concat(
      for here_infl in INFLUENCE_FUNCTIONS.isel_points(
              site=site_index, observation_time=obs_index)],
     "observation_time").fillna(0)
+print(datetime.datetime.now(UTC).strftime("%c"), "Aligned flux times")
 # TODO: use actual heights
 here_obs = WRF_OBS_SITE.isel_points(
     observation_time=obs_index, site=site_index
@@ -299,6 +305,8 @@ posterior_global_atts.update(dict(
         source="Test inversion using OI for a monthlong window",
 ))
 
+print(datetime.datetime.now(UTC).strftime("%c"), "Getting correlations")
+sys.stdout.flush()
 spatial_correlations = (
     inversion.correlations.HomogeneousIsotropicCorrelation.
     # First guess at correlation length on the order of previous studies
@@ -314,6 +322,8 @@ full_correlations = kron(temporal_correlations, spatial_correlations)
 flux_stds = .3 * TRUE_FLUXES_MATCHED[FLUX_NAME]
 flux_stds_matrix = tolinearoperator(da.diag(flux_stds.data.reshape(-1)))
 
+print(datetime.datetime.now(UTC).strftime("%c"), "Got correlations, getting posterior")
+sys.stdout.flush()
 posterior, posterior_err = inversion.optimal_interpolation.fold_common(
     TRUE_FLUXES_MATCHED[FLUX_NAME].data,
     flux_stds_matrix.dot(full_correlations.dot(flux_stds_matrix)),
@@ -329,4 +339,8 @@ posterior_array = xarray.Dataset(
          ),
     TRUE_FLUXES_MATCHED.coords,
     posterior_global_atts)
+print(datetime.datetime.now(UTC).strftime("%c"), "Have posterior structure, evaluating and writing")
+sys.stdout.flush()
 posterior.to_netcdf("monthly_inversion_output.nc4")
+print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior")
+sys.stdout.flush()
