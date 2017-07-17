@@ -15,6 +15,7 @@ import dask.array as da
 import pandas as pd
 import dateutil.tz
 import numpy as np
+import cf_units
 import cartopy
 import netCDF4
 import xarray
@@ -27,10 +28,12 @@ except NameError:
 
 sys.path.append(os.path.join(
     THIS_DIR, "..", "src"))
+sys.path.append(THIS_DIR)
 
 import inversion.optimal_interpolation
 import inversion.correlations
 import inversion.noise
+import cf_acdd
 
 INFLUENCE_PATH = os.path.join(THIS_DIR, "..", "data_files")
 PRIOR_PATH = INFLUENCE_PATH
@@ -51,6 +54,12 @@ I really hope I can assume this doesn't depend on latitude. That would
 make this much more complicated.
 """
 OBS_WINDOW = 1
+CO2_MOLAR_MASS = 16 * 2 + 12.01
+"""Molar mass of CO2 (g/mol).
+
+Used to convert WRF fluxes to units expected by observation operator.
+"""
+CO2_MOLAR_MASS_UNITS = cf_units.Unit("g/mol")
 
 ############################################################
 # Utility functions.
@@ -181,7 +190,10 @@ for dim in [dimname + suffix for
 TRUE_FLUXES = FLUX_DATASET.get(["E_TRA{:d}".format(i+1)
                                 for i in range(10)]).isel(emissions_zdim=0)
 TRUE_FLUXES_MATCHED = TRUE_FLUXES.rename(dict(
-    south_north="dim_y", west_east="dim_x", Time="flux_time"))
+    south_north="dim_y", west_east="dim_x", Time="flux_time")) * CO2_MOLAR_MASS
+for flux_part, flux_orig in zip(TRUE_FLUXES_MATCHED.data_vars.values(), TRUE_FLUXES.data_vars.values()):
+    flux_part.attrs["units"] = (cf_units.Unit(flux_orig.attrs["units"]) *
+                                CO2_MOLAR_MASS_UNITS)
 
 WRF_OBS = FLUX_DATASET.get(
     ["tracer_{:d}".format(i+1)
@@ -224,7 +236,14 @@ for i, site in enumerate(INFLUENCE_FUNCTIONS.indexes["site"]):
                  (local_times.time < OBS_HOURS[1]))[0],
         itertools.repeat(i)))
 obs_index, site_index = zip(*site_obs_index)
+site_obs_pd_index = pd.MultiIndex.from_tuples(
+    site_obs_index, names=("site", "observation_time"))
 
+print(datetime.datetime.now(UTC).strftime("%c"),
+      "Aligning flux times in influence function")
+sys.stdout.flush()
+dimension_order = tuple(item if item != "time_before_observation" else "flux_time"
+                        for item in INFLUENCE_FUNCTIONS.dims)
 aligned_influences = xarray.concat(
     [here_infl.set_index(
         time_before_observation="flux_time").rename(
@@ -238,10 +257,33 @@ here_obs = WRF_OBS_MATCHED.isel_points(
     ).sel(bottom_top=[OBS_ROUGH_SIGMA],
           method="nearest")
 
+transpose_arg = sort_key_to_consecutive([dimension_order.index(dim)
+                                         for dim in aligned_influences.dims])
+
+posterior_var_atts = TRUE_FLUXES_MATCHED.attrs.copy()
+posterior_var_atts.update(dict(
+        long_name="posterior_fluxes",
+        units=TRUE_FLUXES_MATCHED[FLUX_NAME].attrs["units"],
+        description="posterior fluxes using dask for a month",
+        origin="OI using dask for a month"))
+posterior_global_atts = cf_acdd.global_attributes_dict()
+posterior_global_atts.update(dict(
+        title="Posterior fluxes",
+        summary="Posterior fluxes",
+        creator_institution="PSU Department of Meteorology",
+        product_version="v0.0.0.dev0",
+        cdm_data_type="grid",
+        institution="PSU Department of Meteorology",
+        source="Test inversion using OI for a monthlong window",
+))
+
 posterior, posterior_err = inversion.optimal_interpolation.fold_common(
     TRUE_FLUXES_MATCHED, TRUE_FLUXES_MATCHED,
     here_obs, .1, aligned_influences)
 posterior_array = xarray.Dataset(
-    dict(posterior=(
-
+    dict(posterior=(TRUE_FLUXES_MATCHED.dims, posterior,
+                    posterior_var_atts),
+         ),
+    TRUE_FLUXES_MATCHED.coords,
+    posterior_global_atts)
 posterior.to_netcdf("monthly_inversion_output.nc4")
