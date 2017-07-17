@@ -305,21 +305,38 @@ posterior_global_atts.update(dict(
         source="Test inversion using OI for a monthlong window",
 ))
 
+############################################################
+# Define correlation constants and get covariances
 print(datetime.datetime.now(UTC).strftime("%c"), "Getting correlations")
 sys.stdout.flush()
+CORRELATION_LENGTH = 84
+GRID_RESOLUTION = 27
 spatial_correlations = (
     inversion.correlations.HomogeneousIsotropicCorrelation.
     # First guess at correlation length on the order of previous studies
-    from_function(inversion.correlations.ExponentialCorrelation(84 / 27),
+    from_function(inversion.correlations.ExponentialCorrelation(
+            CORRELATION_LENGTH / GRID_RESOLUTION),
                   (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
                    len(TRUE_FLUXES_MATCHED.coords["dim_x"]))))
-temporal_correlations = (
+HOURLY_FLUX_TIMESCALE = 3
+hour_correlations = (
     inversion.correlations.HomogeneousIsotropicCorrelation.
-    from_function(inversion.correlations.ExponentialCorrelation(7 * 24),
-                  (len(TRUE_FLUXES_MATCHED.coords["flux_time"]),)))
-full_correlations = kron(temporal_correlations, spatial_correlations)
+    from_function(inversion.correlations.ExponentialCorrelation(HOURLY_FLUX_TIMESCALE),
+                  (HOURS_PER_DAY,)))
+DAILY_FLUX_TIMESCALE = 14
+day_correlations = (
+    inversion.correlations.make_matrix(
+        inversion.correlations.ExponentialCorrelation(DAILY_FLUX_TIMESCALE),
+        (len(TRUE_FLUXES_MATCHED.coords["flux_time"]),)))
 
-flux_stds = .3 * TRUE_FLUXES_MATCHED[FLUX_NAME]
+full_correlations = kron(day_correlations,
+                         kron(hour_correlations, spatial_correlations))
+
+# I would like to add a fixed minimum at some point.
+# full stds would then be sqrt(fixed^2 + varying^2)
+# average seasonal variation (or some fraction thereof) might work.
+FLUX_VARIANCE_VARYING_FRACTION = .3
+flux_stds = FLUX_VARIANCE_VARYING_FRACTION * da.abs(TRUE_FLUXES_MATCHED[FLUX_NAME])
 flux_stds_matrix = tolinearoperator(da.diag(flux_stds.data.reshape(-1)))
 
 print(datetime.datetime.now(UTC).strftime("%c"), "Got correlations, getting posterior")
