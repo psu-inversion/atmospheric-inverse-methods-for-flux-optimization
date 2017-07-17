@@ -32,7 +32,7 @@ sys.path.append(THIS_DIR)
 
 import inversion.optimal_interpolation
 import inversion.correlations
-import inversion.noise
+from inversion.util import kron, tolinearoperator
 import cf_acdd
 
 INFLUENCE_PATH = os.path.join(THIS_DIR, "..", "data_files")
@@ -88,6 +88,22 @@ def grouper(iterable, n, fillvalue=None):
 #     """
 #     for start in range(0, len(lst), n):
 #         yield lst[start:start + n]
+
+def sort_key_to_consecutive(sequence):
+    """Turn a list of sort keys into a list of consecutive numbers.
+
+    Parameters
+    ----------
+    sequence: collections.Sequence
+
+    Returns
+    -------
+    tuple: sorted
+    """
+    items = list(enumerate(sorted(sequence)))
+
+    items.sort(key=lambda item: sequence.index(item[1]))
+    return tuple(item[0] for item in items)
 
 
 UTC = dateutil.tz.tzutc()
@@ -168,8 +184,13 @@ OBS_ROUGH_SIGMA = 0.9486
 # Read prior fluxes
 FLUX_DATASET = xarray.open_mfdataset(
     FLUX_FILES,
-    chunks=dict(west_east=NX, south_north=NY, Time=1)
+    chunks=dict(west_east=NX, south_north=NY, Time=1),
+    concat_dim="Time",
 )
+FLUX_DATASET["ZS"] = FLUX_DATASET.ZS.isel(Time=0)
+FLUX_DATASET["ZNU"] = FLUX_DATASET.ZNU.isel(Time=0)
+FLUX_DATASET["ZNW"] = FLUX_DATASET.ZNW.isel(Time=0)
+
 FLUX_DATASET.set_index(Time="XTIME",
                        bottom_top="ZNU", bottom_top_stag="ZNW",
                        soil_layers_stag="ZS",
@@ -220,7 +241,7 @@ LOCAL_TIME_ZONES = list(map(
 
 ############################################################
 # Do the inversion
-obs_times = reversed(INFLUENCE_FUNCTIONS.indexes["observation_time"])
+obs_times = (INFLUENCE_FUNCTIONS.indexes["observation_time"][::-1])
 # Take care of missing obs
 # Also subsetting for late afternoon steady convective boundary layer
 site_obs_index = []
@@ -252,13 +273,14 @@ aligned_influences = xarray.concat(
              site=site_index, observation_time=obs_index)],
     "observation_time").fillna(0)
 # TODO: use actual heights
-here_obs = WRF_OBS_MATCHED.isel_points(
+here_obs = WRF_OBS_SITE.isel_points(
     observation_time=obs_index, site=site_index
-    ).sel(bottom_top=[OBS_ROUGH_SIGMA],
-          method="nearest")
-
+    )
 transpose_arg = sort_key_to_consecutive([dimension_order.index(dim)
                                          for dim in aligned_influences.dims])
+
+FLUX_NAME = "E_TRA1"
+TRACER_NAME = "tracer_1"
 
 posterior_var_atts = TRUE_FLUXES_MATCHED.attrs.copy()
 posterior_var_atts.update(dict(
@@ -277,9 +299,30 @@ posterior_global_atts.update(dict(
         source="Test inversion using OI for a monthlong window",
 ))
 
+spatial_correlations = (
+    inversion.correlations.HomogeneousIsotropicCorrelation.
+    # First guess at correlation length on the order of previous studies
+    from_function(inversion.correlations.ExponentialCorrelation(84 / 27),
+                  (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
+                   len(TRUE_FLUXES_MATCHED.coords["dim_x"]))))
+temporal_correlations = (
+    inversion.correlations.HomogeneousIsotropicCorrelation.
+    from_function(inversion.correlations.ExponentialCorrelation(7 * 24),
+                  (len(TRUE_FLUXES_MATCHED.coords["flux_time"]),)))
+full_correlations = kron(temporal_correlations, spatial_correlations)
+
+flux_stds = .3 * TRUE_FLUXES_MATCHED[FLUX_NAME]
+flux_stds_matrix = tolinearoperator(da.diag(flux_stds.data.reshape(-1)))
+
 posterior, posterior_err = inversion.optimal_interpolation.fold_common(
-    TRUE_FLUXES_MATCHED, TRUE_FLUXES_MATCHED,
-    here_obs, .1, aligned_influences)
+    TRUE_FLUXES_MATCHED[FLUX_NAME].data,
+    flux_stds_matrix.dot(full_correlations.dot(flux_stds_matrix)),
+    here_obs[TRACER_NAME].data,
+    da.diag(da.full(here_obs.shape, .1, chunks=here_obs.shape)),
+    (aligned_influences.data
+     .transpose(transpose_arg)
+     .reshape(aligned_influences.shape[0],
+              np.prod(aligned_influences.shape[-3:]))))
 posterior_array = xarray.Dataset(
     dict(posterior=(TRUE_FLUXES_MATCHED.dims, posterior,
                     posterior_var_atts),
