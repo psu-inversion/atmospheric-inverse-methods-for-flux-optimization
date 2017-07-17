@@ -44,7 +44,15 @@ INFLUENCE_FILES = glob.glob(os.path.join(INFLUENCE_PATH, "*footprints.nc4"))
 print("Flux files", FLUX_FILES)
 print("Influence Files", INFLUENCE_FILES)
 
-FLUX_WINDOW = 24 * 7 * 1
+HOURS_PER_DAY = 24
+DAYS_PER_WEEK = 7
+FLUX_WINDOW = HOURS_PER_DAY * DAYS_PER_WEEK * 1
+"""How long fluxes considered to have an influence.
+
+Measured in hours.
+Implemented by slicing out this much of the stored influence functions
+for use as the linearized observation operator in the inversion.
+"""
 OBS_HOURS = (datetime.time(14), datetime.time(18))
 """Which observation times will be used in the inversion.
 
