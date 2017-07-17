@@ -35,11 +35,14 @@ import inversion.correlations
 from inversion.util import kron, tolinearoperator
 import cf_acdd
 
-INFLUENCE_PATH = os.path.join(THIS_DIR, "..", "data_files")
-PRIOR_PATH = INFLUENCE_PATH
+INFLUENCE_PATH = "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/ACT-America_trial3/2010/01/GROUP1"
+PRIOR_PATH = "/mc1s2/s4/dfw5129/data/Marthas_2010_wrfouts/"
 
-FLUX_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrfout_d01_*"))
+FLUX_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrfout_d01_*.nc"))
 INFLUENCE_FILES = glob.glob(os.path.join(INFLUENCE_PATH, "*footprints.nc4"))
+
+print("Flux files", FLUX_FILES)
+print("Influence Files", INFLUENCE_FILES)
 
 FLUX_WINDOW = 24 * 7 * 1
 OBS_HOURS = (datetime.time(14), datetime.time(18))
@@ -162,9 +165,6 @@ with netCDF4.Dataset(FLUX_FILES[0]) as ds:
     WRF_PROJECTION = wrf.util.getproj(**wrf.util.get_proj_params(ds))
     WRF_CRS = WRF_PROJECTION.cartopy()
 
-    TOWER_WRF_INDICES = wrf.ll_to_xy(
-        ds, INFLUENCE_FUNCTIONS.coords["site_lats"],
-        INFLUENCE_FUNCTIONS.coords["site_lons"])
 
     # Alternate method
     # Currently broken for some reason.
