@@ -89,7 +89,8 @@ def simple(background, background_covariance,
 
 def fold_common(background, background_covariance,
                 observations, observation_covariance,
-                observation_operator):
+                observation_operator,
+                calculate_posterior_error_covariance=True):
     """Solve the inversion problem, evaluating sub-expressions only once.
 
     Assumes all arrays fit in memory with room to spare.
@@ -101,6 +102,9 @@ def fold_common(background, background_covariance,
     observations: np.ndarray[M]
     observation_covariance: np.ndarray[M,M]
     observation_operator: np.ndarray[M,N]
+    calculate_posterior_error_covariance: bool, optional
+        Whether to calculate and return the posterior analysis error.
+        This may provide a significant memory and time savings.
 
     Returns
     -------
@@ -138,6 +142,9 @@ def fold_common(background, background_covariance,
 
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
     analysis = background + analysis_increment
+
+    if not calculate_posterior_error_covariance:
+        return analysis
 
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
     decrease = (B_HT.dot(solve(
