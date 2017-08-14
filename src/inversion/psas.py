@@ -6,8 +6,11 @@ import numpy as np
 from dask.array import asarray
 import dask.array.linalg as la
 import scipy.optimize
+from scipy.sparse.linalg import LinearOperator
+from inversion.util import atleast_1d, atleast_2d
 
 from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
+from inversion.util import tolinearoperator
 
 
 def simple(background, background_covariance,
@@ -44,13 +47,16 @@ def simple(background, background_covariance,
     approximately, with an iterative algorithm.
     There is an approximation to the analysis covariance, but it is very bad.
     """
-    background = np.atleast_1d(background)
-    background_covariance = np.atleast_2d(background_covariance)
+    background = atleast_1d(background)
+    if not isinstance(background_covariance, LinearOperator):
+        background_covariance = atleast_2d(background_covariance)
 
     observations = np.atleast_1d(observations)
-    observation_covariance = np.atleast_2d(observation_covariance)
+    if not isinstance(observation_covariance, LinearOperator):
+        observation_covariance = atleast_2d(observation_covariance)
 
-    observation_operator = np.atleast_2d(observation_operator)
+    if not isinstance(observation_operator, LinearOperator):
+        observation_operator = atleast_2d(observation_operator)
 
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
@@ -125,6 +131,8 @@ def simple(background, background_covariance,
     # this will be positive
     decrease = lower_decrease.dot(lower_decrease.T)
     # this may not
+    if isinstance(background_covariance, LinearOperator):
+        decrease = tolinearoperator(decrease)
     analysis_covariance = background_covariance - decrease
 
     if not result.success:
@@ -157,13 +165,16 @@ def fold_common(background, background_covariance,
     analysis: np.ndarray[N]
     analysis_covariance: np.ndarray[N,N]
     """
-    background = np.atleast_1d(background)
-    background_covariance = np.atleast_2d(background_covariance)
+    background = atleast_1d(background)
+    if not isinstance(background_covariance, LinearOperator):
+        background_covariance = atleast_2d(background_covariance)
 
     observations = np.atleast_1d(observations)
-    observation_covariance = np.atleast_2d(observation_covariance)
+    if not isinstance(observation_covariance, LinearOperator):
+        observation_covariance = atleast_2d(observation_covariance)
 
-    observation_operator = np.atleast_2d(observation_operator)
+    if not isinstance(observation_operator, LinearOperator):
+        observation_operator = atleast_2d(observation_operator)
 
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
@@ -236,6 +247,8 @@ def fold_common(background, background_covariance,
     # this will be positive
     decrease = lower_decrease.dot(lower_decrease.T)
     # this may not
+    if isinstance(background_covariance, LinearOperator):
+        decrease = tolinearoperator(decrease)
     analysis_covariance = background_covariance - decrease
 
     if not result.success:

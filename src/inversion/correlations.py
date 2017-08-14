@@ -16,14 +16,16 @@ from numpy.linalg import eigh, norm
 from numpy import arange, newaxis, asanyarray
 
 from dask.array import fromfunction, asarray, hstack
-from dask.array import exp, square, fmin, sqrt
+from dask.array import exp, square, fmin, sqrt, zeros
+from dask.array import logical_or, concatenate
 from dask.array import sum as da_sum
+from dask.array import Array
 from dask.array.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
-from scipy.sparse.linalg import LinearOperator
 import six
 
 from inversion.util import chunk_sizes, schmidt_decomposition, is_odd
 from inversion.util import tolinearoperator, kron
+from inversion.util import DaskLinearOperator as LinearOperator
 
 ROUNDOFF = 1e-13
 """Approximate size of roundoff error for correlation matrices.
@@ -383,18 +385,26 @@ class KroneckerProduct(LinearOperator):
         else:
             last_lambda = len(lambdas)
 
+        if isinstance(vector, Array):
+            chunks = vector.chunks
+        else:
+            chunks = chunk_sizes((self.shape[0], 1))
+
         if vector.ndim == 1:
             result_shape = self.shape[0]
+            result_chunks = chunks[:1]
         else:
             result_shape = (self.shape[0], 1)
+            result_chunks = chunks
 
-        result = np.zeros(shape=result_shape,
-                          dtype=np.result_type(self.dtype, vector.dtype))
+        result = zeros(shape=result_shape,
+                       chunks=result_chunks,
+                       dtype=np.result_type(self.dtype, vector.dtype))
         for lambd, vec1, vec2 in islice(zip(lambdas, vecs1, vecs2),
                                         0, last_lambda):
             result += kron(
-                np.asarray(lambd * self._operator1.dot(vec1).reshape(-1, 1)),
-                np.asarray(self._operator2.dot(vec2).reshape(-1, 1))
+                asarray(lambd * self._operator1.dot(vec1).reshape(-1, 1)),
+                asarray(self._operator2.dot(vec2).reshape(-1, 1))
             ).reshape(result_shape)
 
         return asarray(result)

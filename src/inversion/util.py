@@ -7,8 +7,9 @@ import numbers
 import math
 
 import numpy as np
-from scipy.sparse.linalg import aslinearoperator
-from scipy.sparse.linalg.interface import MatrixLinearOperator
+from scipy.sparse.linalg import LinearOperator, aslinearoperator
+from scipy.sparse.linalg.interface import (MatrixLinearOperator,
+                                           _CustomLinearOperator)
 import dask.array as da
 import dask.array.linalg as la
 from dask.array import asarray, concatenate
@@ -20,6 +21,11 @@ Magic number, arbitrarily chosen.  Dask documentation mentions many
 chunks should fit easily in memory, but each should contain at least a
 million elements.  This size matrix is fast to allocate and fill, but
 :math:`10^5` gives a memory error.
+"""
+ARRAY_TYPES = (np.ndarray, da.Array)
+"""Array types for determining Kronecker product type.
+
+These are combined for a direct product.
 """
 
 
@@ -198,6 +204,9 @@ def kronecker_product(operator1, operator2):
     """
     if hasattr(operator1, "kron"):
         return operator1.kron(operator2)
+    elif (isinstance(operator1, ARRAY_TYPES) and
+          isinstance(operator2, ARRAY_TYPES)):
+        return kron(operator1, operator2)
     from inversion.correlations import KroneckerProduct
     return KroneckerProduct(operator1, operator2)
 
@@ -225,7 +234,8 @@ def tolinearoperator(operator):
 
     Returns
     -------
-    scipy.sparse.linalg.LinearOperator
+    DaskLinearOperator
+        I want everything to work with dask where possible.
 
     See Also
     --------
@@ -237,7 +247,7 @@ def tolinearoperator(operator):
     try:
         return aslinearoperator(operator)
     except TypeError:
-        return MatrixLinearOperator(atleast_2d(operator))
+        return DaskMatrixLinearOperator(atleast_2d(operator))
 
 
 def kron(matrix1, matrix2):
@@ -271,3 +281,202 @@ def kron(matrix1, matrix2):
     product = matrix1[matrix1_index] * matrix2[matrix2_index]
 
     return concatenate(concatenate(product, axis=1), axis=1)
+
+
+class DaskLinearOperator(LinearOperator):
+    """LinearOperator designed to work with dask.
+
+    Does not support :class:`np.matrix` objects.
+    """
+
+    @classmethod
+    def fromlinearoperator(cls, original):
+        """Turn other into a DaskLinearOperator.
+
+        Parameters
+        ----------
+        original: LinearOperator
+
+        Returns
+        -------
+        DaskLinearOperator
+        """
+        # This returns _CustomLinearOperator, not DaskLinearOperator
+        result = cls(
+            shape=original.shape, dtype=original.dtype)
+        result._matvec = original._matvec
+        result._rmatvec = original._rmatvec
+        result._matmat = original._matmat
+        return result
+
+    # Everything below here essentially copied from the original LinearOperator
+    # scipy.sparse.linalg.interface
+    def __new__(cls, *args, **kwargs):
+        if cls is DaskLinearOperator:
+            # Operate as _DaskCustomLinearOperator factory.
+            return _DaskCustomLinearOperator(*args, **kwargs)
+        else:
+            obj = super(DaskLinearOperator, cls).__new__(cls)
+
+            if ((type(obj)._matvec == DaskLinearOperator._matvec and
+                 type(obj)._matmat == DaskLinearOperator._matmat)):
+                raise TypeError("LinearOperator subclass should implement"
+                                " at least one of _matvec and _matmat.")
+
+            return obj
+
+    def _matmat(self, X):
+        """Multiply self by matrix X using basic algorithm.
+
+        Default matrix-matrix multiplication handler.
+
+        Falls back on the user-defined _matvec method, so defining that will
+        define matrix multiplication (though in a very suboptimal way).
+        """
+        return da.hstack([self.matvec(col.reshape(-1, 1)) for col in X.T])
+
+    def matvec(self, x):
+        """
+
+        Matrix-vector multiplication.
+
+        Performs the operation y=A*x where A is an MxN linear
+        operator and x is a column vector or 1-d array.
+
+        Parameters
+        ----------
+        x : da.Array
+            An array with shape (N,) or (N,1).
+
+        Returns
+        -------
+        y : da.Array
+            A matrix or ndarray with shape (M,) or (M,1) depending
+            on the type and shape of the x argument.
+
+        Notes
+        -----
+        This matvec wraps the user-specified matvec routine or overridden
+        _matvec method to ensure that y has the correct shape and type.
+
+        """
+        x = da.asarray(x)
+
+        M, N = self.shape
+
+        if x.shape != (N,) and x.shape != (N, 1):
+            raise ValueError('dimension mismatch')
+
+        y = self._matvec(x)
+
+        y = da.asarray(y)
+
+        if x.ndim == 1:
+            y = y.reshape(M)
+        elif x.ndim == 2:
+            y = y.reshape(M, 1)
+        else:
+            raise ValueError('invalid shape returned by user-defined matvec()')
+
+        return y
+
+    def rmatvec(self, x):
+        """Adjoint matrix-vector multiplication.
+
+        Performs the operation y = A^H * x where A is an MxN linear
+        operator and x is a column vector or 1-d array.
+
+        Parameters
+        ----------
+        x : da.Array
+            An array with shape (M,) or (M,1).
+
+        Returns
+        -------
+        y : da.Array
+            A matrix or ndarray with shape (N,) or (N,1) depending
+            on the type and shape of the x argument.
+
+        Notes
+        -----
+        This rmatvec wraps the user-specified rmatvec routine or overridden
+        _rmatvec method to ensure that y has the correct shape and type.
+
+        """
+        x = da.asarray(x)
+
+        M, N = self.shape
+
+        if x.shape != (M,) and x.shape != (M, 1):
+            raise ValueError('dimension mismatch')
+
+        y = self._rmatvec(x)
+
+        y = da.asarray(y)
+
+        if x.ndim == 1:
+            y = y.reshape(N)
+        elif x.ndim == 2:
+            y = y.reshape(N, 1)
+        else:
+            raise ValueError(
+                'invalid shape returned by user-defined rmatvec()')
+
+        return y
+
+    def matmat(self, X):
+        """Matrix-matrix multiplication.
+
+        Performs the operation y=A*X where A is an MxN linear
+        operator and X dense N*K matrix or ndarray.
+
+        Parameters
+        ----------
+        X : da.Array
+            An array with shape (N,K).
+
+        Returns
+        -------
+        Y : da.Array
+            A matrix or ndarray with shape (M,K) depending on
+            the type of the X argument.
+
+        Notes
+        -----
+        This matmat wraps any user-specified matmat routine or overridden
+        _matmat method to ensure that y has the correct type.
+
+        """
+        X = da.asarray(X)
+
+        if X.ndim != 2:
+            raise ValueError('expected 2-d ndarray or matrix, not %d-d'
+                             % X.ndim)
+
+        M, N = self.shape
+
+        if X.shape[0] != N:
+            raise ValueError('dimension mismatch: %r, %r'
+                             % (self.shape, X.shape))
+
+        Y = self._matmat(X)
+
+        if isinstance(Y, np.matrix):
+            Y = np.asmatrix(Y)
+
+        return Y
+
+
+class _DaskCustomLinearOperator(DaskLinearOperator, _CustomLinearOperator):
+    """This should let the factory functions above work."""
+
+    pass
+
+
+class DaskMatrixLinearOperator(MatrixLinearOperator, DaskLinearOperator):
+    """This should help out with the tolinearoperator.
+
+    Should I override _adjoint?
+    """
+
+    pass

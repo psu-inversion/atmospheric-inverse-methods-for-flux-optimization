@@ -4,6 +4,9 @@ Also known as Kalman Matrix Inversion or batch inversion.
 """
 import numpy as np
 import scipy.linalg
+from scipy.sparse.linalg import LinearOperator
+
+from inversion.util import atleast_1d, atleast_2d, solve, tolinearoperator
 
 
 def simple(background, background_covariance,
@@ -27,13 +30,16 @@ def simple(background, background_covariance,
     analysis: np.ndarray[N]
     analysis_covariance: np.ndarray[N,N]
     """
-    background = np.atleast_1d(background)
-    background_covariance = np.atleast_2d(background_covariance)
+    background = atleast_1d(background)
+    if not isinstance(background_covariance, LinearOperator):
+        background_covariance = atleast_2d(background_covariance)
 
-    observations = np.atleast_1d(observations)
-    observation_covariance = np.atleast_2d(observation_covariance)
+    observations = atleast_1d(observations)
+    if not isinstance(observation_covariance, LinearOperator):
+        observation_covariance = atleast_2d(observation_covariance)
 
-    observation_operator = np.atleast_2d(observation_operator)
+    if not isinstance(observation_operator, LinearOperator):
+        observation_operator = atleast_2d(observation_operator)
 
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
@@ -56,14 +62,27 @@ def simple(background, background_covariance,
     analysis = background + analysis_increment
 
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
-    analysis_covariance = (background_covariance -
-                           background_covariance.dot(
-                               observation_operator.T.dot(
-                                   np.linalg.solve(
-                                       projected_background_covariance +
-                                       observation_covariance,
-                                       observation_operator).dot(
-                                           background_covariance))))
+    if isinstance(background_covariance, LinearOperator):
+        # Leave this as array earlier
+        # Avoiding the indirection may help
+        # Not sure how leaving this up there would help clarity
+
+        # Needed for HBHT + R addition
+        observation_covariance = tolinearoperator(
+            observation_covariance)
+
+    decrease = (background_covariance.dot(
+            observation_operator.T.dot(
+                solve(
+                    projected_background_covariance +
+                    observation_covariance,
+                    observation_operator).dot(
+                    background_covariance))))
+
+    if isinstance(background_covariance, LinearOperator):
+        decrease = tolinearoperator(decrease)
+
+    analysis_covariance = background_covariance - decrease
 
     return analysis, analysis_covariance
 
@@ -88,13 +107,16 @@ def fold_common(background, background_covariance,
     analysis: np.ndarray[N]
     analysis_covariance: np.ndarray[N,N]
     """
-    background = np.atleast_1d(background)
-    background_covariance = np.atleast_2d(background_covariance)
+    background = atleast_1d(background)
+    if not isinstance(background_covariance, LinearOperator):
+        background_covariance = atleast_2d(background_covariance)
 
-    observations = np.atleast_1d(observations)
-    observation_covariance = np.atleast_2d(observation_covariance)
+    observations = atleast_1d(observations)
+    if not isinstance(observation_covariance, LinearOperator):
+        observation_covariance = atleast_2d(observation_covariance)
 
-    observation_operator = np.atleast_2d(observation_operator)
+    if not isinstance(observation_operator, LinearOperator):
+        observation_operator = atleast_2d(observation_operator)
 
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
@@ -118,11 +140,12 @@ def fold_common(background, background_covariance,
     analysis = background + analysis_increment
 
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
-    analysis_covariance = (background_covariance -
-                           B_HT.dot(
-                               np.linalg.solve(
-                                   covariance_sum,
-                                   B_HT.T)))
+    decrease = (B_HT.dot(solve(
+                covariance_sum,
+                B_HT.T)))
+    if isinstance(background_covariance, LinearOperator):
+        decrease = tolinearoperator(decrease)
+    analysis_covariance = background_covariance - decrease
 
     return analysis, analysis_covariance
 
@@ -149,13 +172,16 @@ def scipy_chol(background, background_covariance,
     analysis: np.ndarray[N]
     analysis_covariance: np.ndarray[N,N]
     """
-    background = np.atleast_1d(background)
-    background_covariance = np.atleast_2d(background_covariance)
+    background = atleast_1d(background)
+    if not isinstance(background_covariance, LinearOperator):
+        background_covariance = atleast_2d(background_covariance)
 
-    observations = np.atleast_1d(observations)
-    observation_covariance = np.atleast_2d(observation_covariance)
+    observations = atleast_1d(observations)
+    if not isinstance(observation_covariance, LinearOperator):
+        observation_covariance = atleast_2d(observation_covariance)
 
-    observation_operator = np.atleast_2d(observation_operator)
+    if not isinstance(observation_operator, LinearOperator):
+        observation_operator = atleast_2d(observation_operator)
 
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
@@ -183,12 +209,14 @@ def scipy_chol(background, background_covariance,
     analysis = background + analysis_increment
 
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
-    analysis_covariance = (background_covariance -
-                           B_HT.dot(
-                               scipy.linalg.cho_solve(
-                                   cov_sum_chol_up,
-                                   B_HT.T,
-                                   overwrite_b=False
-                               )))
+    decrease = (B_HT.dot(
+            scipy.linalg.cho_solve(
+                cov_sum_chol_up,
+                B_HT.T,
+                overwrite_b=False
+                )))
+    if isinstance(background_covariance, LinearOperator):
+        decrease = tolinearoperator(decrease)
+    analysis_covariance = background_covariance - decrease
 
     return analysis, analysis_covariance
