@@ -71,13 +71,13 @@ def simple(background, background_covariance,
         observation_covariance = tolinearoperator(
             observation_covariance)
 
-    decrease = (background_covariance.dot(
-            observation_operator.T.dot(
-                solve(
-                    projected_background_covariance +
-                    observation_covariance,
-                    observation_operator).dot(
-                    background_covariance))))
+    decrease = background_covariance.dot(
+        observation_operator.T.dot(
+            solve(
+                projected_background_covariance +
+                observation_covariance,
+                observation_operator).dot(
+                background_covariance)))
 
     if isinstance(background_covariance, LinearOperator):
         decrease = tolinearoperator(decrease)
@@ -209,12 +209,11 @@ def scipy_chol(background, background_covariance,
     analysis = background + analysis_increment
 
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
-    decrease = (B_HT.dot(
-            scipy.linalg.cho_solve(
-                cov_sum_chol_up,
-                B_HT.T,
-                overwrite_b=False
-                )))
+    decrease = B_HT.dot(
+        scipy.linalg.cho_solve(
+            cov_sum_chol_up,
+            B_HT.T,
+            overwrite_b=False))
     if isinstance(background_covariance, LinearOperator):
         decrease = tolinearoperator(decrease)
     analysis_covariance = background_covariance - decrease

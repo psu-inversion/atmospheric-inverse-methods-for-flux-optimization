@@ -161,6 +161,8 @@ def incremental(background, background_covariance,
     -------
     analysis: np.ndarray[N]
     analysis_covariance: np.ndarray[N,N]
+        The posterior error covariance matrix. Only returned if
+        `calculate_posterior_error_covariance` is :obj:`True`
 
     Note
     ----
@@ -252,8 +254,8 @@ def incremental(background, background_covariance,
     #     return bg_prod + obs_prod
 
     result = scipy.optimize.minimize(
-        method="BFGS",
         cost_function, asarray(zeros_like(background)),
+        method="BFGS",
         jac=cost_jacobian,
         # hessp=cost_hessian_product,
         options=dict(maxiter=MAX_ITERATIONS,
@@ -320,11 +322,11 @@ def incr_chol(background, background_covariance,
 
     innovations = observations - observation_operator.dot(background)
 
-    # factor the covariances to make the matrix inversions faster
-    bg_cov_chol_u = scipy.linalg.cho_factor(background_covariance)
-    obs_cov_chol_u = scipy.linalg.cho_factor(observation_covariance)
+    from scipy.linalg import cho_factor, cho_solve
 
-    from scipy.linalg import cho_solve
+    # factor the covariances to make the matrix inversions faster
+    bg_cov_chol_u = cho_factor(background_covariance)
+    obs_cov_chol_u = cho_factor(observation_covariance)
 
     def cost_function(test_change):
         """Mismatch between state, prior, and obs.

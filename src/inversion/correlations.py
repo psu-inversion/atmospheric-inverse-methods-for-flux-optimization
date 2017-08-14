@@ -178,7 +178,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
             dtype=DTYPE)
         self._corr_fourier = self._fft(corr_struct)
         # This is also affected by roundoff
-        self._fourier_near_zero = self._corr_fourier < FOURIER_NEAR_ZERO
+        self._fourier_near_zero = abs(self._corr_fourier) < FOURIER_NEAR_ZERO
         return self
 
     @classmethod
@@ -306,11 +306,18 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
              self._corr_fourier[..., reverse_start:0:-1].conj()))
         expanded_fft = expanded_fft.rechunk(expanded_fft.shape)
 
+        expanded_near_zero = concatenate(
+            (self._fourier_near_zero,
+             self._fourier_near_zero[..., reverse_start:0:-1]), axis=-1)
+        expanded_near_zero = expanded_near_zero.rechunk(
+            expanded_near_zero.shape)
+
         newinst = HomogeneousIsotropicCorrelation(shape)
         newinst._corr_fourier = (expanded_fft[self_index] *
                                  other._corr_fourier[other_index])
-        newinst._fourier_near_zero = (self._fourier_near_zero[self_index] |
-                                      other._fourier_near_zero[other_index])
+        newinst._fourier_near_zero = logical_or(
+            expanded_near_zero[self_index],
+            other._fourier_near_zero[other_index])
         return newinst
 
 

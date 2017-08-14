@@ -192,11 +192,13 @@ def kronecker_product(operator1, operator2):
     """Form the Kronecker product of the given operators.
 
     Delegates to ``operator1.kron()`` if possible,
-    :class:`inversion.correlations.KroneckerProduct` if not.
+    :func:`kron` if both are :const:`ARRAY_TYPES`, or
+    :class:`inversion.correlations.KroneckerProduct` otherwise.
 
     Parameters
     ----------
     operator1, operator2: scipy.sparse.linalg.LinearOperator
+        The component operators of the Kronecker product.
 
     Returns
     -------
@@ -216,7 +218,7 @@ def is_odd(num):
 
     Parameters
     ----------
-    num
+    num: int
 
     Returns
     -------
@@ -278,6 +280,7 @@ def kron(matrix1, matrix2):
     matrix2_index = tuple(np.newaxis if i < change else slice(None)
                           for i in range(len(total_shape)))
 
+    # TODO: choose good chunk sizes
     product = matrix1[matrix1_index] * matrix2[matrix2_index]
 
     return concatenate(concatenate(product, axis=1), axis=1)

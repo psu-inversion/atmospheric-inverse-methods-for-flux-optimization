@@ -710,7 +710,32 @@ class TestCorrelations(unittest2.TestCase):
                     corr_op1.dot(np.eye(test_size)),
                     corr_op2.dot(np.eye(test_size)))
 
-    def test_kron(self):
+    def test_kron_composition(self):
+        """Test that `kron` works similar to composition of the domains."""
+        from inversion.correlations import HomogeneousIsotropicCorrelation
+        corr_class = inversion.correlations.GaussianCorrelation
+        corr_fun = corr_class(5)
+
+        shape1 = (5,)
+        shape2 = (7,)
+
+        corr_op1 = (HomogeneousIsotropicCorrelation.
+                    from_function(corr_fun, shape1))
+        corr_op2 = (HomogeneousIsotropicCorrelation.
+                    from_function(corr_fun, shape2))
+        kron_corr = corr_op1.kron(corr_op2)
+        direct_corr = (HomogeneousIsotropicCorrelation.
+                       from_function(corr_fun, shape1 + shape2))
+
+        self.assertEqual(kron_corr.shape, direct_corr.shape)
+        self.assertEqual(kron_corr._underlying_shape,
+                         direct_corr._underlying_shape)
+        np_tst.assert_allclose(kron_corr._corr_fourier,
+                               direct_corr._corr_fourier)
+        np_tst.assert_allclose(kron_corr._fourier_near_zero,
+                               direct_corr._fourier_near_zero)
+
+    def test_kron_results(self):
         """Test the Kronecker product implementation."""
         HomogeneousIsotropicCorrelation = (
             inversion.correlations.HomogeneousIsotropicCorrelation)
@@ -832,25 +857,53 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
         """Test that it delegates to subclasses where appropriate."""
         HomogeneousIsotropicCorrelation = (
             inversion.correlations.HomogeneousIsotropicCorrelation)
-        corr_class = inversion.correlations.ExponentialCorrelation
+        corr_class = inversion.correlations.GaussianCorrelation
         corr_fun = corr_class(5)
 
         op1 = HomogeneousIsotropicCorrelation.from_function(corr_fun, 15)
         op2 = HomogeneousIsotropicCorrelation.from_function(corr_fun, 20)
 
         combined_op = inversion.util.kronecker_product(op1, op2)
+        proposed_result = HomogeneousIsotropicCorrelation.from_function(
+            corr_fun, (15, 20))
 
         self.assertIsInstance(combined_op, HomogeneousIsotropicCorrelation)
+        self.assertSequenceEqual(combined_op.shape,
+                                 tuple(np.multiply(op1.shape, op2.shape)))
+        self.assertEqual(combined_op._underlying_shape,
+                         proposed_result._underlying_shape)
+        np_tst.assert_allclose(combined_op._fourier_near_zero,
+                               proposed_result._fourier_near_zero)
+        np_tst.assert_allclose(combined_op._corr_fourier,
+                               proposed_result._corr_fourier,
+                               rtol=1e-5, atol=1e-6)
 
-    def test_direct(self):
-        """Test Kronecker product without special method."""
+    def test_array_array(self):
+        """Test array-array Kronecker product."""
         mat1 = np.eye(2)
         mat2 = np.eye(3)
 
         combined_op = inversion.util.kronecker_product(mat1, mat2)
 
-        self.assertIsInstance(combined_op,
-                              inversion.correlations.KroneckerProduct)
+        self.assertIsInstance(combined_op, da.Array)
+        self.assertSequenceEqual(combined_op.shape,
+                                 tuple(np.multiply(mat1.shape, mat2.shape)))
+        np_tst.assert_allclose(combined_op, scipy.linalg.kron(mat1, mat2))
+
+    def test_array_sparse(self):
+        """Test array-sparse matrix Kronecker products."""
+        mat1 = np.eye(3)
+        mat2 = scipy.sparse.eye(10)
+
+        combined_op = inversion.util.kronecker_product(mat1, mat2)
+        big_ident = np.eye(30)
+
+        self.assertIsInstance(
+            combined_op, inversion.correlations.KroneckerProduct)
+        self.assertSequenceEqual(combined_op.shape,
+                                 tuple(np.multiply(mat1.shape, mat2.shape)))
+        np_tst.assert_allclose(combined_op.dot(big_ident),
+                               big_ident)
 
 
 class TestIntegrators(unittest2.TestCase):
@@ -882,7 +935,7 @@ class TestEnsembleIntegrators(unittest2.TestCase):
     IMPLEMENTATIONS = (inversion.ensemble.integrators.
                        EnsembleIntegrator.__subclasses__())
 
-    if sys.version_info > (3, 4) or sys.platform != "cygwin":
+    if sys.version_info >= (3, 5) or sys.platform == "cygwin":
         OS_ISSUES = ()
     else:
         OS_ISSUES = (inversion.ensemble.integrators.
@@ -932,7 +985,7 @@ class TestCovarianceEstimation(unittest2.TestCase):
     """
 
     def test_nmc_identity(self):
-        """Test that the NMC method for simple case.
+        """Test the NMC method for a simple case.
 
         Uses stationary noise on top of a forecast of zero.
         """
@@ -1335,6 +1388,40 @@ class TestUtilKron(unittest2.TestCase):
                 np.atleast_2d(input1), np.atleast_2d(input2))
 
             np_tst.assert_allclose(my_result, scipy_result)
+
+
+class TestHomogeneousBackgroundInversion(unittest2.TestCase):
+    """Ensure inversion functions work with HomogeneousIsotropicCorrelation.
+
+    Integration test to ensure things work together as intended.
+
+    TODO: Check that the answers are reasonable.
+    """
+
+    CURRENTLY_BROKEN = frozenset(
+        (inversion.optimal_interpolation.simple,  # Invalid addition
+         inversion.variational.incr_chol))  # cho_factor/solve
+
+    def test_produces_answer(self):
+        """Test that the combination doesn't crash."""
+        bg_vals = np.zeros(10)
+        obs_vals = np.ones(3)
+
+        corr_class = inversion.correlations.ExponentialCorrelation
+        corr_fun = corr_class(3)
+        bg_corr = (inversion.correlations.HomogeneousIsotropicCorrelation.
+                   from_function(corr_fun, (10,)))
+        obs_cov = np.eye(3)
+        obs_op = np.eye(3, 10)
+
+        for inversion_method in ALL_METHODS:
+            if inversion_method in self.CURRENTLY_BROKEN:
+                # TODO: XFAIL
+                continue
+            with self.subTest(method=getname(inversion_method)):
+                post, post_cov = inversion_method(bg_vals, bg_corr,
+                                                  obs_vals, obs_cov,
+                                                  obs_op)
 
 
 if __name__ == "__main__":
