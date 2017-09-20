@@ -151,7 +151,7 @@ class ProductLinearOperator(LinearOperator):
         array_like
         """
         for op in reversed(self._operators):
-            vector = op.dot(vector)
+            vector = op.matvec(vector)
 
         return vector
 
@@ -167,7 +167,7 @@ class ProductLinearOperator(LinearOperator):
         array_like
         """
         for op in self._operators:
-            vector = op.dot(vector)
+            vector = op.H.matvec(vector)
 
         return vector
 
@@ -183,7 +183,7 @@ class ProductLinearOperator(LinearOperator):
         array_like
         """
         for op in reversed(self._operators):
-            matrix = op.dot(matrix)
+            matrix = op.matmat(matrix)
 
         return matrix
 
