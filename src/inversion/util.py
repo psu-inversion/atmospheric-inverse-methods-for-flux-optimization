@@ -7,9 +7,11 @@ import numbers
 import math
 
 import numpy as np
-from scipy.sparse.linalg import LinearOperator, aslinearoperator
-from scipy.sparse.linalg.interface import (MatrixLinearOperator,
-                                           _CustomLinearOperator)
+from scipy.sparse.linalg import LinearOperator, aslinearoperator, lgmres
+from scipy.sparse.linalg.interface import (
+    MatrixLinearOperator,
+    _CustomLinearOperator, _SumLinearOperator, _ProductLinearOperator,
+    _ScaledLinearOperator)
 import dask.array as da
 import dask.array.linalg as la
 from dask.array import asarray, concatenate
@@ -27,6 +29,7 @@ ARRAY_TYPES = (np.ndarray, da.Array)
 
 These are combined for a direct product.
 """
+REAL_DTYPE_KINDS = "fiu"
 
 
 def chunk_sizes(shape, matrix_side=True):
@@ -471,11 +474,68 @@ class DaskLinearOperator(LinearOperator):
 
         return Y
 
+    # Dask assumes everything has an ndim
+    # Hopefully this fixes the problem
+    ndim = 2
+
+    def __add__(self, x):
+        if isinstance(x, LinearOperator):
+            return _DaskSumLinearOperator(
+                self, DaskLinearOperator.fromlinearoperator(x))
+        elif isinstance(x, ARRAY_TYPES):
+            return _DaskSumLinearOperator(
+                self, DaskMatrixLinearOperator(x))
+        else:
+            return NotImplemented
+
+    def dot(self, x):
+        """Matrix-matrix or matrix-vector multiplication.
+
+        Parameters
+        ----------
+        x : array_like
+            1-d or 2-d array, representing a vector or matrix.
+
+        Returns
+        -------
+        Ax : array
+            1-d or 2-d array (depending on the shape of x) that represents
+            the result of applying this linear operator on x.
+
+        """
+        if isinstance(x, (LinearOperator, DaskLinearOperator)):
+            return _DaskProductLinearOperator(self, x)
+        elif np.isscalar(x):
+            return _DaskScaledLinearOperator(self, x)
+        else:
+            x = asarray(x)
+
+            if x.ndim == 1 or x.ndim == 2 and x.shape[1] == 1:
+                return self.matvec(x)
+            elif x.ndim == 2:
+                return self.matmat(x)
+            else:
+                raise ValueError('expected 1-d or 2-d array or matrix, got %r'
+                                 % x)
+
+    def _adjoint(self):
+        """Default implementation of _adjoint; defers to rmatvec."""
+        shape = (self.shape[1], self.shape[0])
+        return _DaskCustomLinearOperator(shape, matvec=self.rmatvec,
+                                         rmatvec=self.matvec,
+                                         dtype=self.dtype)
+
 
 class _DaskCustomLinearOperator(DaskLinearOperator, _CustomLinearOperator):
     """This should let the factory functions above work."""
 
-    pass
+    def __init__(self, shape, matvec, rmatvec=None, matmat=None, dtype=None):
+        super(_DaskCustomLinearOperator, self).__init__(
+            shape, matvec, rmatvec, matmat, dtype)
+
+        if ((self.dtype.kind in REAL_DTYPE_KINDS and
+             not hasattr(self, "_transpose"))):
+            self._transpose = self._adjoint
 
 
 class DaskMatrixLinearOperator(MatrixLinearOperator, DaskLinearOperator):
@@ -483,5 +543,56 @@ class DaskMatrixLinearOperator(MatrixLinearOperator, DaskLinearOperator):
 
     Should I override _adjoint?
     """
+
+    def __init__(self, A):
+        super(DaskMatrixLinearOperator, self).__init__(A)
+        self.__transp = None
+        self.__adj = None
+
+    def _transpose(self):
+        if self.__transp is None:
+            self.__transp = DaskTransposeLinearOperator(self)
+        return self.__transp
+
+
+class DaskTransposeLinearOperator(DaskMatrixLinearOperator):
+    """Transpose of a DaskLinearOperator."""
+
+    def __init__(self, transpose):
+        super(DaskTransposeLinearOperator, self).__init__(transpose.A.T)
+        self.__transp = transpose
+
+    def _transpose(self):
+        return self.__transp
+
+
+class _DaskAdjointLinearOperator(DaskMatrixLinearOperator):
+    """Adjoint of a DaskLinearOperator."""
+
+    def __init__(self, adjoint):
+        super(_DaskAdjointLinearOperator, self).__init__(adjoint.A.H)
+        self.__adjoint = adjoint
+
+    def _adjoint(self):
+        return self.__adjoint
+
+
+class _DaskSumLinearOperator(_SumLinearOperator, DaskLinearOperator):
+    """Sum of two DaskLinearOperators."""
+
+    pass
+
+
+class _DaskProductLinearOperator(_ProductLinearOperator, DaskLinearOperator):
+    """Product of two DaskLinearOperators."""
+
+    def _transpose(self):
+        """Transpose the operator."""
+        A, B = self.args
+        return _DaskProductLinearOperator(B.T, A.T)
+
+
+class _DaskScaledLinearOperator(_ScaledLinearOperator, DaskLinearOperator):
+    """Scaled linear operator."""
 
     pass
