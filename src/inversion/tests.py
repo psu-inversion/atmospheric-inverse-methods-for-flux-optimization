@@ -1390,7 +1390,7 @@ class TestUtilKron(unittest2.TestCase):
             np_tst.assert_allclose(my_result, scipy_result)
 
 
-class TestHomogeneousBackgroundInversion(unittest2.TestCase):
+class TestHomogeneousInversions(unittest2.TestCase):
     """Ensure inversion functions work with HomogeneousIsotropicCorrelation.
 
     Integration test to ensure things work together as intended.
@@ -1400,28 +1400,54 @@ class TestHomogeneousBackgroundInversion(unittest2.TestCase):
 
     CURRENTLY_BROKEN = frozenset(
         (inversion.optimal_interpolation.simple,  # Invalid addition
+         inversion.optimal_interpolation.scipy_chol,  # cho_factor/solve
          inversion.variational.incr_chol))  # cho_factor/solve
 
-    def test_produces_answer(self):
-        """Test that the combination doesn't crash."""
-        bg_vals = np.zeros(10)
-        obs_vals = np.ones(3)
+    def setUp(self):
+        """Define values for use in test methods."""
+        self.bg_vals = np.zeros(10, dtype=DTYPE)
+        self.obs_vals = np.ones(3, dtype=DTYPE)
 
         corr_class = inversion.correlations.ExponentialCorrelation
-        corr_fun = corr_class(3)
-        bg_corr = (inversion.correlations.HomogeneousIsotropicCorrelation.
-                   from_function(corr_fun, (10,)))
-        obs_cov = np.eye(3)
-        obs_op = np.eye(3, 10)
+        corr_fun = corr_class(2)
 
+        bg_corr = (inversion.correlations.HomogeneousIsotropicCorrelation.
+                   from_function(corr_fun, self.bg_vals.shape))
+        obs_corr = (inversion.correlations.HomogeneousIsotropicCorrelation.
+                    from_function(corr_fun, self.obs_vals.shape))
+        obs_op = scipy.sparse.diags(
+            (.5, 1, .5),
+            (-1, 0, 1),
+            (self.obs_vals.shape[0], self.bg_vals.shape[0]))
+
+        self.bg_corr = (bg_corr, bg_corr.dot(np.eye(*bg_corr.shape)))
+        self.obs_corr = (obs_corr, obs_corr.dot(np.eye(*obs_corr.shape)))
+        self.obs_op = (inversion.util.tolinearoperator(obs_op.toarray()),
+                       # Dask requires subscripting; diagonal sparse
+                       # matrices don't do this.
+                       obs_op.toarray())
+
+    def tearDown(self):
+        del self.bg_vals, self.obs_vals
+        del self.bg_corr, self.obs_corr
+        del self.obs_op
+
+    def test_combinations_produce_answer(self):
+        """Test that background error as a LinearOperator doesn't crash."""
         for inversion_method in ALL_METHODS:
-            if inversion_method in self.CURRENTLY_BROKEN:
-                # TODO: XFAIL
-                continue
-            with self.subTest(method=getname(inversion_method)):
-                post, post_cov = inversion_method(bg_vals, bg_corr,
-                                                  obs_vals, obs_cov,
-                                                  obs_op)
+            for bg_corr, obs_corr, obs_op in (itertools.product(
+                    self.bg_corr, self.obs_corr, self.obs_op)):
+                if inversion_method in self.CURRENTLY_BROKEN:
+                    # TODO: XFAIL
+                    continue
+                with self.subTest(method=getname(inversion_method),
+                                  bg_corr=getname(type(bg_corr)),
+                                  obs_corr=getname(type(obs_corr)),
+                                  obs_op=getname(type(obs_op))):
+                    post, post_cov = inversion_method(
+                        self.bg_vals, bg_corr,
+                        self.obs_vals, obs_corr,
+                        obs_op)
 
 
 if __name__ == "__main__":
