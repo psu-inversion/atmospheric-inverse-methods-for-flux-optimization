@@ -53,6 +53,7 @@ setup(
         examples=[
             # "git+https://github.com/Scitools/iris.git#egg=iris",
             "xarray",
+            "cf_units",
         ],
     ),
     tests_require=[
