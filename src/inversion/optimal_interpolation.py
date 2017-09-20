@@ -53,7 +53,7 @@ def simple(background, background_covariance,
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
     analysis_increment = background_covariance.dot(
         observation_operator.T.dot(
-            np.linalg.solve(
+            solve(
                 projected_background_covariance +
                 observation_covariance,
                 observation_increment)))
@@ -136,7 +136,7 @@ def fold_common(background, background_covariance,
 
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
     analysis_increment = B_HT.dot(
-        np.linalg.solve(
+        solve(
             covariance_sum,
             observation_increment))
 

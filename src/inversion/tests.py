@@ -1362,7 +1362,7 @@ class TestUtilToLinearOperator(unittest2.TestCase):
     def test_tolinearoperator(self):
         """Test that tolinearoperator returns LinearOperators."""
         tolinearoperator = inversion.util.tolinearoperator
-        LinearOperator = scipy.sparse.linalg.LinearOperator
+        LinearOperator = inversion.util.DaskLinearOperator
 
         for trial in (0, 1., (0, 1), [0, 1], ((1, 0), (0, 1)),
                       [[0, 1.], [1., 0]], np.arange(5),

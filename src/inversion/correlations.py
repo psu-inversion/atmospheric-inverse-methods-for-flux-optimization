@@ -382,9 +382,9 @@ class KroneckerProduct(LinearOperator):
 
         # kron forces everything to be in memory anyway, so do
         # everything there.
-        lambdas = np.asarray(lambdas)
-        vecs1 = np.asarray(vecs1)
-        vecs2 = np.asarray(vecs2)
+        lambdas = asarray(lambdas)
+        vecs1 = asarray(vecs1)
+        vecs2 = asarray(vecs2)
 
         small_lambdas = np.nonzero(lambdas < lambdas[0] * ROUNDOFF)[0]
         if small_lambdas.any():

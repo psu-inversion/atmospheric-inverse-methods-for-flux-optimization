@@ -247,7 +247,8 @@ def tolinearoperator(operator):
         :class:`np.ndarrays` or :class:`scipy.sparse.spmatrix`.
     """
     try:
-        return aslinearoperator(operator)
+        return DaskLinearOperator.fromlinearoperator(
+            aslinearoperator(operator))
     except TypeError:
         return DaskMatrixLinearOperator(atleast_2d(operator))
 
@@ -304,12 +305,13 @@ class DaskLinearOperator(LinearOperator):
         -------
         DaskLinearOperator
         """
+        if isinstance(original, DaskLinearOperator):
+            return original
         # This returns _CustomLinearOperator, not DaskLinearOperator
         result = cls(
+            matvec=original._matvec, rmatvec=original._rmatvec,
+            matmat=original._matmat,
             shape=original.shape, dtype=original.dtype)
-        result._matvec = original._matvec
-        result._rmatvec = original._rmatvec
-        result._matmat = original._matmat
         return result
 
     # Everything below here essentially copied from the original LinearOperator
