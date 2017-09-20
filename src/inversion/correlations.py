@@ -88,7 +88,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         state_size = np.prod(shape)
 
         super(HomogeneousIsotropicCorrelation, self).__init__(
-            dtype=float, shape=(state_size, state_size))
+            dtype=DTYPE, shape=(state_size, state_size))
 
         self._fft, self._ifft = self._rfft_irfft(shape)
         self._underlying_shape = tuple(shape)
