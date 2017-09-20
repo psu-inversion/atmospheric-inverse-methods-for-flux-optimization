@@ -9,8 +9,14 @@ import itertools
 import fractions
 import math
 import sys
+try:
+    from functools import reduce
+except ImportError:
+    # reduce used to be a builtin
+    pass
 
 import numpy as np
+import numpy.linalg as np_la
 import numpy.random as np_rand
 import numpy.testing as np_tst
 import scipy.linalg
@@ -28,6 +34,7 @@ import inversion.covariance_estimation
 import inversion.optimal_interpolation
 import inversion.ensemble.integrators
 import inversion.correlations
+import inversion.covariances
 import inversion.integrators
 import inversion.variational
 import inversion.ensemble
@@ -67,6 +74,9 @@ this dtype for the comparison.
 ITERATIVE_STATE_TOLERANCE = 1e-3
 ITERATIVE_COVARIANCE_TOLERANCE = 1e-1
 EXACT_TOLERANCE = 1e-7
+
+DTYPE = np.float64
+"""Default dtype for certain tests."""
 
 
 def getname(method):
@@ -1448,6 +1458,78 @@ class TestHomogeneousInversions(unittest2.TestCase):
                         self.bg_vals, bg_corr,
                         self.obs_vals, obs_corr,
                         obs_op)
+
+
+class TestCovariances(unittest2.TestCase):
+    """Test the covariance classes."""
+
+    # SelfAdjointLinearOperator isn't really a concrete class
+
+    def test_diagonal_operator_from_domain_stds(self):
+        """Test DiagonalOperator creation from array of values."""
+        stds = np.arange(20).reshape(4, 5)
+
+        inversion.covariances.DiagonalOperator(stds)
+
+    def test_diagonal_operator_behavior(self):
+        """Test behavior of DiagonalOperator."""
+        diag = np.arange(10.) + 1.
+
+        op = inversion.covariances.DiagonalOperator(diag)
+        arry = np.diag(diag)
+
+        test_vecs = (np.arange(10.),
+                     np.ones(10),
+                     np.array((0., 1) * 5))
+        test_mats = (np.eye(10, 4),
+                     np.hstack(test_vecs))
+
+        for vec in test_vecs:
+            with self.subTest(test_vec=vec):
+                with self.subTest(direction="forward"):
+                    np_tst.assert_allclose(op.dot(vec), arry.dot(vec))
+                with self.subTest(direction="inverse"):
+                    np_tst.assert_allclose(np.asarray(op.solve(vec)),
+                                           np_la.solve(arry, vec))
+
+        for mat in test_mats:
+            with self.subTest(test_mat=mat):
+                np_tst.assert_allclose(op.dot(vec), arry.dot(vec))
+
+    def test_diagonal_self_adjoint(self):
+        """Test the self-adjoint methods of DiagonalOperator."""
+        operator = inversion.covariances.DiagonalOperator(np.arange(10.))
+
+        self.assertIs(operator, operator.H)
+        self.assertIs(operator, operator.T)
+
+    def test_product(self):
+        test_vecs = (np.arange(5.),
+                     np.ones(5, dtype=DTYPE),
+                     np.array((0, 1, 0, 1, 0.)))
+        test_mats = (np.eye(5, 4, dtype=DTYPE),
+                     np.vstack(test_vecs).T)
+
+        operator_list = (np.arange(25.).reshape(5, 5) + np.diag((2.,) * 5),
+                         np.eye(5, dtype=DTYPE),
+                         np.ones((5, 5), dtype=DTYPE) + np.diag((1.,) * 5))
+        operator = inversion.covariances.ProductLinearOperator(*operator_list)
+
+        arry = reduce(lambda x, y: x.dot(y), operator_list)
+
+        for vec in test_vecs:
+            with self.subTest(test_vec=vec):
+                with self.subTest(direction="forward"):
+                    np_tst.assert_allclose(operator.dot(vec),
+                                           arry.dot(vec))
+                with self.subTest(direction="inverse"):
+                    np_tst.assert_allclose(np.asanyarray(operator.solve(vec)),
+                                           np_la.solve(arry, vec))
+
+        for mat in test_mats:
+            with self.subTest(test_mat=mat):
+                np_tst.assert_allclose(operator.dot(mat),
+                                       arry.dot(mat))
 
 
 if __name__ == "__main__":
