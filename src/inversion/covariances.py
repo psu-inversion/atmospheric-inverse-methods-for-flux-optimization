@@ -6,7 +6,7 @@ inversion.correlations
 """
 from numpy import newaxis
 
-from inversion.util import tolinearoperator, solve
+from inversion.util import tolinearoperator, solve, REAL_DTYPE_KINDS
 from inversion.util import DaskLinearOperator as LinearOperator
 
 
@@ -29,8 +29,15 @@ class SelfAdjointLinearOperator(LinearOperator):
     Provides :meth:`_rmatvec` and :meth:`_adjoint` methods.
     """
 
+    def __init__(self, dtype, size):
+        super(SelfAdjointLinearOperator, self).__init__(dtype, size)
+
+        if self.dtype.kind in REAL_DTYPE_KINDS:
+            # Real array; implies symmetric
+            self._transpose = self._adjoint
+
     def _rmatvec(self, vector):
-        """self.T.dot(vec).
+        """self.H.dot(vec).
 
         Parameters
         ----------
