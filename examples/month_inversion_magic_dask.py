@@ -4,6 +4,7 @@
 Use xarray/dask to grab influence functions and priors from netCDF
 files.
 """
+from __future__ import print_function, division, unicode_literals
 
 import itertools
 import datetime
