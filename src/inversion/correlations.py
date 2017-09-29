@@ -26,6 +26,7 @@ import six
 from inversion.util import chunk_sizes, schmidt_decomposition, is_odd
 from inversion.util import tolinearoperator, kron
 from inversion.util import DaskLinearOperator as LinearOperator
+from inversion.util import DaskMatrixLinearOperator
 
 ROUNDOFF = 1e-13
 """Approximate size of roundoff error for correlation matrices.
@@ -377,6 +378,26 @@ class KroneckerProduct(LinearOperator):
         -------
         array_like[M]
         """
+        if isinstance(vector, Array):
+            chunks = vector.chunks
+        else:
+            chunks = chunk_sizes((self.shape[0], 1))
+
+        if vector.ndim == 1:
+            result_shape = self.shape[0]
+            result_chunks = chunks[:1]
+        else:
+            result_shape = (self.shape[0], 1)
+            result_chunks = chunks
+
+        if isinstance(self._operator1, DaskMatrixLinearOperator):
+            columns = asarray(vector).reshape(self._inshape1, self._inshape2)
+
+            partial = self._operator2.matmat(columns.T).T
+            result = self._operator1.A.dot(partial)
+
+            return result.reshape(result_shape)
+
         lambdas, vecs1, vecs2 = schmidt_decomposition(
             asarray(vector), self._inshape1, self._inshape2)
 
@@ -391,18 +412,6 @@ class KroneckerProduct(LinearOperator):
             last_lambda = int(small_lambdas[0])
         else:
             last_lambda = len(lambdas)
-
-        if isinstance(vector, Array):
-            chunks = vector.chunks
-        else:
-            chunks = chunk_sizes((self.shape[0], 1))
-
-        if vector.ndim == 1:
-            result_shape = self.shape[0]
-            result_chunks = chunks[:1]
-        else:
-            result_shape = (self.shape[0], 1)
-            result_chunks = chunks
 
         result = zeros(shape=result_shape,
                        chunks=result_chunks,
