@@ -7,6 +7,9 @@ from dask.array import asarray
 import dask.array.linalg as la
 import scipy.optimize
 from scipy.sparse.linalg import LinearOperator
+# I believe scipy's minimizer requires things that give boolean true
+# or false from the objective, rather than a yet-to-be-realized dask
+# array.
 from inversion.util import atleast_1d, atleast_2d
 
 from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
@@ -82,9 +85,12 @@ def simple(background, background_covariance,
         -------
         cost: float
         """
-        return .5 * test_observation_increment.dot(covariance_sum.dot(
-            test_observation_increment)) - observation_increment.dot(
+        return .5 * (
+            test_observation_increment.dot(covariance_sum.dot(
+                    test_observation_increment)) - 
+            observation_increment.dot(
                 test_observation_increment)
+            )
 
     def cost_jacobian(test_observation_increment):
         """Gradient of cost function at `test_observation_increment`.

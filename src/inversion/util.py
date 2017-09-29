@@ -42,8 +42,8 @@ def chunk_sizes(shape, matrix_side=True):
     ----------
     shape: tuple
     matrix_side: bool
-        Whether the shape is one side of a matrix or intended to be
-        only a vector.
+        Whether the shape will need to be one side of a matrix or
+        intended to stay a vector.
 
     Returns
     -------
@@ -190,6 +190,7 @@ def solve(arr1, arr2):
     return la.solve(da.asarray(arr1), da.asarray(arr2))
 
 
+# TODO Test for handling of different chunking schemes
 def schmidt_decomposition(vector, dim1, dim2):
     """Decompose a state vector into a sum of Kronecker products.
 
