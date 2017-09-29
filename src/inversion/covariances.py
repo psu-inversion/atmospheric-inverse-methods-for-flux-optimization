@@ -121,6 +121,7 @@ class DiagonalOperator(SelfAdjointLinearOperator):
         """
         result = vector / self._diag
         result[self._diag_near_zero] = 0
+        return result
 
 
 class ProductLinearOperator(LinearOperator):
