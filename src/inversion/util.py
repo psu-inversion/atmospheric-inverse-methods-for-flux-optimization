@@ -151,6 +151,41 @@ def solve(arr1, arr2):
     """
     if hasattr(arr1, "solve"):
         return arr1.solve(arr2)
+    elif isinstance(arr1, (MatrixLinearOperator, DaskMatrixLinearOperator)):
+        return la.solve(da.asarray(arr1.A), da.asarray(arr2))
+    elif isinstance(arr1, LinearOperator):
+        # Linear operators with neither an underlying matrix nor a
+        # provided solver. Use iterative sparse solvers.
+        # TODO: Get preconditioner working
+        if isinstance(arr2, ARRAY_TYPES):
+            result = lgmres(arr1, arr2)
+            return result[0]
+        elif isinstance(arr2, (MatrixLinearOperator,
+                               DaskMatrixLinearOperator)):
+            result = lgmres(arr1, arr2.A)
+            return result[0]
+        else:
+            def solver(vec):
+                """Solve `arr1 x = vec`.
+
+                Parameters
+                ----------
+                vec: array_like
+
+                Returns
+                -------
+                array_like
+                """
+                result = lgmres(arr1, vec)
+                return result[0]
+            inverse = DaskLinearOperator(matvec=solver, shape=arr1.shape[::-1])
+            return inverse.dot(arr2)
+        # # TODO: Figure out dask tasks for this
+        # return da.Array(
+        #     {(chunkname, 0):
+        #      (spsolve, arr1, arr2.rechunk(1, whatever))},
+        #     "solve-arr1.name-arr2.name",
+        #     chunks)
     # Shorter method for assuring dask arrays
     return la.solve(da.asarray(arr1), da.asarray(arr2))
 
