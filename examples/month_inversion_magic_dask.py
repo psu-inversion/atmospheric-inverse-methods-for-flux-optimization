@@ -37,12 +37,29 @@ import inversion.covariances
 from inversion.util import kronecker_product, tolinearoperator
 import cf_acdd
 
-INFLUENCE_PATH = "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/ACT-America_trial3/2010/01/GROUP1"
+INFLUENCE_PATH = "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/ACT-America_trial4/2010/01/GROUP1"
 PRIOR_PATH = "/mc1s2/s4/dfw5129/data/Marthas_2010_wrfouts/"
 
-FLUX_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrfout_d01_*.nc"))
+FLUX_INTERVAL = 3
+"""The interval at which fluxes become available in hours.
+
+Fluxes are usually integrated forward from hourly input, but I can't
+solve for that in a reasonable timeframe.
+
+This determines both the input and the output time resolution as well
+as what the inversion solves for.
+
+Note
+----
+Must divide twenty-four.
+"""
+OBS_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrfout_d01_*.nc"))
+FLUX_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrf_fluxes_all.nc"))
 FLUX_FILES.sort()
-INFLUENCE_FILES = glob.glob(os.path.join(INFLUENCE_PATH, "*footprints.nc4"))
+OBS_FILES.sort()
+INFLUENCE_FILES = glob.glob(os.path.join(
+        INFLUENCE_PATH,
+        "*_{flux_interval:02d}hrly_footprints.nc4".format(flux_interval=FLUX_INTERVAL)))
 
 print("Flux files", FLUX_FILES)
 print("Influence Files", INFLUENCE_FILES)
@@ -143,7 +160,7 @@ N_OBS_TIMES = TEST_DS.dimensions["observation_time"].size
 TEST_DS.close()
 del TEST_DS
 
-if N_TIMES_BACK < FLUX_WINDOW:
+if N_TIMES_BACK < FLUX_WINDOW / FLUX_INTERVAL:
     raise ValueError("FLUX_WINDOW too long for file")
 
 N_GRID_POINTS = NY * NX
@@ -164,7 +181,7 @@ INFLUENCE_DATASET = xarray.open_mfdataset(
                 time_before_observation=FLUX_WINDOW,
                 dim_y=NY, dim_x=NX)).isel(
     observation_time=slice(0, HOURS_PER_DAY),
-    time_before_observation=slice(0, FLUX_WINDOW))
+    time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
 INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
 # Use site names as index/dim coord for site dim
 INFLUENCE_FUNCTIONS["site"] = np.char.decode(INFLUENCE_FUNCTIONS["site_names"].values, "ascii")
@@ -173,12 +190,14 @@ INFLUENCE_FUNCTIONS["site"] = np.char.decode(INFLUENCE_FUNCTIONS["site_names"].v
 # N_FLUX_TIMES = INFLUENCE_DATASET.dims["observation_time"] + FLUX_WINDOW - 1
 OBS_TIME_INDEX = INFLUENCE_DATASET.indexes["observation_time"]
 TIME_BACK_INDEX = INFLUENCE_DATASET.indexes["time_before_observation"]
+
 # NB: Remember to change frequency and time zone as necessary.
 FLUX_START = (OBS_TIME_INDEX[-1] - TIME_BACK_INDEX[-1]).replace(hour=0)
 FLUX_END = OBS_TIME_INDEX[0].replace(hour=0) + datetime.timedelta(days=1)
 FLUX_TIMES_INDEX = pd.date_range(FLUX_START,
                                  FLUX_END,
-                                 freq="H", tz="UTC",
+                                 freq="{flux_interval:d}H".format(flux_interval=FLUX_INTERVAL),
+                                 tz="UTC",
                                  closed="right",
                                  name="flux_times")
 N_FLUX_TIMES = len(FLUX_TIMES_INDEX)
@@ -209,37 +228,63 @@ print(datetime.datetime.now(UTC).strftime("%c"), "Have constants, getting priors
 # Read prior fluxes
 FLUX_DATASET = xarray.open_mfdataset(
     FLUX_FILES,
+    chunks=dict(projection_x_coordinate=NX, projection_y_coordinate=NY, XTIME=1),
+    concat_dim="Time",
+)
+OBS_DATASET = xarray.open_mfdataset(
+    OBS_FILES,
     chunks=dict(west_east=NX, south_north=NY, Time=1),
     concat_dim="Time",
 )
-FLUX_DATASET["ZS"] = FLUX_DATASET.ZS.isel(Time=0)
-FLUX_DATASET["ZNU"] = FLUX_DATASET.ZNU.isel(Time=0)
-FLUX_DATASET["ZNW"] = FLUX_DATASET.ZNW.isel(Time=0)
-WRF_ORIG_TIMES = FLUX_DATASET["XTIME"].to_index()
+OBS_DATASET["ZS"] = OBS_DATASET.ZS.isel(Time=0)
+OBS_DATASET["ZNU"] = OBS_DATASET.ZNU.isel(Time=0)
+OBS_DATASET["ZNW"] = OBS_DATASET.ZNW.isel(Time=0)
+
 # Many of the times are of by about four milliseconds.
 # This difference is irrelevant here.
-WRF_NEW_TIMES = pd.DatetimeIndex([timestamp.replace(microsecond=0)
-                                  for timestamp in WRF_ORIG_TIMES],
+wrf_orig_times = OBS_DATASET["XTIME"].to_index()
+wrf_new_times = pd.DatetimeIndex([timestamp.replace(microsecond=0)
+                                  for timestamp in wrf_orig_times],
                                  name="Time")
-FLUX_DATASET["Time"] = WRF_NEW_TIMES
+OBS_DATASET["Time"] = wrf_new_times
+wrf_orig_times = FLUX_DATASET["XTIME"].to_index()
+timestamps = [timestamp.replace(microsecond=0)
+              for timestamp in wrf_orig_times]
+timestamps[-1] += datetime.timedelta(hours=FLUX_INTERVAL/2-1)
+timestamps[0] -= datetime.timedelta(hours=1)
+wrf_new_times = pd.DatetimeIndex(timestamps,
+                                 name="XTIME")
+FLUX_DATASET["Time"] = wrf_new_times
 
-FLUX_DATASET.set_index(Time="Time",
-                       bottom_top="ZNU", bottom_top_stag="ZNW",
-                       soil_layers_stag="ZS",
-                       inplace=True)
+
+OBS_DATASET.set_index(Time="Time",
+                      bottom_top="ZNU", bottom_top_stag="ZNW",
+                      soil_layers_stag="ZS",
+                      inplace=True)
+FLUX_DATASET.set_index(XTIME="Time", inplace=True)
+FLUX_DATASET = FLUX_DATASET.rename(
+    dict(
+        XTIME="Time", projection_y_coordinate="south_north",
+        projection_x_coordinate="west_east"),
+    inplace=True)
 # Assign a few more coords and pull out only the fluxes we need.
-FLUX_DATASET = FLUX_DATASET.assign_coords(
+OBS_DATASET = OBS_DATASET.assign_coords(
     geopot_hgt=lambda ds: (ds.PH + ds.PHB) / 9.8,
     HGT=lambda ds: ds.HGT,
     )
 FLUX_DATASET = FLUX_DATASET.sel(Time=FLUX_TIMES_INDEX)
 
+# I changed the encoding. Changing it back
+for i in range(1, 10):
+    FLUX_DATASET["E_TRA{:d}".format(i+1)] = FLUX_DATASET["E_TRA1"].isel(tracer_number=i)
+FLUX_DATASET["E_TRA1"] = FLUX_DATASET["E_TRA1"].isel(tracer_number=0)
+
 WRF_DX = FLUX_DATASET.attrs["DX"]
 for dim in [dimname + suffix
             for dimname in ("south_north", "west_east")
             for suffix in ("", "_stag")]:
-    domain_bound = (FLUX_DATASET.dims[dim] - 1) / 2 * WRF_DX
-    FLUX_DATASET = FLUX_DATASET.assign_coords(**{
+    domain_bound = (OBS_DATASET.dims[dim] - 1) / 2 * WRF_DX
+    OBS_DATASET = OBS_DATASET.assign_coords(**{
         dim: np.arange(-domain_bound, domain_bound + WRF_DX / 2, WRF_DX)
     })
 
@@ -255,7 +300,7 @@ for flux_part, flux_orig in zip(TRUE_FLUXES_MATCHED.data_vars.values(), TRUE_FLU
     flux_part *= (unit / FLUX_UNITS).convert(1, 1)
     flux_part.attrs["units"] = str(FLUX_UNITS)
 
-WRF_OBS = FLUX_DATASET.get(
+WRF_OBS = OBS_DATASET.get(
     ["tracer_{:d}".format(i+1)
      for i in range(10)]).isel(
              bottom_top=slice(8, 15))
@@ -372,14 +417,14 @@ HOURLY_FLUX_TIMESCALE = 3
 hour_correlations = (
     inversion.correlations.HomogeneousIsotropicCorrelation.
     from_function(inversion.correlations.ExponentialCorrelation(HOURLY_FLUX_TIMESCALE),
-                  (HOURS_PER_DAY,)))
+                  (HOURS_PER_DAY // FLUX_INTERVAL,)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have hourly correlations")
 sys.stdout.flush()
 DAILY_FLUX_TIMESCALE = 14
 day_correlations = (
     inversion.correlations.make_matrix(
         inversion.correlations.ExponentialCorrelation(DAILY_FLUX_TIMESCALE),
-        (len(TRUE_FLUXES_MATCHED.coords["flux_time"]) // HOURS_PER_DAY,)))
+        (len(TRUE_FLUXES_MATCHED.coords["flux_time"]) * FLUX_INTERVAL // HOURS_PER_DAY,)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have daily correlations")
 sys.stdout.flush()
 
@@ -425,6 +470,6 @@ posterior_ds = xarray.Dataset(
     posterior_global_atts)
 print(datetime.datetime.now(UTC).strftime("%c"), "Have posterior structure, evaluating and writing")
 sys.stdout.flush()
-posterior_ds.to_netcdf("monthly_inversion_output.nc4")
+posterior_ds.to_netcdf("monthly_inversion_{flux_interval:02d}h_output.nc4".format(flux_interval=FLUX_INTERVAL))
 print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior")
 sys.stdout.flush()
