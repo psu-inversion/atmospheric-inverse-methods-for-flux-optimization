@@ -13,8 +13,8 @@ from scipy.sparse.linalg.interface import (
     _CustomLinearOperator, _SumLinearOperator, _ProductLinearOperator,
     _ScaledLinearOperator)
 import dask.array as da
-import dask.array.linalg as la
-from dask.array import asarray, concatenate
+import numpy.linalg as la
+from numpy import asarray, concatenate, stack, hstack
 
 OPTIMAL_ELEMENTS = int(2e4)
 """Optimal elements per chunk in a dask array.
@@ -152,7 +152,7 @@ def solve(arr1, arr2):
     if hasattr(arr1, "solve"):
         return arr1.solve(arr2)
     elif isinstance(arr1, (MatrixLinearOperator, DaskMatrixLinearOperator)):
-        return la.solve(da.asarray(arr1.A), da.asarray(arr2))
+        return la.solve(asarray(arr1.A), asarray(arr2))
     elif isinstance(arr1, LinearOperator):
         # Linear operators with neither an underlying matrix nor a
         # provided solver. Use iterative sparse solvers.
@@ -187,7 +187,7 @@ def solve(arr1, arr2):
         #     "solve-arr1.name-arr2.name",
         #     chunks)
     # Shorter method for assuring dask arrays
-    return la.solve(da.asarray(arr1), da.asarray(arr2))
+    return la.solve(asarray(arr1), asarray(arr2))
 
 
 # TODO Test for handling of different chunking schemes
@@ -377,7 +377,7 @@ class DaskLinearOperator(LinearOperator):
         Falls back on the user-defined _matvec method, so defining that will
         define matrix multiplication (though in a very suboptimal way).
         """
-        return da.hstack([self.matvec(col.reshape(-1, 1)) for col in X.T])
+        return hstack([self.matvec(col.reshape(-1, 1)) for col in X.T])
 
     def matvec(self, x):
         """
@@ -404,7 +404,7 @@ class DaskLinearOperator(LinearOperator):
         _matvec method to ensure that y has the correct shape and type.
 
         """
-        x = da.asarray(x)
+        x = asarray(x)
 
         M, N = self.shape
 
@@ -413,7 +413,7 @@ class DaskLinearOperator(LinearOperator):
 
         y = self._matvec(x)
 
-        y = da.asarray(y)
+        y = asarray(y)
 
         if x.ndim == 1:
             y = y.reshape(M)
@@ -447,7 +447,7 @@ class DaskLinearOperator(LinearOperator):
         _rmatvec method to ensure that y has the correct shape and type.
 
         """
-        x = da.asarray(x)
+        x = asarray(x)
 
         M, N = self.shape
 
@@ -456,7 +456,7 @@ class DaskLinearOperator(LinearOperator):
 
         y = self._rmatvec(x)
 
-        y = da.asarray(y)
+        y = asarray(y)
 
         if x.ndim == 1:
             y = y.reshape(N)
@@ -491,7 +491,7 @@ class DaskLinearOperator(LinearOperator):
         _matmat method to ensure that y has the correct type.
 
         """
-        X = da.asarray(X)
+        X = asarray(X)
 
         if X.ndim != 2:
             raise ValueError('expected 2-d ndarray or matrix, not %d-d'

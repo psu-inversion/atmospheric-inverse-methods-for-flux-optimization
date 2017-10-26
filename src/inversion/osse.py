@@ -2,7 +2,7 @@
 import collections
 
 import numpy as np
-from dask.array.fft import rfft, irfft
+from numpy.fft import rfft, irfft
 import scipy.linalg
 
 import xarray

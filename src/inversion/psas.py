@@ -3,8 +3,9 @@
 Iterative observation-space algorithm.
 """
 import numpy as np
-from dask.array import asarray
-import dask.array.linalg as la
+from numpy import asarray
+import numpy.linalg as la
+from scipy.linalg import cholesky
 import scipy.optimize
 from scipy.sparse.linalg import LinearOperator
 # I believe scipy's minimizer requires things that give boolean true
@@ -131,7 +132,7 @@ def simple(background, background_covariance,
 
     # Try a different approach to enforce invariants (symmetric
     # positive definite)
-    lower = la.cholesky(asarray(result.hess_inv), lower=True)
+    lower = cholesky(asarray(result.hess_inv))
     lower_decrease = background_covariance.dot(
         observation_operator.T.dot(lower))
     # this will be positive
@@ -248,7 +249,7 @@ def fold_common(background, background_covariance,
 
     # Try a different approach to enforce invariants (symmetric
     # positive definite)
-    lower = la.cholesky(asarray(result.hess_inv), lower=True)
+    lower = cholesky(asarray(result.hess_inv), lower=True)
     lower_decrease = B_HT.dot(lower)
     # this will be positive
     decrease = lower_decrease.dot(lower_decrease.T)
