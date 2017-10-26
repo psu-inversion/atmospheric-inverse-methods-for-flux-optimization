@@ -475,7 +475,7 @@ class TestCorrelations(unittest2.TestCase):
                         ).reshape((test_points, test_points)),
                         # rtol=1e-13: Gaussian 10 and 15 fail
                         # atol=1e-15: Gaussian 1 and 5 fail
-                        rtol=1e-12, atol=1e-14)
+                        rtol=1e-11, atol=1e-13)
 
                     # check if it actually is positive definite
                     cholesky(corr_mat)

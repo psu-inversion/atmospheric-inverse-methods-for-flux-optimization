@@ -9,6 +9,7 @@ setup.cfg
 # Test artifacts
 .tox/
 .coverage
+*_flymake.py
 
 # Emacs editing artifacts
 \#*#
