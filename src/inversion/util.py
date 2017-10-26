@@ -138,6 +138,27 @@ from numpy import atleast_1d
 from numpy import atleast_2d
 
 
+def linop_solve(operator, arr):
+    """Solve `operator @ x = arr`.
+
+    deal with arr possibly having multiple columns.
+
+    Parameters
+    ----------
+    operator: LinearOperator
+    arr: array_like
+
+    Returns
+    -------
+    array_like
+    """
+    if arr.ndim == 1:
+        return lgmres(operator, arr)[0]
+    return stack([lgmres(operator, col)[0]
+                  for col in atleast_2d(arr).T],
+                 axis=1)
+
+
 def solve(arr1, arr2):
     """Solve arr1 @ x = arr2 for x.
 
@@ -158,13 +179,12 @@ def solve(arr1, arr2):
         # Linear operators with neither an underlying matrix nor a
         # provided solver. Use iterative sparse solvers.
         # TODO: Get preconditioner working
+        # TODO: Test Ax = b for b not column vector
         if isinstance(arr2, ARRAY_TYPES):
-            result = lgmres(arr1, arr2)
-            return result[0]
+            return linop_solve(arr1, arr2)
         elif isinstance(arr2, (MatrixLinearOperator,
                                DaskMatrixLinearOperator)):
-            result = lgmres(arr1, arr2.A)
-            return result[0]
+            return linop_solve(arr1, arr2.A)
         else:
             def solver(vec):
                 """Solve `arr1 x = vec`.
@@ -177,8 +197,7 @@ def solve(arr1, arr2):
                 -------
                 array_like
                 """
-                result = lgmres(arr1, vec)
-                return result[0]
+                return linop_solve(arr1, vec)
             inverse = DaskLinearOperator(matvec=solver, shape=arr1.shape[::-1])
             return inverse.dot(arr2)
         # # TODO: Figure out dask tasks for this
