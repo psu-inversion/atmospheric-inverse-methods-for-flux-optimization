@@ -6,9 +6,11 @@ inversion.correlations
 """
 from numpy import newaxis
 
-from inversion.util import tolinearoperator, solve, REAL_DTYPE_KINDS
-from inversion.util import DaskLinearOperator as LinearOperator
+from numpy import where
 
+from inversion.util import REAL_DTYPE_KINDS
+from inversion.util import DaskLinearOperator as LinearOperator
+from inversion.util import ProductLinearOperator
 
 NEAR_ZERO = 1e-20
 """Where correlations are rounded to zero.
@@ -30,6 +32,7 @@ class SelfAdjointLinearOperator(LinearOperator):
     """
 
     def __init__(self, dtype, size):
+        """Also set up transpose if operator is real."""
         super(SelfAdjointLinearOperator, self).__init__(dtype, size)
 
         if self.dtype.kind in REAL_DTYPE_KINDS:
@@ -120,97 +123,5 @@ class DiagonalOperator(SelfAdjointLinearOperator):
             Solution of self @ x == vec
         """
         result = vector / self._diag
-        result[self._diag_near_zero] = 0
-        return result
-
-
-class ProductLinearOperator(LinearOperator):
-    """Represent a product of linear operators."""
-
-    def __init__(self, *operators):
-        """Set up a product on linear operators.
-
-        Parameters
-        ----------
-        operators: LinearOperator
-        """
-        super(ProductLinearOperator, self).__init__(
-            None, (operators[0].shape[0], operators[-1].shape[1]))
-        self._operators = tuple(tolinearoperator(op)
-                                for op in operators)
-        self._init_dtype()
-
-    def _matvec(self, vector):
-        """The matrix-vector product with vector.
-
-        Parameters
-        ----------
-        vector: array_like
-
-        Returns
-        -------
-        array_like
-        """
-        for op in reversed(self._operators):
-            vector = op.matvec(vector)
-
-        return vector
-
-    def _rmatvec(self, vector):
-        """Matrix-vector product on the left.
-
-        Parameters
-        ----------
-        vector: array_like
-
-        Returns
-        -------
-        array_like
-        """
-        for op in self._operators:
-            vector = op.H.matvec(vector)
-
-        return vector
-
-    def _matmat(self, matrix):
-        """The matrix-matrix product.
-
-        Parameters
-        ----------
-        matrix: array_like
-
-        Returns
-        -------
-        array_like
-        """
-        for op in reversed(self._operators):
-            matrix = op.matmat(matrix)
-
-        return matrix
-
-    def _adjoint(self):
-        """The Hermitian adjoint of the operator."""
-        return ProductLinearOperator(
-            [op.H for op in reversed(self._operators)])
-
-    def _transpose(self):
-        """The transpose of the operator."""
-        return ProductLinearOperator(
-            [op.T for op in reversed(self._operators)])
-
-    def solve(self, vector):
-        """Solve A @ x == vector.
-
-        Parameters
-        ----------
-        vector: array_like
-
-        Returns
-        -------
-        array_like
-            Solution of self @ x == vec
-        """
-        for op in self._operators:
-            vector = solve(op, vector)
-
-        return vector
+        # result[self._diag_near_zero] = 0
+        return where(self._diag_near_zero, 0, result)

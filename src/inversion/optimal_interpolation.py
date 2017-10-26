@@ -7,6 +7,7 @@ import scipy.linalg
 from scipy.sparse.linalg import LinearOperator
 
 from inversion.util import atleast_1d, atleast_2d, solve, tolinearoperator
+from inversion.util import ProductLinearOperator
 
 
 def simple(background, background_covariance,
@@ -50,6 +51,9 @@ def simple(background, background_covariance,
     projected_background_covariance = observation_operator.dot(
         background_covariance.dot(observation_operator.T))
 
+    if isinstance(observation_covariance, LinearOperator):
+        projected_background_covariance = tolinearoperator(
+            projected_background_covariance)
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
     analysis_increment = background_covariance.dot(
         observation_operator.T.dot(
@@ -62,15 +66,6 @@ def simple(background, background_covariance,
     analysis = background + analysis_increment
 
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
-    if isinstance(background_covariance, LinearOperator):
-        # Leave this as array earlier
-        # Avoiding the indirection may help
-        # Not sure how leaving this up there would help clarity
-
-        # Needed for HBHT + R addition
-        observation_covariance = tolinearoperator(
-            observation_covariance)
-
     decrease = background_covariance.dot(
         observation_operator.T.dot(
             solve(
@@ -114,25 +109,48 @@ def fold_common(background, background_covariance,
     background = atleast_1d(background)
     if not isinstance(background_covariance, LinearOperator):
         background_covariance = atleast_2d(background_covariance)
+        bg_is_arry = True
+    else:
+        bg_is_arry = False
 
     observations = atleast_1d(observations)
     if not isinstance(observation_covariance, LinearOperator):
         observation_covariance = atleast_2d(observation_covariance)
+        obs_is_arry = True
+    else:
+        obs_is_arry = False
 
     if not isinstance(observation_operator, LinearOperator):
         observation_operator = atleast_2d(observation_operator)
+        obs_op_is_arry = True
+    else:
+        obs_op_is_arry = False
 
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
     # \Delta\vec{y} = \vec{y} - \vec{y}_b
     observation_increment = observations - projected_obs
 
-    B_HT = background_covariance.dot(observation_operator.T)
     # B_{proj} = HBH^T
-    projected_background_covariance = observation_operator.dot(
-        B_HT)
+    if obs_op_is_arry:
+        B_HT = background_covariance.dot(observation_operator.T)
 
-    covariance_sum = projected_background_covariance + observation_covariance
+        projected_background_covariance = observation_operator.dot(
+            B_HT)
+    else:
+        B_HT = tolinearoperator(background_covariance).dot(
+            observation_operator.T)
+
+        projected_background_covariance = ProductLinearOperator(
+            observation_operator, B_HT)
+
+    if ((isinstance(projected_background_covariance, LinearOperator) ^
+         (not obs_is_arry))):
+        covariance_sum = (tolinearoperator(projected_background_covariance) +
+                          tolinearoperator(observation_covariance))
+    else:
+        covariance_sum = (projected_background_covariance +
+                          observation_covariance)
 
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
     analysis_increment = B_HT.dot(
@@ -150,9 +168,11 @@ def fold_common(background, background_covariance,
     decrease = (B_HT.dot(solve(
                 covariance_sum,
                 B_HT.T)))
-    if isinstance(background_covariance, LinearOperator):
-        decrease = tolinearoperator(decrease)
-    analysis_covariance = background_covariance - decrease
+    if (not bg_is_arry) ^ isinstance(decrease, LinearOperator):
+        analysis_covariance = (tolinearoperator(background_covariance) -
+                               tolinearoperator(decrease))
+    else:
+        analysis_covariance = background_covariance - decrease
 
     return analysis, analysis_covariance
 
@@ -200,6 +220,9 @@ def scipy_chol(background, background_covariance,
     projected_background_covariance = observation_operator.dot(
         B_HT)
 
+    if isinstance(observation_covariance, LinearOperator):
+        projected_background_covariance = tolinearoperator(
+            projected_background_covariance)
     covariance_sum = projected_background_covariance + observation_covariance
     cov_sum_chol_up = scipy.linalg.cho_factor(covariance_sum, overwrite_a=True)
     del covariance_sum

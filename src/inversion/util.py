@@ -3,14 +3,13 @@
 These functions mirror :mod:`numpy` functions but produce dask output.
 """
 import itertools
-import numbers
 import math
 
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, aslinearoperator, lgmres
 from scipy.sparse.linalg.interface import (
     MatrixLinearOperator,
-    _CustomLinearOperator, _SumLinearOperator, _ProductLinearOperator,
+    _CustomLinearOperator, _SumLinearOperator,
     _ScaledLinearOperator)
 import dask.array as da
 import numpy.linalg as la
@@ -87,54 +86,56 @@ def chunk_sizes(shape, matrix_side=True):
     return tuple(chunks)
 
 
-def atleast_1d(arry):
-    """Ensure `arry` is dask array of rank at least one.
+# def atleast_1d(arry):
+#     """Ensure `arry` is dask array of rank at least one.
 
-    Parameters
-    ----------
-    arry: array_like
+#     Parameters
+#     ----------
+#     arry: array_like
 
-    Returns
-    -------
-    new_arry: dask.array.core.Array
-    """
-    if isinstance(arry, da.Array):
-        if arry.ndim >= 1:
-            return arry
-        return arry[np.newaxis]
-    if isinstance(arry, (list, tuple, np.ndarray)):
-        arry = np.atleast_1d(arry)
-    if isinstance(arry, numbers.Number):
-        arry = np.atleast_1d(arry)
+#     Returns
+#     -------
+#     new_arry: dask.array.core.Array
+#     """
+#     if isinstance(arry, da.Array):
+#         if arry.ndim >= 1:
+#             return arry
+#         return arry[np.newaxis]
+#     if isinstance(arry, (list, tuple, np.ndarray)):
+#         arry = np.atleast_1d(arry)
+#     if isinstance(arry, numbers.Number):
+#         arry = np.atleast_1d(arry)
 
-    array_shape = arry.shape
-    return da.from_array(arry, chunks=chunk_sizes(array_shape))
+#     array_shape = arry.shape
+#     return da.from_array(arry, chunks=chunk_sizes(array_shape))
+from numpy import atleast_1d
 
 
-def atleast_2d(arry):
-    """Ensure arry is a dask array of rank at least two.
+# def atleast_2d(arry):
+#     """Ensure arry is a dask array of rank at least two.
 
-    Parameters
-    ----------
-    arry: array_like
+#     Parameters
+#     ----------
+#     arry: array_like
 
-    Returns
-    -------
-    new_arry: dask.array.core.Array
-    """
-    if isinstance(arry, da.Array):
-        if arry.ndim >= 2:
-            return arry
-        elif arry.ndim == 1:
-            return arry[np.newaxis, :]
-        return arry[np.newaxis, np.newaxis]
-    if isinstance(arry, (list, tuple, np.ndarray)):
-        arry = np.atleast_2d(arry)
-    if isinstance(arry, numbers.Number):
-        arry = np.atleast_2d(arry)
+#     Returns
+#     -------
+#     new_arry: dask.array.core.Array
+#     """
+#     if isinstance(arry, da.Array):
+#         if arry.ndim >= 2:
+#             return arry
+#         elif arry.ndim == 1:
+#             return arry[np.newaxis, :]
+#         return arry[np.newaxis, np.newaxis]
+#     if isinstance(arry, (list, tuple, np.ndarray)):
+#         arry = np.atleast_2d(arry)
+#     if isinstance(arry, numbers.Number):
+#         arry = np.atleast_2d(arry)
 
-    array_shape = arry.shape
-    return da.from_array(arry, chunks=chunk_sizes(array_shape))
+#     array_shape = arry.shape
+#     return da.from_array(arry, chunks=chunk_sizes(array_shape))
+from numpy import atleast_2d
 
 
 def solve(arr1, arr2):
@@ -285,6 +286,8 @@ def tolinearoperator(operator):
         Used for everything but array_likes that are not
         :class:`np.ndarrays` or :class:`scipy.sparse.spmatrix`.
     """
+    if isinstance(operator, ARRAY_TYPES):
+        return DaskMatrixLinearOperator(atleast_2d(operator))
     try:
         return DaskLinearOperator.fromlinearoperator(
             aslinearoperator(operator))
@@ -524,6 +527,8 @@ class DaskLinearOperator(LinearOperator):
         else:
             return NotImplemented
 
+    __radd__ = __add__
+
     def dot(self, x):
         """Matrix-matrix or matrix-vector multiplication.
 
@@ -540,7 +545,7 @@ class DaskLinearOperator(LinearOperator):
 
         """
         if isinstance(x, (LinearOperator, DaskLinearOperator)):
-            return _DaskProductLinearOperator(self, x)
+            return ProductLinearOperator(self, x)
         elif np.isscalar(x):
             return _DaskScaledLinearOperator(self, x)
         else:
@@ -577,7 +582,7 @@ class _DaskCustomLinearOperator(DaskLinearOperator, _CustomLinearOperator):
 class DaskMatrixLinearOperator(MatrixLinearOperator, DaskLinearOperator):
     """This should help out with the tolinearoperator.
 
-    Should I override _adjoint?
+    Should I override __add__, ...?
     """
 
     def __init__(self, A):
@@ -587,15 +592,20 @@ class DaskMatrixLinearOperator(MatrixLinearOperator, DaskLinearOperator):
 
     def _transpose(self):
         if self.__transp is None:
-            self.__transp = DaskTransposeLinearOperator(self)
+            self.__transp = _DaskTransposeLinearOperator(self)
         return self.__transp
 
+    def _adjoint(self):
+        if self.__adj is None:
+            self.__adj = _DaskAdjointLinearOperator(self)
+        return self.__adj
 
-class DaskTransposeLinearOperator(DaskMatrixLinearOperator):
-    """Transpose of a DaskLinearOperator."""
+
+class _DaskTransposeLinearOperator(DaskMatrixLinearOperator):
+    """Transpose of a DaskMatrixLinearOperator."""
 
     def __init__(self, transpose):
-        super(DaskTransposeLinearOperator, self).__init__(transpose.A.T)
+        super(_DaskTransposeLinearOperator, self).__init__(transpose.A.T)
         self.__transp = transpose
 
     def _transpose(self):
@@ -603,7 +613,7 @@ class DaskTransposeLinearOperator(DaskMatrixLinearOperator):
 
 
 class _DaskAdjointLinearOperator(DaskMatrixLinearOperator):
-    """Adjoint of a DaskLinearOperator."""
+    """Adjoint of a DaskMatrixLinearOperator."""
 
     def __init__(self, adjoint):
         super(_DaskAdjointLinearOperator, self).__init__(adjoint.A.H)
@@ -619,13 +629,96 @@ class _DaskSumLinearOperator(_SumLinearOperator, DaskLinearOperator):
     pass
 
 
-class _DaskProductLinearOperator(_ProductLinearOperator, DaskLinearOperator):
-    """Product of two DaskLinearOperators."""
+class ProductLinearOperator(LinearOperator):
+    """Represent a product of linear operators."""
+
+    def __init__(self, *operators):
+        """Set up a product on linear operators.
+
+        Parameters
+        ----------
+        operators: LinearOperator
+        """
+        super(ProductLinearOperator, self).__init__(
+            None, (operators[0].shape[0], operators[-1].shape[1]))
+        self._operators = tuple(tolinearoperator(op)
+                                for op in operators)
+        self._init_dtype()
+
+    def _matvec(self, vector):
+        """The matrix-vector product with vector.
+
+        Parameters
+        ----------
+        vector: array_like
+
+        Returns
+        -------
+        array_like
+        """
+        for op in reversed(self._operators):
+            vector = op.matvec(vector)
+
+        return vector
+
+    def _rmatvec(self, vector):
+        """Matrix-vector product on the left.
+
+        Parameters
+        ----------
+        vector: array_like
+
+        Returns
+        -------
+        array_like
+        """
+        for op in self._operators:
+            vector = op.H.matvec(vector)
+
+        return vector
+
+    def _matmat(self, matrix):
+        """The matrix-matrix product.
+
+        Parameters
+        ----------
+        matrix: array_like
+
+        Returns
+        -------
+        array_like
+        """
+        for op in reversed(self._operators):
+            matrix = op.matmat(matrix)
+
+        return matrix
+
+    def _adjoint(self):
+        """The Hermitian adjoint of the operator."""
+        return ProductLinearOperator(
+            [op.H for op in reversed(self._operators)])
 
     def _transpose(self):
-        """Transpose the operator."""
-        A, B = self.args
-        return _DaskProductLinearOperator(B.T, A.T)
+        """The transpose of the operator."""
+        return ProductLinearOperator(
+            *[op.T for op in reversed(self._operators)])
+
+    def solve(self, vector):
+        """Solve A @ x == vector.
+
+        Parameters
+        ----------
+        vector: array_like
+
+        Returns
+        -------
+        array_like
+            Solution of self @ x == vec
+        """
+        for op in self._operators:
+            vector = solve(op, vector)
+
+        return vector
 
 
 class _DaskScaledLinearOperator(_ScaledLinearOperator, DaskLinearOperator):
