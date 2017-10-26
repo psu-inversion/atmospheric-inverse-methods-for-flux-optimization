@@ -214,7 +214,10 @@ TIME_BACK_INDEX = INFLUENCE_DATASET.indexes["time_before_observation"]
 
 # NB: Remember to change frequency and time zone as necessary.
 FLUX_START = (OBS_TIME_INDEX[-1] - TIME_BACK_INDEX[-1]).replace(hour=0)
-FLUX_END = OBS_TIME_INDEX[0].replace(hour=0) + datetime.timedelta(days=1)
+if OBS_TIME_INDEX[0].hour != 0:
+    FLUX_END = OBS_TIME_INDEX[0].replace(hour=0) + datetime.timedelta(days=1)
+else:
+    FLUX_END = OBS_TIME_INDEX[0]
 FLUX_TIMES_INDEX = pd.date_range(FLUX_START,
                                  FLUX_END,
                                  freq="{flux_interval:d}H".format(flux_interval=FLUX_INTERVAL),
