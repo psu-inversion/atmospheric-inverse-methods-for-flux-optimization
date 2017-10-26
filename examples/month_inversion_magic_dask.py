@@ -32,6 +32,7 @@ sys.path.append(os.path.join(
 sys.path.append(THIS_DIR)
 
 import inversion.optimal_interpolation
+import inversion.variational
 import inversion.correlations
 import inversion.covariances
 from inversion.util import kronecker_product, tolinearoperator
@@ -69,7 +70,7 @@ TRACER_NAME = "tracer_1"
 
 HOURS_PER_DAY = 24
 DAYS_PER_WEEK = 7
-FLUX_WINDOW = HOURS_PER_DAY * DAYS_PER_WEEK * 1
+FLUX_WINDOW = HOURS_PER_DAY * DAYS_PER_WEEK * 2
 """How long fluxes considered to have an influence.
 
 Measured in hours.
@@ -95,6 +96,24 @@ Used to convert WRF fluxes to units expected by observation operator.
 """
 CO2_MOLAR_MASS_UNITS = cf_units.Unit("g/mol")
 FLUX_UNITS = cf_units.Unit("g/m^2/hr")
+
+# Inverting a single day of observations
+# Four stations; afternoon is four hours
+# FLUX_WINDOW is one day: 25s, 19s
+# FLUX_WINDOW is two days: 17s
+# FLUX_WINDOW is four days: 25s
+# seven days: 29s
+# ten days: 57s
+# fourteen days: 78s
+# twenty-one days: >100s, 9.5 min.
+
+# Inverting two days of observations
+# FLUX_WINDOW is fourteen days: 86s -- OPTIMUM
+# Three days of four hours at four towers
+# fourteen days back: 168s
+
+# Two days of observations, FLUX_WINDOW=14 days
+# using numpy instead of dask: 108s
 
 ############################################################
 # Utility functions.
@@ -175,12 +194,14 @@ OBS_VEC_TOTAL_SIZE = N_SITES * N_OBS_TIMES
 # obs time chunk size works best as one.  Need to iterate over single
 # hyperslabs along this dimension to have single flux time to line up
 # with the time coordinate in the fluxes
+# seven days: > 288012
+# One day:
 INFLUENCE_DATASET = xarray.open_mfdataset(
     INFLUENCE_FILES,
     chunks=dict(observation_time=1, site=N_SITES,
                 time_before_observation=FLUX_WINDOW,
                 dim_y=NY, dim_x=NX)).isel(
-    observation_time=slice(0, HOURS_PER_DAY),
+    observation_time=slice(0, 2 * HOURS_PER_DAY),
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
 INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
 # Use site names as index/dim coord for site dim
@@ -449,6 +470,7 @@ here_obs = WRF_OBS_SITE[TRACER_NAME].isel_points(
 print(datetime.datetime.now(UTC).strftime("%c"), "Got covariance parts, getting posterior")
 sys.stdout.flush()
 posterior = inversion.optimal_interpolation.fold_common(
+# posterior = inversion.variational.incremental(
     aligned_fluxes.data.reshape(N_GRID_POINTS * N_FLUX_TIMES),
     inversion.covariances.ProductLinearOperator(
         flux_stds_matrix, full_correlations, flux_stds_matrix),
