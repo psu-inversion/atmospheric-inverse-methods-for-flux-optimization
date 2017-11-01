@@ -113,7 +113,11 @@ FLUX_UNITS = cf_units.Unit("g/m^2/hr")
 # fourteen days back: 168s
 
 # Two days of observations, FLUX_WINDOW=14 days
-# using numpy instead of dask: 108s
+# numpy OI: 108s
+# numpy var: >607s
+# dask var: >1228s
+# dask OI: 99s
+# Var may need differnt tuning; explore later
 
 ############################################################
 # Utility functions.
@@ -473,7 +477,6 @@ here_obs = WRF_OBS_SITE[TRACER_NAME].isel_points(
 print(datetime.datetime.now(UTC).strftime("%c"), "Got covariance parts, getting posterior")
 sys.stdout.flush()
 posterior = inversion.optimal_interpolation.fold_common(
-# posterior = inversion.variational.incremental(
     aligned_fluxes.data.reshape(N_GRID_POINTS * N_FLUX_TIMES),
     inversion.covariances.ProductLinearOperator(
         flux_stds_matrix, full_correlations, flux_stds_matrix),
