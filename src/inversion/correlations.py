@@ -15,12 +15,12 @@ from numpy.linalg import eigh, norm
 # arange changes signature
 from numpy import arange, newaxis, asanyarray
 
-from numpy import fromfunction, asarray, hstack
-from numpy import exp, square, fmin, sqrt, zeros
-from numpy import logical_or, concatenate
-from numpy import sum as da_sum
+from dask.array import fromfunction, asarray, hstack
+from dask.array import exp, square, fmin, sqrt, zeros
+from dask.array import logical_or, concatenate
+from dask.array import sum as da_sum
 from dask.array import Array
-from numpy.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
+from dask.array.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
 import six
 
 from inversion.util import chunk_sizes, schmidt_decomposition, is_odd
@@ -175,7 +175,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
 
         corr_struct = fromfunction(
             corr_from_index, shape=tuple(shape),
-            # chunks=chunk_sizes(shape, matrix_side=False),
+            chunks=chunk_sizes(shape, matrix_side=False),
             dtype=DTYPE)
         self._corr_fourier = self._fft(corr_struct)
         # This is also affected by roundoff
@@ -305,13 +305,13 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         expanded_fft = hstack(
             (self._corr_fourier,
              self._corr_fourier[..., reverse_start:0:-1].conj()))
-        # expanded_fft = expanded_fft.rechunk(expanded_fft.shape)
+        expanded_fft = expanded_fft.rechunk(expanded_fft.shape)
 
         expanded_near_zero = concatenate(
             (self._fourier_near_zero,
              self._fourier_near_zero[..., reverse_start:0:-1]), axis=-1)
-        # expanded_near_zero = expanded_near_zero.rechunk(
-        #     expanded_near_zero.shape)
+        expanded_near_zero = expanded_near_zero.rechunk(
+            expanded_near_zero.shape)
 
         newinst = HomogeneousIsotropicCorrelation(shape)
         newinst._corr_fourier = (expanded_fft[self_index] *
@@ -378,17 +378,17 @@ class KroneckerProduct(LinearOperator):
         -------
         array_like[M]
         """
-        # if isinstance(vector, Array):
-        #     chunks = vector.chunks
-        # else:
-        #     chunks = chunk_sizes((self.shape[0], 1))
+        if isinstance(vector, Array):
+            chunks = vector.chunks
+        else:
+            chunks = chunk_sizes((self.shape[0], 1))
 
         if vector.ndim == 1:
             result_shape = self.shape[0]
-            # result_chunks = chunks[:1]
+            result_chunks = chunks[:1]
         else:
             result_shape = (self.shape[0], 1)
-            # result_chunks = chunks
+            result_chunks = chunks
 
         if isinstance(self._operator1, DaskMatrixLinearOperator):
             columns = asarray(vector).reshape(self._inshape1, self._inshape2)
@@ -414,7 +414,7 @@ class KroneckerProduct(LinearOperator):
             last_lambda = len(lambdas)
 
         result = zeros(shape=result_shape,
-                       # chunks=result_chunks,
+                       chunks=result_chunks,
                        dtype=np.result_type(self.dtype, vector.dtype))
         for lambd, vec1, vec2 in islice(zip(lambdas, vecs1, vecs2),
                                         0, last_lambda):
@@ -473,14 +473,13 @@ def make_matrix(corr_func, shape):
     """
     shape = tuple(np.atleast_1d(shape))
     n_points = np.prod(shape)
-    # chunks = chunk_sizes(shape)
 
     # Since dask doesn't have eigh, using dask in this section slows
     # the test suite by about 25%.  Since it all ends up in memory,
     # may as well start with it there instead of converting back and
     # forth a few times.
     tmp_res = np.fromfunction(corr_func.correlation_from_index,
-                              shape=2 * shape,  # chunks=chunks * 2,
+                              shape=2 * shape,
                               dtype=DTYPE).reshape(
         (n_points, n_points))
     where_small = tmp_res < NEAR_ZERO

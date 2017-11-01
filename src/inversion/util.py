@@ -3,6 +3,7 @@
 These functions mirror :mod:`numpy` functions but produce dask output.
 """
 import itertools
+import numbers
 import math
 
 import numpy as np
@@ -12,8 +13,8 @@ from scipy.sparse.linalg.interface import (
     _CustomLinearOperator, _SumLinearOperator,
     _ScaledLinearOperator)
 import dask.array as da
-import numpy.linalg as la
-from numpy import asarray, concatenate, stack, hstack
+import dask.array.linalg as la
+from dask.array import asarray, concatenate, stack, hstack
 
 OPTIMAL_ELEMENTS = int(2e4)
 """Optimal elements per chunk in a dask array.
@@ -86,56 +87,54 @@ def chunk_sizes(shape, matrix_side=True):
     return tuple(chunks)
 
 
-# def atleast_1d(arry):
-#     """Ensure `arry` is dask array of rank at least one.
+def atleast_1d(arry):
+    """Ensure `arry` is dask array of rank at least one.
 
-#     Parameters
-#     ----------
-#     arry: array_like
+    Parameters
+    ----------
+    arry: array_like
 
-#     Returns
-#     -------
-#     new_arry: dask.array.core.Array
-#     """
-#     if isinstance(arry, da.Array):
-#         if arry.ndim >= 1:
-#             return arry
-#         return arry[np.newaxis]
-#     if isinstance(arry, (list, tuple, np.ndarray)):
-#         arry = np.atleast_1d(arry)
-#     if isinstance(arry, numbers.Number):
-#         arry = np.atleast_1d(arry)
+    Returns
+    -------
+    new_arry: dask.array.core.Array
+    """
+    if isinstance(arry, da.Array):
+        if arry.ndim >= 1:
+            return arry
+        return arry[np.newaxis]
+    if isinstance(arry, (list, tuple, np.ndarray)):
+        arry = np.atleast_1d(arry)
+    if isinstance(arry, numbers.Number):
+        arry = np.atleast_1d(arry)
 
-#     array_shape = arry.shape
-#     return da.from_array(arry, chunks=chunk_sizes(array_shape))
-from numpy import atleast_1d
+    array_shape = arry.shape
+    return da.from_array(arry, chunks=chunk_sizes(array_shape))
 
 
-# def atleast_2d(arry):
-#     """Ensure arry is a dask array of rank at least two.
+def atleast_2d(arry):
+    """Ensure arry is a dask array of rank at least two.
 
-#     Parameters
-#     ----------
-#     arry: array_like
+    Parameters
+    ----------
+    arry: array_like
 
-#     Returns
-#     -------
-#     new_arry: dask.array.core.Array
-#     """
-#     if isinstance(arry, da.Array):
-#         if arry.ndim >= 2:
-#             return arry
-#         elif arry.ndim == 1:
-#             return arry[np.newaxis, :]
-#         return arry[np.newaxis, np.newaxis]
-#     if isinstance(arry, (list, tuple, np.ndarray)):
-#         arry = np.atleast_2d(arry)
-#     if isinstance(arry, numbers.Number):
-#         arry = np.atleast_2d(arry)
+    Returns
+    -------
+    new_arry: dask.array.core.Array
+    """
+    if isinstance(arry, da.Array):
+        if arry.ndim >= 2:
+            return arry
+        elif arry.ndim == 1:
+            return arry[np.newaxis, :]
+        return arry[np.newaxis, np.newaxis]
+    if isinstance(arry, (list, tuple, np.ndarray)):
+        arry = np.atleast_2d(arry)
+    if isinstance(arry, numbers.Number):
+        arry = np.atleast_2d(arry)
 
-#     array_shape = arry.shape
-#     return da.from_array(arry, chunks=chunk_sizes(array_shape))
-from numpy import atleast_2d
+    array_shape = arry.shape
+    return da.from_array(arry, chunks=chunk_sizes(array_shape))
 
 
 def linop_solve(operator, arr):

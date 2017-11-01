@@ -26,7 +26,7 @@ import unittest2
 
 import dask
 import dask.array as da
-import numpy.linalg as la
+import dask.array.linalg as la
 # Import from scipy.linalg if not using dask
 from scipy.linalg import cholesky
 
@@ -895,7 +895,7 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
 
         combined_op = inversion.util.kronecker_product(mat1, mat2)
 
-        self.assertIsInstance(combined_op, np.ndarray)
+        self.assertIsInstance(combined_op, da.Array)
         self.assertSequenceEqual(combined_op.shape,
                                  tuple(np.multiply(mat1.shape, mat2.shape)))
         np_tst.assert_allclose(combined_op, scipy.linalg.kron(mat1, mat2))
@@ -1221,7 +1221,7 @@ class TestUtil_atleast_nd(unittest2.TestCase):
             with self.subTest(test_val=test_val):
                 tst_arry = inversion.util.atleast_1d(test_val)
 
-                self.assertIsInstance(tst_arry, np.ndarray)
+                self.assertIsInstance(tst_arry, da.Array)
                 self.assertGreaterEqual(tst_arry.ndim, 1)
                 self.assertEqual(tst_arry.shape, np.atleast_1d(test_val).shape)
 
@@ -1231,7 +1231,7 @@ class TestUtil_atleast_nd(unittest2.TestCase):
             with self.subTest(test_val=test_val):
                 tst_arry = inversion.util.atleast_2d(test_val)
 
-                self.assertIsInstance(tst_arry, np.ndarray)
+                self.assertIsInstance(tst_arry, da.Array)
                 self.assertGreaterEqual(tst_arry.ndim, 2)
                 self.assertEqual(tst_arry.shape, np.atleast_2d(test_val).shape)
 

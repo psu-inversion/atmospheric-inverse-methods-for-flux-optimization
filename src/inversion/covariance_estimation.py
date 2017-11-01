@@ -1,7 +1,7 @@
 """Estimate background error covariances from model runs."""
 
-from numpy.fft import rfft, irfft
-from numpy import cov, var, asarray
+from dask.array.fft import rfft, irfft
+from dask.array import cov, var, asarray
 
 from scipy.linalg import toeplitz
 
