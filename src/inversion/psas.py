@@ -4,7 +4,6 @@ Iterative observation-space algorithm.
 """
 import numpy as np
 from dask.array import asarray
-import dask.array.linalg as la
 from scipy.linalg import cholesky
 import scipy.optimize
 from scipy.sparse.linalg import LinearOperator
@@ -82,7 +81,8 @@ def simple(background, background_covariance,
             background_covariance.dot(observation_operator.T))
     else:
         projected_background_covariance = ProductLinearOperator(
-            observation_operator, background_covariance,
+            observation_operator,
+            tolinearoperator(background_covariance),
             observation_operator.T)
 
     if (obs_op_is_arry ^ obs_is_arry):
@@ -105,7 +105,8 @@ def simple(background, background_covariance,
         -------
         cost: float
         """
-        return .5 * (
+        return (
+            0.5 *
             test_observation_increment.dot(covariance_sum.dot(
                     test_observation_increment)) -
             observation_increment.dot(
@@ -231,20 +232,22 @@ def fold_common(background, background_covariance,
     if obs_op_is_arry:
         B_HT = background_covariance.dot(observation_operator.T)
 
-        projected_background_covariance = tolinearoperator(
-            observation_operator).dot(B_HT)
-
-        covariance_sum = (projected_background_covariance +
-                          observation_covariance)
+        projected_background_covariance = (
+            observation_operator.dot(B_HT))
     else:
         B_HT = tolinearoperator(background_covariance).dot(
             observation_operator.T)
 
-        projected_background_covariance = observation_operator.dot(
-            B_HT)
+        projected_background_covariance = ProductLinearOperator(
+            observation_operator, tolinearoperator(background_covariance),
+            observation_operator.T)
 
-        covariance_sum = projected_background_covariance + tolinearoperator(
-            observation_covariance)
+    if obs_op_is_arry ^ obs_is_arry:
+        covariance_sum = (tolinearoperator(projected_background_covariance) +
+                          tolinearoperator(observation_covariance))
+    else:
+        covariance_sum = (projected_background_covariance +
+                          observation_covariance)
 
     # Solving A x = 0 and minimizing x^T A x give the same answer
     # solving A x = b gives the same answer as minimizing x^T A x - b^T x
@@ -289,8 +292,7 @@ def fold_common(background, background_covariance,
     analysis_increment = result.x
 
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
-    analysis = background + background_covariance.dot(
-        observation_operator.T.dot(analysis_increment))
+    analysis = background + B_HT.dot(analysis_increment)
 
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
     # analysis_covariance = (background_covariance -

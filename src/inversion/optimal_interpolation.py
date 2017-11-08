@@ -2,7 +2,6 @@
 
 Also known as Kalman Matrix Inversion or batch inversion.
 """
-import numpy as np
 import scipy.linalg
 from scipy.sparse.linalg import LinearOperator
 
@@ -224,6 +223,7 @@ def scipy_chol(background, background_covariance,
         projected_background_covariance = tolinearoperator(
             projected_background_covariance)
     covariance_sum = projected_background_covariance + observation_covariance
+    # TODO: rewrite in terms of things dask has
     cov_sum_chol_up = scipy.linalg.cho_factor(covariance_sum, overwrite_a=True)
     del covariance_sum
 

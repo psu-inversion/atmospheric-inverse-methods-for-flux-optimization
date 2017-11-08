@@ -9,7 +9,6 @@ are odd shape-mismatch errors if I just change to dask arrays.
 Conjugate gradient solvers may work better for dask arrays if we drop
 the covariance matrix from the return values.
 """
-import numpy as np
 import scipy.optimize
 import scipy.linalg
 from scipy.sparse.linalg import LinearOperator
