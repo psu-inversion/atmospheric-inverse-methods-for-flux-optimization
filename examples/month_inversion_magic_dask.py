@@ -413,6 +413,15 @@ posterior_var_atts.update(dict(
         units=TRUE_FLUXES_MATCHED[FLUX_NAME].attrs["units"],
         description="posterior fluxes using dask for a month",
         origin="OI using dask for a month",
+        prior_flux_name=FLUX_NAME,
+        flux_window=FLUX_WINDOW,
+        observation_window=OBS_WINDOW))
+increment_var_atts = aligned_fluxes.attrs.copy()
+increment_var_atts.update(dict(
+        long_name="flux_increment",
+        units=TRUE_FLUXES_MATCHED[FLUX_NAME].attrs["units"],
+        description="Change from prior to posterior using dask",
+        origin="OI and dask",
         flux_window=FLUX_WINDOW,
         observation_window=OBS_WINDOW))
 posterior_global_atts = cf_acdd.global_attributes_dict()
@@ -493,6 +502,10 @@ posterior = posterior.reshape(aligned_fluxes.shape)
 posterior_ds = xarray.Dataset(
     dict(posterior=(aligned_fluxes.dims, posterior,
                     posterior_var_atts),
+         prior=(aligned_fluxes.dims, aligned_fluxes,
+                aligned_fluxes.attrs),
+         increment=(aligned_fluxes.dims, posterior - aligned_fluxes,
+                    increment_var_atts),
          ),
     TRUE_FLUXES_MATCHED.coords,
     posterior_global_atts)
