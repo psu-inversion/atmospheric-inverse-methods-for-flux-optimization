@@ -61,7 +61,8 @@ Note
 ----
 Must divide twenty-four.
 """
-OBS_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrfout_d01_*.nc"))
+# OBS_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrfout_d01_*.nc"))
+OBS_FILES = glob.glob(os.path.join("/mc1s2/s4/dfw5129/inversion", "2010_01_4tower_WRF*concentrations*.nc"))
 FLUX_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrf_fluxes_all.nc"))
 FLUX_FILES.sort()
 OBS_FILES.sort()
@@ -75,7 +76,7 @@ print("Influence Files", INFLUENCE_FILES)
 sys.stdout.flush()
 
 FLUX_NAME = "E_TRA2"
-TRACER_NAME = "tracer_2"
+TRACER_NAME = "tracer_2_subset"
 
 HOURS_PER_DAY = 24
 DAYS_PER_WEEK = 7
@@ -294,10 +295,10 @@ print(datetime.datetime.now(UTC).strftime("%c"), "Have fluxes, getting obs")
 sys.stdout.flush()
 OBS_DATASET = xarray.open_mfdataset(
     OBS_FILES,
-    chunks=dict(west_east=NX, south_north=NY, Time=24),
-    concat_dim="Time",
-    preprocess=fix_wrf_times,
-    drop_variables=("HGT", "PH", "PHB", "ZS"),
+    chunks=dict(projection_x_coordinate=NX, projection_y_coordinate=NY, time=24),
+    concat_dim="time",
+    # preprocess=fix_wrf_times,
+    # drop_variables=("HGT", "PH", "PHB", "ZS"),
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have obs, normalizint")
 sys.stdout.flush()
@@ -322,10 +323,10 @@ OBS_DATASET["ZNW"] = OBS_DATASET.ZNW.isel(Time=0)
 # FLUX_DATASET["Time"] = wrf_new_times
 
 
-OBS_DATASET.set_index(Time="Time",
-                      bottom_top="ZNU", bottom_top_stag="ZNW",
-                      soil_layers_stag="ZS",
-                      inplace=True)
+# OBS_DATASET.set_index(Time="Time",
+#                       bottom_top="ZNU", bottom_top_stag="ZNW",
+#                       soil_layers_stag="ZS",
+#                       inplace=True)
 FLUX_DATASET.set_index(XTIME="Time", inplace=True)
 FLUX_DATASET = FLUX_DATASET.rename(
     dict(
@@ -333,10 +334,10 @@ FLUX_DATASET = FLUX_DATASET.rename(
         projection_x_coordinate="west_east"),
     inplace=True)
 # Assign a few more coords and pull out only the fluxes we need.
-OBS_DATASET = OBS_DATASET.assign_coords(
-    geopot_hgt=lambda ds: (ds.PH + ds.PHB) / 9.8,
-    HGT=lambda ds: ds.HGT,
-    )
+# OBS_DATASET = OBS_DATASET.assign_coords(
+#     geopot_hgt=lambda ds: (ds.PH + ds.PHB) / 9.8,
+#     HGT=lambda ds: ds.HGT,
+#     )
 FLUX_DATASET = FLUX_DATASET.sel(Time=FLUX_TIMES_INDEX)
 
 WRF_DX = FLUX_DATASET.attrs["DX"]
@@ -361,11 +362,11 @@ for flux_part, flux_orig in zip(TRUE_FLUXES_MATCHED.data_vars.values(), TRUE_FLU
     flux_part.attrs["units"] = str(FLUX_UNITS)
 
 WRF_OBS = OBS_DATASET.get(
-    ["tracer_{:d}".format(i+1)
+    ["tracer_{:d}_subset".format(i+1)
      for i in range(10)]).isel(
              bottom_top=slice(8, 15))
 WRF_OBS_MATCHED = WRF_OBS.rename(dict(
-    south_north="dim_y", west_east="dim_x", Time="observation_time"))
+    projection_y_coordinate="dim_y", projection_x_coordinate="dim_x", time="observation_time"))
 WRF_OBS_SITE = (
     WRF_OBS_MATCHED.sel(bottom_top=OBS_ROUGH_SIGMA, method="nearest")
     .sel_points(dim_x=WRF_TOWER_COORDS[:, 0], dim_y=WRF_TOWER_COORDS[:, 1],
@@ -591,7 +592,6 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
     have_posterior_part = True
     print(datetime.datetime.now(UTC).strftime("%c"), "Have posterior dataset, looping for next obs")
     sys.stdout.flush()
-    0/0 + 1/0
 
 
 print(datetime.datetime.now(UTC).strftime("%c"), "Have posterior structure, evaluating and writing")
