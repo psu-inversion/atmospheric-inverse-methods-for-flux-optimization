@@ -475,7 +475,7 @@ sys.stdout.flush()
 # full stds would then be sqrt(fixed^2 + varying^2)
 # average seasonal variation (or some fraction thereof) might work.
 FLUX_VARIANCE_VARYING_FRACTION = .3
-flux_stds = FLUX_VARIANCE_VARYING_FRACTION * da.fabs(TRUE_FLUXES_MATCHED[FLUX_NAME])
+flux_stds = FLUX_VARIANCE_VARYING_FRACTION * da.fabs(aligned_fluxes.data)
 flux_stds_matrix = inversion.covariances.DiagonalOperator(flux_stds.data.reshape(-1))
 
 # TODO: use actual heights
