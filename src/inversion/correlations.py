@@ -254,6 +254,12 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
     _adjoint = _transpose
     # Correlation matrices are also real
 
+    def inv(self):
+        """Construct the matrix inverse of this operator."""
+        return LinearOperator(
+            shape=self.shape, dtype=self.dtype,
+            matvec=self.solve, rmatvec=self.solve)
+
     def solve(self, vec):
         """Solve A @ x = vec.
 
