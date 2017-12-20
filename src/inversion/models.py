@@ -7,7 +7,7 @@ from numpy import empty_like, array
 class Lorenz63:
     """Classic Lorenz '63 model."""
 
-    def __init__(self, sigma=10, r=28, b=8/3):
+    def __init__(self, sigma=10, r=28, b=8/3):  # noqa: E226
         """Set up instance with parameters.
 
         Parameters
