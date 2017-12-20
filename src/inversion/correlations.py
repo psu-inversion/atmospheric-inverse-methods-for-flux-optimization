@@ -174,9 +174,14 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
             corr_from_index, shape=tuple(shape),
             chunks=chunk_sizes(shape, matrix_side=False),
             dtype=DTYPE)
-        self._corr_fourier = self._fft(corr_struct)
+
+        # The dask fft functions require all relevant axes to be in
+        # memory already, so keeping the array in memory won't hurt.
+        # TODO Test this for real problems
+        corr_fourier = (self._fft(corr_struct))
+        self._corr_fourier = (corr_fourier)
         # This is also affected by roundoff
-        self._fourier_near_zero = self._corr_fourier < FOURIER_NEAR_ZERO
+        self._fourier_near_zero = (corr_fourier < FOURIER_NEAR_ZERO)
         return self
 
     @classmethod
@@ -193,8 +198,11 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         """
         corr_array = asarray(corr_array)
         self = cls(corr_array.shape)
-        self._corr_fourier = self._fft(asarray(corr_array))
-        self._fourier_near_zero = self._corr_fourier < FOURIER_NEAR_ZERO
+        # The fft axes need to be a single chunk for the dask ffts
+        # It's in memory already anyway
+        corr_fourier = (self._fft(corr_array))
+        self._corr_fourier = (corr_fourier)
+        self._fourier_near_zero = (corr_fourier < FOURIER_NEAR_ZERO)
         return self
 
     def _matvec(self, vec):
