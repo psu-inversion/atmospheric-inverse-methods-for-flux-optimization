@@ -13,10 +13,11 @@ import numpy as np
 # Not in dask.array
 from numpy.linalg import eigh, norm
 # arange changes signature
-from numpy import arange, newaxis, asanyarray
+from numpy import arange, newaxis, asanyarray, where
+from scipy.special import gamma, kv as K_nu
 
 from dask.array import fromfunction, asarray, hstack
-from dask.array import exp, square, fmin, sqrt
+from dask.array import exp, square, fmin, sqrt, isnan
 from dask.array import sum as da_sum
 from dask.array.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
 from scipy.sparse.linalg import LinearOperator
@@ -582,3 +583,84 @@ class ExponentialCorrelation(DistanceCorrelationFunction):
         corr: float
         """
         return exp(-dist / self._length)
+
+
+class BalgovindCorrelation(DistanceCorrelationFunction):
+    """A Balgovind correlation structure.
+
+    Follows Balgovind et al. 1983.
+
+    Note
+    ----
+    Correlation given by :math:`(1 + dist/length) exp(-dist/length)
+
+    Note
+    ----
+    This implementation has problems for length == 10.
+    I have no idea why.  3 and 30 are fine.
+    """
+
+    def __call__(self, dist):
+        """Get the correlation between the points.
+
+        Parameters
+        ----------
+        dist: float
+
+        Returns
+        -------
+        corr: float
+        """
+        scaled_dist = dist / self._length
+        return (1 + scaled_dist) * exp(-scaled_dist)
+
+
+class MaternCorrelation(DistanceCorrelationFunction):
+    """A Matern correlation structure.
+
+    Follows Matern (1986) *Spatial Variation*
+
+    Note
+    ----
+    Correlation given by
+    :math:`[2^{\kappa-1}\Gamma(\kappa)]^{-1} (d/L)^{\kappa} K_{\kappa}(d/L)`
+    where :math:`\kappa` is a smoothness parameter and
+    :math:`K_{\kappa}` is a modified Bessel function of the third kind.
+    """
+
+    def __init__(self, length, kappa=1):
+        """Set up instance.
+
+        Parameters
+        ----------
+        length: float
+            The correlation length in index space. Unitless.
+        kappa: float
+            The smoothness parameter
+            :math:`kappa=\infty` is equivalent to Gaussian correlations
+            :math:`kappa=\frac{1}{2}` is equivalent to exponential
+            Default value is only for full equivalence with other classes.
+            The default value is entirely arbitrary and may change without notice.
+        """
+        super(MaternCorrelation, self).__init__(length)
+        self._kappa = kappa
+        # Make sure correlation at zero is one
+        self._scale_const = .5 * gamma(kappa)
+
+    def __call__(self, dist):
+        """Get the correlation between the points.
+
+        Parameters
+        ----------
+        dist: float
+
+        Returns
+        -------
+        corr: float
+        """
+        kappa = self._kappa
+        scaled_dist = dist / self._length
+        result = ((.5 * scaled_dist) ** kappa *
+                  K_nu(kappa, scaled_dist) / self._scale_const)
+        # K_nu returns nan at zero
+        return where(isnan(result), 1, result)
