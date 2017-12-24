@@ -1,0 +1,11 @@
+* TODO Yadav and Michalak (2013) Kronecker products
+* TODO Compare performance for different input chunk-sizes
+  Doing everything in memory is only slightly slower, so there should
+  be some optimum where caching is still good but I'm not spending so
+  long building a huge dask graph and iterating through it.
+* TODO Investigate nonzero increments for spatial structure
+  R packages geostatsp, geoR, fields, and RandomFields would probably
+  be useful
+* TODO Check whether storing spectrum as a numpy array makes HomogeneousIsotropicCorrelations faster
+  It may be re-calculating the weights on each trip through, which
+  would be really slow.
