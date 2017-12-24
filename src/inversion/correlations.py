@@ -609,7 +609,7 @@ class BalgovindCorrelation(DistanceCorrelationFunction):
 
     Note
     ----
-    Correlation given by :math:`(1 + dist/length) exp(-dist/length)
+    Correlation given by :math:`(1 + dist/length) exp(-dist/length)`
 
     Note
     ----

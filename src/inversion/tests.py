@@ -956,7 +956,7 @@ class TestEnsembleIntegrators(unittest2.TestCase):
     IMPLEMENTATIONS = (inversion.ensemble.integrators.
                        EnsembleIntegrator.__subclasses__())
 
-    if sys.version_info >= (3, 5) or sys.platform == "cygwin":
+    if sys.version_info >= (3, 5):
         OS_ISSUES = ()
     else:
         OS_ISSUES = (inversion.ensemble.integrators.

@@ -20,7 +20,7 @@ with open("README.rst", "r") as in_file:
 setup(
     name="inversion",
     version=release,
-    description="A module for geophysical inversions",
+    description="A package for geophysical inversions",
     long_description=ldesc,
     author=authors,
     author_email="dfw5129@psu.edu",

@@ -1,4 +1,4 @@
 Inversion
 =========
 
-Python module for geophysical inversions.
+Python package for geophysical inversions and data assimilation.
