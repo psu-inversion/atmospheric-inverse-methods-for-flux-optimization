@@ -806,16 +806,16 @@ class TestCorrelations(unittest2.TestCase):
         combined_op = op1.kron(mat2)
 
         self.assertIsInstance(combined_op,
-                              inversion.correlations.KroneckerProduct)
+                              inversion.correlations.SchmidtKroneckerProduct)
 
 
-class TestKroneckerProduct(unittest2.TestCase):
+class TestSchmidtKroneckerProduct(unittest2.TestCase):
     """Test the Kronecker product implementation for LinearOperators."""
 
     def test_identity(self):
         """Test that the implementation works with identity matrices."""
         test_sizes = (4, 5)
-        KroneckerProduct = inversion.correlations.KroneckerProduct
+        SchmidtKroneckerProduct = inversion.correlations.SchmidtKroneckerProduct
 
         # I want to be sure either being smaller works.
         # Even versus odd also causes problems occasionally
@@ -824,7 +824,7 @@ class TestKroneckerProduct(unittest2.TestCase):
                 mat1 = np.eye(size1)
                 mat2 = np.eye(size2)
 
-                full_mat = KroneckerProduct(
+                full_mat = SchmidtKroneckerProduct(
                     mat1, mat2)
                 big_ident = np.eye(size1 * size2)
 
@@ -838,7 +838,7 @@ class TestKroneckerProduct(unittest2.TestCase):
         mat2 = ((1, .5, .25), (.5, 1, .5), (.25, .5, 1))
 
         np_tst.assert_allclose(
-            inversion.correlations.KroneckerProduct(
+            inversion.correlations.SchmidtKroneckerProduct(
                 mat1, mat2).dot(np.eye(9)),
             np.tile(mat2, (3, 3)))
 
@@ -848,7 +848,7 @@ class TestKroneckerProduct(unittest2.TestCase):
         mat2 = np.ones((3, 3))
 
         np_tst.assert_allclose(
-            inversion.correlations.KroneckerProduct(
+            inversion.correlations.SchmidtKroneckerProduct(
                 mat1, mat2).dot(np.eye(9)),
             np.repeat(np.repeat(mat1, 3, 0), 3, 1))
 
@@ -857,7 +857,7 @@ class TestKroneckerProduct(unittest2.TestCase):
         sigmax = np.array(((0, 1), (1, 0)))
         sigmaz = np.array(((1, 0), (0, -1)))
 
-        operator = inversion.correlations.KroneckerProduct(
+        operator = inversion.correlations.SchmidtKroneckerProduct(
             sigmax, sigmaz)
         matrix = scipy.linalg.kron(sigmax, sigmaz)
 
@@ -918,7 +918,9 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
         big_ident = np.eye(30)
 
         self.assertIsInstance(
-            combined_op, inversion.correlations.KroneckerProduct)
+            # TODO remember to change this once I get
+            # inversion.util.KroneckerProduct working
+            combined_op, inversion.correlations.SchmidtKroneckerProduct)
         self.assertSequenceEqual(combined_op.shape,
                                  tuple(np.multiply(mat1.shape, mat2.shape)))
         np_tst.assert_allclose(combined_op.dot(big_ident),
@@ -1284,12 +1286,13 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
 
                 reported_decomposition = inversion.util.schmidt_decomposition(
                     composite_state, vec1.shape[0], vec2.shape[0])
+                lambdas, vecs1, vecs2 = map(np.asarray, reported_decomposition)
 
-                np_tst.assert_allclose(np.nonzero(reported_decomposition[0]),
-                                       ((0,),))
-                np_tst.assert_allclose(np.abs(reported_decomposition[1][0]),
+                np_tst.assert_allclose(np.nonzero(lambdas),
+                                       [[0]])
+                np_tst.assert_allclose(np.abs(vecs1[0]),
                                        vec1[:, 0])
-                np_tst.assert_allclose(np.abs(reported_decomposition[2][0]),
+                np_tst.assert_allclose(np.abs(vecs2[0]),
                                        vec2[:, 0])
                 np_tst.assert_allclose(
                     reported_decomposition[0][0] *

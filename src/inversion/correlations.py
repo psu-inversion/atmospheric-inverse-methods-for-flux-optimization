@@ -40,7 +40,7 @@ definite.
 
 Gaussian(15) needs 1e-13 > ROUNDOFF > 1e-14
 
-Also used in KroneckerProduct to determine how many terms in the
+Also used in SchmidtKroneckerProduct to determine how many terms in the
 Schmidt decomposition should be used.
 """
 NEAR_ZERO = 1e-20
@@ -295,14 +295,14 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         other: HomogeneousIsotropicCorrelation
             The other operator for the Kronecker product.
             This implementation will accept other objects,
-            passing them along to :class:`KroneckerProduct`.
+            passing them along to :class:`SchmidtKroneckerProduct`.
 
         Returns
         -------
         scipy.sparse.linalg.LinearOperator
         """
         if not isinstance(other, HomogeneousIsotropicCorrelation):
-            return KroneckerProduct(self, other)
+            return SchmidtKroneckerProduct(self, other)
         shape = self._underlying_shape + other._underlying_shape
         shift = len(self._underlying_shape)
 
@@ -337,7 +337,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         return newinst
 
 
-class KroneckerProduct(LinearOperator):
+class SchmidtKroneckerProduct(LinearOperator):
     """Kronecker product of two operators using Schmidt decomposition.
 
     This works best when the input vectors are nearly Kronecker
@@ -373,7 +373,7 @@ class KroneckerProduct(LinearOperator):
         operator2 = tolinearoperator(operator2)
         total_shape = np.multiply(operator1.shape, operator2.shape)
 
-        super(KroneckerProduct, self).__init__(
+        super(SchmidtKroneckerProduct, self).__init__(
             shape=tuple(total_shape),
             dtype=np.result_type(operator1.dtype, operator2.dtype))
 
@@ -405,22 +405,14 @@ class KroneckerProduct(LinearOperator):
             result_shape = (self.shape[0], 1)
             result_chunks = chunks
 
-        if isinstance(self._operator1, DaskMatrixLinearOperator):
-            columns = asarray(vector).reshape(self._inshape1, self._inshape2)
-
-            partial = self._operator2.matmat(columns.T).T
-            result = self._operator1.A.dot(partial)
-
-            return result.reshape(result_shape)
-
         lambdas, vecs1, vecs2 = schmidt_decomposition(
             asarray(vector), self._inshape1, self._inshape2)
 
-        # kron forces everything to be in memory anyway, so do
-        # everything there.
-        lambdas = asarray(lambdas)
-        vecs1 = asarray(vecs1)
-        vecs2 = asarray(vecs2)
+        # The vector should fit in memory, and I need specific
+        # elements of lambdas
+        lambdas = np.asarray(lambdas)
+        vecs1 = np.asarray(vecs1)
+        vecs2 = np.asarray(vecs2)
 
         small_lambdas = np.nonzero(lambdas < lambdas[0] * ROUNDOFF)[0]
         if small_lambdas.any():

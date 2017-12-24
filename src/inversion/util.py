@@ -251,7 +251,7 @@ def kronecker_product(operator1, operator2):
 
     Delegates to ``operator1.kron()`` if possible,
     :func:`kron` if both are :const:`ARRAY_TYPES`, or
-    :class:`inversion.correlations.KroneckerProduct` otherwise.
+    :class:`inversion.correlations.SchmidtKroneckerProduct` otherwise.
 
     Parameters
     ----------
@@ -267,8 +267,8 @@ def kronecker_product(operator1, operator2):
     elif (isinstance(operator1, ARRAY_TYPES) and
           isinstance(operator2, ARRAY_TYPES)):
         return kron(operator1, operator2)
-    from inversion.correlations import KroneckerProduct
-    return KroneckerProduct(operator1, operator2)
+    from inversion.correlations import SchmidtKroneckerProduct
+    return SchmidtKroneckerProduct(operator1, operator2)
 
 
 def is_odd(num):
