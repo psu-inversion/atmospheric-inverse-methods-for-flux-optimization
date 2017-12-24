@@ -9,7 +9,7 @@ from dask.array.random import standard_normal as _standard_normal
 from dask.array import asarray
 
 # import from scipy.linalg if not using dask
-from dask.array.linalg import cholesky
+from scipy.linalg import cholesky
 
 from inversion.util import chunk_sizes
 

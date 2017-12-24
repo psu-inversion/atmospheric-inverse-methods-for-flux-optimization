@@ -9,12 +9,18 @@ are odd shape-mismatch errors if I just change to dask arrays.
 Conjugate gradient solvers may work better for dask arrays if we drop
 the covariance matrix from the return values.
 """
-import numpy as np
-import numpy.linalg as la
 import scipy.optimize
 import scipy.linalg
+from scipy.sparse.linalg import LinearOperator
+# I believe scipy's minimizer requires things that give boolean true
+# or false from the objective, rather than a yet-to-be-realized dask
+# array.
+from inversion.util import atleast_1d, atleast_2d
+from dask.array import asarray
+from numpy import zeros_like
 
 from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
+from inversion.util import solve
 
 
 def simple(background, background_covariance,
@@ -49,12 +55,15 @@ def simple(background, background_covariance,
 
         P_B^{-1} (x - x_0) + H^T R^{-1} (y - h(x))
     """
-    background = np.atleast_1d(background)
-    background_covariance = np.atleast_2d(background_covariance)
+    background = atleast_1d(background)
+    if not isinstance(background_covariance, LinearOperator):
+        background_covariance = atleast_2d(background_covariance)
 
-    observations = np.atleast_1d(observations)
-    observation_covariance = np.atleast_2d(observation_covariance)
-    observation_operator = np.atleast_2d(observation_operator)
+    observations = atleast_1d(observations)
+    if not isinstance(observation_covariance, LinearOperator):
+        observation_covariance = atleast_2d(observation_covariance)
+    if not isinstance(observation_operator, LinearOperator):
+        observation_operator = atleast_2d(observation_operator)
 
     def cost_function(test_state):
         """Mismatch between state, prior, and obs.
@@ -67,14 +76,14 @@ def simple(background, background_covariance,
         -------
         cost: float
         """
-        prior_mismatch = test_state - background
+        prior_mismatch = asarray(test_state - background)
         test_obs = observation_operator.dot(test_state)
-        obs_mismatch = test_obs - observations
+        obs_mismatch = asarray(test_obs - observations)
 
-        prior_fit = prior_mismatch.dot(la.solve(
-            background_covariance, prior_mismatch))
-        obs_fit = obs_mismatch.dot(la.solve(
-            observation_covariance, obs_mismatch))
+        prior_fit = prior_mismatch.dot(solve(
+                background_covariance, prior_mismatch))
+        obs_fit = obs_mismatch.dot(solve(
+                observation_covariance, obs_mismatch))
         return prior_fit + obs_fit
 
     def cost_jacobian(test_state):
@@ -92,11 +101,11 @@ def simple(background, background_covariance,
         test_obs = observation_operator.dot(test_state)
         obs_mismatch = test_obs - observations
 
-        prior_gradient = la.solve(background_covariance,
-                                  prior_mismatch)
+        prior_gradient = solve(background_covariance,
+                               prior_mismatch)
         obs_gradient = observation_operator.T.dot(
-            la.solve(observation_covariance,
-                     obs_mismatch))
+            solve(observation_covariance,
+                  obs_mismatch))
 
         return prior_gradient + obs_gradient
 
@@ -112,10 +121,10 @@ def simple(background, background_covariance,
     #     -------
     #     hess_prod: np.ndarray[N]
     #     """
-    #     bg_prod = la.solve(background_covariance,
+    #     bg_prod = solve(background_covariance,
     #                        test_step)
     #     obs_prod = observation_operator.T.dot(
-    #         la.solve(observation_covariance,
+    #         solve(observation_covariance,
     #                  observation_operator.dot(test_step)))
     #     return bg_prod + obs_prod
 
@@ -137,7 +146,8 @@ def simple(background, background_covariance,
 
 def incremental(background, background_covariance,
                 observations, observation_covariance,
-                observation_operator):
+                observation_operator,
+                calculate_posterior_error_covariance=True):
     """Feed everything to scipy's minimizer.
 
     Use the change from the background to try to avoid precision loss.
@@ -149,11 +159,16 @@ def incremental(background, background_covariance,
     observations: np.ndarray[M]
     observation_covariance: np.ndarray[M,M]
     observation_operator: np.ndarray[M,N]
+    calculate_posterior_error_covariance: bool, optional
+        Whether to calculate and return the posterior analysis error.
+        This may provide a significant memory and time savings.
 
     Returns
     -------
     analysis: np.ndarray[N]
     analysis_covariance: np.ndarray[N,N]
+        The posterior error covariance matrix. Only returned if
+        `calculate_posterior_error_covariance` is :obj:`True`
 
     Note
     ----
@@ -171,12 +186,15 @@ def incremental(background, background_covariance,
 
     where :math:`x = x_0 + dx`
     """
-    background = np.atleast_1d(background)
-    background_covariance = np.atleast_2d(background_covariance)
+    background = atleast_1d(background)
+    if not isinstance(background_covariance, LinearOperator):
+        background_covariance = atleast_2d(background_covariance)
 
-    observations = np.atleast_1d(observations)
-    observation_covariance = np.atleast_2d(observation_covariance)
-    observation_operator = np.atleast_2d(observation_operator)
+    observations = atleast_1d(observations)
+    if not isinstance(observation_covariance, LinearOperator):
+        observation_covariance = atleast_2d(observation_covariance)
+    if not isinstance(observation_operator, LinearOperator):
+        observation_operator = atleast_2d(observation_operator)
 
     innovations = observations - observation_operator.dot(background)
 
@@ -194,10 +212,10 @@ def incremental(background, background_covariance,
         obs_change = observation_operator.dot(test_change)
         obs_mismatch = innovations - obs_change
 
-        prior_fit = test_change.dot(la.solve(
-            background_covariance, test_change))
-        obs_fit = obs_mismatch.dot(la.solve(
-            observation_covariance, obs_mismatch))
+        prior_fit = test_change.dot(asarray(solve(
+            background_covariance, test_change)))
+        obs_fit = obs_mismatch.dot(asarray(solve(
+            observation_covariance, obs_mismatch)))
         return prior_fit + obs_fit
 
     def cost_jacobian(test_change):
@@ -214,11 +232,11 @@ def incremental(background, background_covariance,
         obs_change = observation_operator.dot(test_change)
         obs_mismatch = innovations - obs_change
 
-        prior_gradient = la.solve(background_covariance,
-                                  test_change)
+        prior_gradient = solve(background_covariance,
+                               test_change)
         obs_gradient = observation_operator.T.dot(
-            la.solve(observation_covariance,
-                     obs_mismatch))
+            solve(observation_covariance,
+                  obs_mismatch))
 
         return prior_gradient - obs_gradient
 
@@ -234,16 +252,16 @@ def incremental(background, background_covariance,
     #     -------
     #     hess_prod: np.ndarray[N]
     #     """
-    #     bg_prod = la.solve(background_covariance,
+    #     bg_prod = solve(background_covariance,
     #                        test_step)
     #     obs_prod = observation_operator.T.dot(
-    #         la.solve(observation_covariance,
+    #         solve(observation_covariance,
     #                  observation_operator.dot(test_step)))
     #     return bg_prod + obs_prod
 
     result = scipy.optimize.minimize(
-        cost_function, np.zeros_like(background),
-        method="BFGS",
+        cost_function, asarray(zeros_like(background)),
+        method="BFGS" if calculate_posterior_error_covariance else "CG",
         jac=cost_jacobian,
         # hessp=cost_hessian_product,
         options=dict(maxiter=MAX_ITERATIONS,
@@ -256,7 +274,9 @@ def incremental(background, background_covariance,
         raise ConvergenceError("Did not converge: {msg:s}".format(
             msg=result.message), result, analysis)
 
-    return analysis, result.hess_inv
+    if calculate_posterior_error_covariance:
+        return analysis, result.hess_inv
+    return analysis
 
 
 def incr_chol(background, background_covariance,
@@ -298,20 +318,23 @@ def incr_chol(background, background_covariance,
     where :math:`x = x_0 + dx`
 
     """
-    background = np.atleast_1d(background)
-    background_covariance = np.atleast_2d(background_covariance)
+    background = atleast_1d(background)
+    if not isinstance(background_covariance, LinearOperator):
+        background_covariance = atleast_2d(background_covariance)
 
-    observations = np.atleast_1d(observations)
-    observation_covariance = np.atleast_2d(observation_covariance)
-    observation_operator = np.atleast_2d(observation_operator)
+    observations = atleast_1d(observations)
+    if not isinstance(observation_covariance, LinearOperator):
+        observation_covariance = atleast_2d(observation_covariance)
+    if not isinstance(observation_operator, LinearOperator):
+        observation_operator = atleast_2d(observation_operator)
 
     innovations = observations - observation_operator.dot(background)
 
-    # factor the covariances to make the matrix inversions faster
-    bg_cov_chol_u = scipy.linalg.cho_factor(background_covariance)
-    obs_cov_chol_u = scipy.linalg.cho_factor(observation_covariance)
+    from scipy.linalg import cho_factor, cho_solve
 
-    from scipy.linalg import cho_solve
+    # factor the covariances to make the matrix inversions faster
+    bg_cov_chol_u = cho_factor(background_covariance)
+    obs_cov_chol_u = cho_factor(observation_covariance)
 
     def cost_function(test_change):
         """Mismatch between state, prior, and obs.
@@ -367,15 +390,15 @@ def incr_chol(background, background_covariance,
     #     -------
     #     hess_prod: np.ndarray[N]
     #     """
-    #     bg_prod = la.solve(background_covariance,
+    #     bg_prod = solve(background_covariance,
     #                        test_step)
     #     obs_prod = observation_operator.T.dot(
-    #         la.solve(observation_covariance,
+    #         solve(observation_covariance,
     #                  observation_operator.dot(test_step)))
     #     return bg_prod + obs_prod
 
     result = scipy.optimize.minimize(
-        cost_function, np.zeros_like(background),
+        cost_function, asarray(zeros_like(background)),
         method="BFGS",
         jac=cost_jacobian,
         # hessp=cost_hessian_product,

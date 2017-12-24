@@ -17,14 +17,17 @@ from numpy import arange, newaxis, asanyarray, where
 from scipy.special import gamma, kv as K_nu
 
 from dask.array import fromfunction, asarray, hstack
-from dask.array import exp, square, fmin, sqrt, isnan
+from dask.array import exp, square, fmin, sqrt, zeros
+from dask.array import logical_or, concatenate, isnan
 from dask.array import sum as da_sum
+from dask.array import Array
 from dask.array.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
-from scipy.sparse.linalg import LinearOperator
 import six
 
 from inversion.util import chunk_sizes, schmidt_decomposition, is_odd
 from inversion.util import tolinearoperator, kron
+from inversion.util import DaskLinearOperator as LinearOperator
+from inversion.util import DaskMatrixLinearOperator
 
 ROUNDOFF = 1e-13
 """Approximate size of roundoff error for correlation matrices.
@@ -87,7 +90,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         state_size = np.prod(shape)
 
         super(HomogeneousIsotropicCorrelation, self).__init__(
-            dtype=float, shape=(state_size, state_size))
+            dtype=DTYPE, shape=(state_size, state_size))
 
         self._fft, self._ifft = self._rfft_irfft(shape)
         self._underlying_shape = tuple(shape)
@@ -182,7 +185,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         corr_fourier = (self._fft(corr_struct))
         self._corr_fourier = (corr_fourier)
         # This is also affected by roundoff
-        self._fourier_near_zero = (corr_fourier < FOURIER_NEAR_ZERO)
+        self._fourier_near_zero = abs(corr_fourier) < FOURIER_NEAR_ZERO
         return self
 
     @classmethod
@@ -319,11 +322,18 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
              self._corr_fourier[..., reverse_start:0:-1].conj()))
         expanded_fft = expanded_fft.rechunk(expanded_fft.shape)
 
+        expanded_near_zero = concatenate(
+            (self._fourier_near_zero,
+             self._fourier_near_zero[..., reverse_start:0:-1]), axis=-1)
+        expanded_near_zero = expanded_near_zero.rechunk(
+            expanded_near_zero.shape)
+
         newinst = HomogeneousIsotropicCorrelation(shape)
         newinst._corr_fourier = (expanded_fft[self_index] *
                                  other._corr_fourier[other_index])
-        newinst._fourier_near_zero = (self._fourier_near_zero[self_index] |
-                                      other._fourier_near_zero[other_index])
+        newinst._fourier_near_zero = logical_or(
+            expanded_near_zero[self_index],
+            other._fourier_near_zero[other_index])
         return newinst
 
 
@@ -383,14 +393,34 @@ class KroneckerProduct(LinearOperator):
         -------
         array_like[M]
         """
+        if isinstance(vector, Array):
+            chunks = vector.chunks
+        else:
+            chunks = chunk_sizes((self.shape[0], 1))
+
+        if vector.ndim == 1:
+            result_shape = self.shape[0]
+            result_chunks = chunks[:1]
+        else:
+            result_shape = (self.shape[0], 1)
+            result_chunks = chunks
+
+        if isinstance(self._operator1, DaskMatrixLinearOperator):
+            columns = asarray(vector).reshape(self._inshape1, self._inshape2)
+
+            partial = self._operator2.matmat(columns.T).T
+            result = self._operator1.A.dot(partial)
+
+            return result.reshape(result_shape)
+
         lambdas, vecs1, vecs2 = schmidt_decomposition(
             asarray(vector), self._inshape1, self._inshape2)
 
         # kron forces everything to be in memory anyway, so do
         # everything there.
-        lambdas = np.asarray(lambdas)
-        vecs1 = np.asarray(vecs1)
-        vecs2 = np.asarray(vecs2)
+        lambdas = asarray(lambdas)
+        vecs1 = asarray(vecs1)
+        vecs2 = asarray(vecs2)
 
         small_lambdas = np.nonzero(lambdas < lambdas[0] * ROUNDOFF)[0]
         if small_lambdas.any():
@@ -398,18 +428,14 @@ class KroneckerProduct(LinearOperator):
         else:
             last_lambda = len(lambdas)
 
-        if vector.ndim == 1:
-            result_shape = self.shape[0]
-        else:
-            result_shape = (self.shape[0], 1)
-
-        result = np.zeros(shape=result_shape,
-                          dtype=np.result_type(self.dtype, vector.dtype))
+        result = zeros(shape=result_shape,
+                       chunks=result_chunks,
+                       dtype=np.result_type(self.dtype, vector.dtype))
         for lambd, vec1, vec2 in islice(zip(lambdas, vecs1, vecs2),
                                         0, last_lambda):
             result += kron(
-                np.asarray(lambd * self._operator1.dot(vec1).reshape(-1, 1)),
-                np.asarray(self._operator2.dot(vec2).reshape(-1, 1))
+                asarray(lambd * self._operator1.dot(vec1).reshape(-1, 1)),
+                asarray(self._operator2.dot(vec2).reshape(-1, 1))
             ).reshape(result_shape)
 
         return asarray(result)
@@ -462,14 +488,13 @@ def make_matrix(corr_func, shape):
     """
     shape = tuple(np.atleast_1d(shape))
     n_points = np.prod(shape)
-    # chunks = chunk_sizes(shape)
 
     # Since dask doesn't have eigh, using dask in this section slows
     # the test suite by about 25%.  Since it all ends up in memory,
     # may as well start with it there instead of converting back and
     # forth a few times.
     tmp_res = np.fromfunction(corr_func.correlation_from_index,
-                              shape=2 * shape,  # chunks=chunks * 2,
+                              shape=2 * shape,
                               dtype=DTYPE).reshape(
         (n_points, n_points))
     where_small = tmp_res < NEAR_ZERO

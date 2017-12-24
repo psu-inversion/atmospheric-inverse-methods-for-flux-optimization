@@ -27,7 +27,7 @@ try:
 except NameError:
     THIS_DIR = os.getcwd()
 
-sys.path.append(os.path.join(
+sys.path.insert(0, os.path.join(
     THIS_DIR, "..", "src"))
 sys.path.append(THIS_DIR)
 
@@ -38,8 +38,9 @@ import inversion.covariances
 from inversion.util import kronecker_product, tolinearoperator
 import cf_acdd
 
-INFLUENCE_PATH = "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/ACT-America_trial4/2010/01/GROUP1"
+INFLUENCE_PATH = "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/ACT-America_trial5/2010/01/GROUP1"
 PRIOR_PATH = "/mc1s2/s4/dfw5129/data/Marthas_2010_wrfouts/"
+OBS_PATH = "/mc1s2/s4/dfw5129/inversion"
 
 FLUX_INTERVAL = 3
 """The interval at which fluxes become available in hours.
@@ -54,19 +55,19 @@ Note
 ----
 Must divide twenty-four.
 """
-OBS_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrfout_d01_*.nc"))
-FLUX_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrf_fluxes_all.nc"))
+OBS_FILES = glob.glob(os.path.join(OBS_PATH, "2010_01_4tower_WRF*concentrations*.nc"))
+FLUX_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrf_fluxes_all_81km.nc"))
 FLUX_FILES.sort()
 OBS_FILES.sort()
 INFLUENCE_FILES = glob.glob(os.path.join(
         INFLUENCE_PATH,
-        "*_{flux_interval:02d}hrly_footprints.nc4".format(flux_interval=FLUX_INTERVAL)))
+        "*_{flux_interval:02d}hrly_081km_footprints.nc4".format(flux_interval=FLUX_INTERVAL)))
 
 print("Flux files", FLUX_FILES)
 print("Influence Files", INFLUENCE_FILES)
 
-FLUX_NAME = "E_TRA1"
-TRACER_NAME = "tracer_1"
+FLUX_NAME = "E_TRA2"
+TRACER_NAME = "tracer_2_subset"
 
 HOURS_PER_DAY = 24
 DAYS_PER_WEEK = 7
@@ -205,7 +206,7 @@ INFLUENCE_DATASET = xarray.open_mfdataset(
     chunks=dict(observation_time=1, site=N_SITES,
                 time_before_observation=FLUX_WINDOW,
                 dim_y=NY, dim_x=NX)).isel(
-    observation_time=slice(0, 2 * HOURS_PER_DAY),
+#     observation_time=slice(0, 2 * HOURS_PER_DAY),
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
 INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
 # Use site names as index/dim coord for site dim
@@ -236,6 +237,9 @@ with netCDF4.Dataset(FLUX_FILES[0]) as ds:
     WRF_PROJECTION = wrf.util.getproj(**wrf.util.get_proj_params(ds))
     WRF_CRS = WRF_PROJECTION.cartopy()
 
+    # TOWER_WRF_INDICES = wrf.ll_to_xy(
+    #     ds, INFLUENCE_FUNCTIONS.coords["site_lats"],
+    #     INFLUENCE_FUNCTIONS.coords["site_lons"])
 
     # Alternate method
     # Currently broken for some reason.
@@ -261,20 +265,17 @@ FLUX_DATASET = xarray.open_mfdataset(
 )
 OBS_DATASET = xarray.open_mfdataset(
     OBS_FILES,
-    chunks=dict(west_east=NX, south_north=NY, Time=1),
-    concat_dim="Time",
+    chunks=dict(time=HOURS_PER_DAY * 10),
+    concat_dim="time",
 )
-OBS_DATASET["ZS"] = OBS_DATASET.ZS.isel(Time=0)
-OBS_DATASET["ZNU"] = OBS_DATASET.ZNU.isel(Time=0)
-OBS_DATASET["ZNW"] = OBS_DATASET.ZNW.isel(Time=0)
 
 # Many of the times are of by about four milliseconds.
 # This difference is irrelevant here.
-wrf_orig_times = OBS_DATASET["XTIME"].to_index()
+wrf_orig_times = OBS_DATASET["time"].to_index()
 wrf_new_times = pd.DatetimeIndex([timestamp.replace(microsecond=0)
                                   for timestamp in wrf_orig_times],
-                                 name="Time")
-OBS_DATASET["Time"] = wrf_new_times
+                                 name="time")
+OBS_DATASET["time"] = wrf_new_times
 wrf_orig_times = FLUX_DATASET["XTIME"].to_index()
 timestamps = [timestamp.replace(microsecond=0)
               for timestamp in wrf_orig_times]
@@ -285,36 +286,15 @@ wrf_new_times = pd.DatetimeIndex(timestamps,
 FLUX_DATASET["Time"] = wrf_new_times
 
 
-OBS_DATASET.set_index(Time="Time",
-                      bottom_top="ZNU", bottom_top_stag="ZNW",
-                      soil_layers_stag="ZS",
-                      inplace=True)
 FLUX_DATASET.set_index(XTIME="Time", inplace=True)
 FLUX_DATASET = FLUX_DATASET.rename(
     dict(
         XTIME="Time", projection_y_coordinate="south_north",
         projection_x_coordinate="west_east"),
     inplace=True)
-# Assign a few more coords and pull out only the fluxes we need.
-OBS_DATASET = OBS_DATASET.assign_coords(
-    geopot_hgt=lambda ds: (ds.PH + ds.PHB) / 9.8,
-    HGT=lambda ds: ds.HGT,
-    )
 FLUX_DATASET = FLUX_DATASET.sel(Time=FLUX_TIMES_INDEX)
 
-# I changed the encoding. Changing it back
-for i in range(1, 10):
-    FLUX_DATASET["E_TRA{:d}".format(i+1)] = FLUX_DATASET["E_TRA1"].isel(tracer_number=i)
-FLUX_DATASET["E_TRA1"] = FLUX_DATASET["E_TRA1"].isel(tracer_number=0)
-
 WRF_DX = FLUX_DATASET.attrs["DX"]
-for dim in [dimname + suffix
-            for dimname in ("south_north", "west_east")
-            for suffix in ("", "_stag")]:
-    domain_bound = (OBS_DATASET.dims[dim] - 1) / 2 * WRF_DX
-    OBS_DATASET = OBS_DATASET.assign_coords(**{
-        dim: np.arange(-domain_bound, domain_bound + WRF_DX / 2, WRF_DX)
-    })
 
 TRUE_FLUXES = FLUX_DATASET.get(["E_TRA{:d}".format(i+1)
                                 for i in range(10)]).isel(emissions_zdim=0)
@@ -329,15 +309,15 @@ for flux_part, flux_orig in zip(TRUE_FLUXES_MATCHED.data_vars.values(), TRUE_FLU
     flux_part.attrs["units"] = str(FLUX_UNITS)
 
 WRF_OBS = OBS_DATASET.get(
-    ["tracer_{:d}".format(i+1)
-     for i in range(10)]).isel(
-             bottom_top=slice(8, 15))
+    ["tracer_{:d}_subset".format(i+1)
+     for i in (1, 6, 8)]).isel(
+             atmosphere_sigma_coordinate=slice(8, 15))
 WRF_OBS_MATCHED = WRF_OBS.rename(dict(
-    south_north="dim_y", west_east="dim_x", Time="observation_time"))
+    projection_y_coordinate="dim_y", projection_x_coordinate="dim_x", time="observation_time"))
 WRF_OBS_SITE = (
-    WRF_OBS_MATCHED.sel(bottom_top=OBS_ROUGH_SIGMA, method="nearest")
-    .sel_points(dim_x=WRF_TOWER_COORDS[:, 0], dim_y=WRF_TOWER_COORDS[:, 1],
-                method="nearest", dim=INFLUENCE_FUNCTIONS.coords["site"]))
+    WRF_OBS_MATCHED.sel(atmosphere_sigma_coordinate=OBS_ROUGH_SIGMA, method="nearest")
+    .isel_points(dim2=range(4), dim3=range(4),
+                 dim=INFLUENCE_FUNCTIONS.coords["site"]))
 
 WRF_OBS_START = WRF_OBS_MATCHED.indexes["observation_time"][0]
 WRF_OBS_INTERVAL = WRF_OBS_START - WRF_OBS_MATCHED.indexes["observation_time"][1]
@@ -376,10 +356,12 @@ for i, site in enumerate(INFLUENCE_FUNCTIONS.indexes["site"]):
     site_obs_index.extend(zip(
         np.where((OBS_HOURS[0] < local_times.time) &
                  (local_times.time < OBS_HOURS[1]))[0],
-        itertools.repeat(i)))
+        itertools.repeat(site)))
 obs_index, site_index = zip(*site_obs_index)
+site_index = list(site_index)
+pd_obs_index = obs_times[list(obs_index)]
 site_obs_pd_index = pd.MultiIndex.from_tuples(
-    site_obs_index, names=("site", "observation_time"))
+    list(zip(site_index, pd_obs_index)), names=("site", "observation_time"))
 
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Aligning flux times in influence function")
@@ -392,8 +374,8 @@ aligned_influences = xarray.concat(
     [here_infl.set_index(
         time_before_observation="flux_time").rename(
             dict(time_before_observation="flux_time"))
-     for here_infl in INFLUENCE_FUNCTIONS.isel_points(
-             site=site_index, observation_time=obs_index)],
+     for here_infl in INFLUENCE_FUNCTIONS.sel_points(
+             site=site_index, observation_time=pd_obs_index)],
     "observation").set_index(
     observation=("observation_time", "site"))
 print(datetime.datetime.now(UTC).strftime("%c"), "Aligned flux times in influence function, aligning fluxes with influence function")
@@ -479,8 +461,8 @@ flux_stds = FLUX_VARIANCE_VARYING_FRACTION * da.fabs(aligned_fluxes.data)
 flux_stds_matrix = inversion.covariances.DiagonalOperator(flux_stds.data.reshape(-1))
 
 # TODO: use actual heights
-here_obs = WRF_OBS_SITE[TRACER_NAME].isel_points(
-    observation_time=obs_index, site=site_index
+here_obs = WRF_OBS_SITE[TRACER_NAME].sel_points(
+    observation_time=pd_obs_index, site=site_index
     )
 
 print(datetime.datetime.now(UTC).strftime("%c"), "Got covariance parts, getting posterior")
@@ -502,8 +484,8 @@ posterior = posterior.reshape(aligned_fluxes.shape)
 posterior_ds = xarray.Dataset(
     dict(posterior=(aligned_fluxes.dims, posterior,
                     posterior_var_atts),
-         prior=(aligned_fluxes.dims, aligned_fluxes,
-                aligned_fluxes.attrs),
+         prior=aligned_fluxes,  # (aligned_fluxes.dims, aligned_fluxes,
+                # aligned_fluxes.attrs),
          increment=(aligned_fluxes.dims, posterior - aligned_fluxes,
                     increment_var_atts),
          ),

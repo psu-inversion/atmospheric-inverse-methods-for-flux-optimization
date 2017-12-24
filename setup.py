@@ -2,6 +2,7 @@
 
 Not yet ready for PyPI.
 """
+from __future__ import print_function, division
 import os.path
 import sys
 
@@ -39,7 +40,7 @@ setup(
     packages=find_packages("src"),
     install_requires=[
         "six",
-        "numpy",
+        "numpy>=1.10",
         "scipy",
         "dask[array]",
     ],
@@ -53,6 +54,7 @@ setup(
         examples=[
             # "git+https://github.com/Scitools/iris.git#egg=iris",
             "xarray",
+            "cf_units",
         ],
     ),
     tests_require=[

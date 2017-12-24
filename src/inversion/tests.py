@@ -9,8 +9,14 @@ import itertools
 import fractions
 import math
 import sys
+try:
+    from functools import reduce
+except ImportError:
+    # reduce used to be a builtin
+    pass
 
 import numpy as np
+import numpy.linalg as np_la
 import numpy.random as np_rand
 import numpy.testing as np_tst
 import scipy.linalg
@@ -22,12 +28,13 @@ import dask
 import dask.array as da
 import dask.array.linalg as la
 # Import from scipy.linalg if not using dask
-from dask.array.linalg import cholesky
+from scipy.linalg import cholesky
 
 import inversion.covariance_estimation
 import inversion.optimal_interpolation
 import inversion.ensemble.integrators
 import inversion.correlations
+import inversion.covariances
 import inversion.integrators
 import inversion.variational
 import inversion.ensemble
@@ -67,6 +74,9 @@ this dtype for the comparison.
 ITERATIVE_STATE_TOLERANCE = 1e-3
 ITERATIVE_COVARIANCE_TOLERANCE = 1e-1
 EXACT_TOLERANCE = 1e-7
+
+DTYPE = np.float64
+"""Default dtype for certain tests."""
 
 
 def getname(method):
@@ -465,7 +475,7 @@ class TestCorrelations(unittest2.TestCase):
                         ).reshape((test_points, test_points)),
                         # rtol=1e-13: Gaussian 10 and 15 fail
                         # atol=1e-15: Gaussian 1 and 5 fail
-                        rtol=1e-12, atol=1e-14)
+                        rtol=1e-11, atol=1e-13)
 
                     # check if it actually is positive definite
                     cholesky(corr_mat)
@@ -719,7 +729,32 @@ class TestCorrelations(unittest2.TestCase):
                     corr_op1.dot(np.eye(test_size)),
                     corr_op2.dot(np.eye(test_size)))
 
-    def test_kron(self):
+    def test_kron_composition(self):
+        """Test that `kron` works similar to composition of the domains."""
+        from inversion.correlations import HomogeneousIsotropicCorrelation
+        corr_class = inversion.correlations.GaussianCorrelation
+        corr_fun = corr_class(5)
+
+        shape1 = (5,)
+        shape2 = (7,)
+
+        corr_op1 = (HomogeneousIsotropicCorrelation.
+                    from_function(corr_fun, shape1))
+        corr_op2 = (HomogeneousIsotropicCorrelation.
+                    from_function(corr_fun, shape2))
+        kron_corr = corr_op1.kron(corr_op2)
+        direct_corr = (HomogeneousIsotropicCorrelation.
+                       from_function(corr_fun, shape1 + shape2))
+
+        self.assertEqual(kron_corr.shape, direct_corr.shape)
+        self.assertEqual(kron_corr._underlying_shape,
+                         direct_corr._underlying_shape)
+        np_tst.assert_allclose(kron_corr._corr_fourier,
+                               direct_corr._corr_fourier)
+        np_tst.assert_allclose(kron_corr._fourier_near_zero,
+                               direct_corr._fourier_near_zero)
+
+    def test_kron_results(self):
         """Test the Kronecker product implementation."""
         HomogeneousIsotropicCorrelation = (
             inversion.correlations.HomogeneousIsotropicCorrelation)
@@ -841,25 +876,53 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
         """Test that it delegates to subclasses where appropriate."""
         HomogeneousIsotropicCorrelation = (
             inversion.correlations.HomogeneousIsotropicCorrelation)
-        corr_class = inversion.correlations.ExponentialCorrelation
+        corr_class = inversion.correlations.GaussianCorrelation
         corr_fun = corr_class(5)
 
         op1 = HomogeneousIsotropicCorrelation.from_function(corr_fun, 15)
         op2 = HomogeneousIsotropicCorrelation.from_function(corr_fun, 20)
 
         combined_op = inversion.util.kronecker_product(op1, op2)
+        proposed_result = HomogeneousIsotropicCorrelation.from_function(
+            corr_fun, (15, 20))
 
         self.assertIsInstance(combined_op, HomogeneousIsotropicCorrelation)
+        self.assertSequenceEqual(combined_op.shape,
+                                 tuple(np.multiply(op1.shape, op2.shape)))
+        self.assertEqual(combined_op._underlying_shape,
+                         proposed_result._underlying_shape)
+        np_tst.assert_allclose(combined_op._fourier_near_zero,
+                               proposed_result._fourier_near_zero)
+        np_tst.assert_allclose(combined_op._corr_fourier,
+                               proposed_result._corr_fourier,
+                               rtol=1e-5, atol=1e-6)
 
-    def test_direct(self):
-        """Test Kronecker product without special method."""
+    def test_array_array(self):
+        """Test array-array Kronecker product."""
         mat1 = np.eye(2)
         mat2 = np.eye(3)
 
         combined_op = inversion.util.kronecker_product(mat1, mat2)
 
-        self.assertIsInstance(combined_op,
-                              inversion.correlations.KroneckerProduct)
+        self.assertIsInstance(combined_op, da.Array)
+        self.assertSequenceEqual(combined_op.shape,
+                                 tuple(np.multiply(mat1.shape, mat2.shape)))
+        np_tst.assert_allclose(combined_op, scipy.linalg.kron(mat1, mat2))
+
+    def test_array_sparse(self):
+        """Test array-sparse matrix Kronecker products."""
+        mat1 = np.eye(3)
+        mat2 = scipy.sparse.eye(10)
+
+        combined_op = inversion.util.kronecker_product(mat1, mat2)
+        big_ident = np.eye(30)
+
+        self.assertIsInstance(
+            combined_op, inversion.correlations.KroneckerProduct)
+        self.assertSequenceEqual(combined_op.shape,
+                                 tuple(np.multiply(mat1.shape, mat2.shape)))
+        np_tst.assert_allclose(combined_op.dot(big_ident),
+                               big_ident)
 
 
 class TestIntegrators(unittest2.TestCase):
@@ -891,7 +954,7 @@ class TestEnsembleIntegrators(unittest2.TestCase):
     IMPLEMENTATIONS = (inversion.ensemble.integrators.
                        EnsembleIntegrator.__subclasses__())
 
-    if sys.version_info > (3, 4) or sys.platform != "cygwin":
+    if sys.version_info >= (3, 5) or sys.platform == "cygwin":
         OS_ISSUES = ()
     else:
         OS_ISSUES = (inversion.ensemble.integrators.
@@ -941,7 +1004,7 @@ class TestCovarianceEstimation(unittest2.TestCase):
     """
 
     def test_nmc_identity(self):
-        """Test that the NMC method for simple case.
+        """Test the NMC method for a simple case.
 
         Uses stationary noise on top of a forecast of zero.
         """
@@ -1318,7 +1381,7 @@ class TestUtilToLinearOperator(unittest2.TestCase):
     def test_tolinearoperator(self):
         """Test that tolinearoperator returns LinearOperators."""
         tolinearoperator = inversion.util.tolinearoperator
-        LinearOperator = scipy.sparse.linalg.LinearOperator
+        LinearOperator = inversion.util.DaskLinearOperator
 
         for trial in (0, 1., (0, 1), [0, 1], ((1, 0), (0, 1)),
                       [[0, 1.], [1., 0]], np.arange(5),
@@ -1344,6 +1407,138 @@ class TestUtilKron(unittest2.TestCase):
                 np.atleast_2d(input1), np.atleast_2d(input2))
 
             np_tst.assert_allclose(my_result, scipy_result)
+
+
+class TestHomogeneousInversions(unittest2.TestCase):
+    """Ensure inversion functions work with HomogeneousIsotropicCorrelation.
+
+    Integration test to ensure things work together as intended.
+
+    TODO: Check that the answers are reasonable.
+    """
+
+    CURRENTLY_BROKEN = frozenset(
+        (inversion.optimal_interpolation.simple,  # Invalid addition
+         inversion.optimal_interpolation.scipy_chol,  # cho_factor/solve
+         inversion.variational.incr_chol))  # cho_factor/solve
+
+    def setUp(self):
+        """Define values for use in test methods."""
+        self.bg_vals = np.zeros(10, dtype=DTYPE)
+        self.obs_vals = np.ones(3, dtype=DTYPE)
+
+        corr_class = inversion.correlations.ExponentialCorrelation
+        corr_fun = corr_class(2)
+
+        bg_corr = (inversion.correlations.HomogeneousIsotropicCorrelation.
+                   from_function(corr_fun, self.bg_vals.shape))
+        obs_corr = (inversion.correlations.HomogeneousIsotropicCorrelation.
+                    from_function(corr_fun, self.obs_vals.shape))
+        obs_op = scipy.sparse.diags(
+            (.5, 1, .5),
+            (-1, 0, 1),
+            (self.obs_vals.shape[0], self.bg_vals.shape[0]))
+
+        self.bg_corr = (bg_corr, bg_corr.dot(np.eye(*bg_corr.shape)))
+        self.obs_corr = (obs_corr, obs_corr.dot(np.eye(*obs_corr.shape)))
+        self.obs_op = (inversion.util.tolinearoperator(obs_op.toarray()),
+                       # Dask requires subscripting; diagonal sparse
+                       # matrices don't do this.
+                       obs_op.toarray())
+
+    def tearDown(self):
+        del self.bg_vals, self.obs_vals
+        del self.bg_corr, self.obs_corr
+        del self.obs_op
+
+    def test_combinations_produce_answer(self):
+        """Test that background error as a LinearOperator doesn't crash."""
+        for inversion_method in ALL_METHODS:
+            for bg_corr, obs_corr, obs_op in (itertools.product(
+                    self.bg_corr, self.obs_corr, self.obs_op)):
+                if inversion_method in self.CURRENTLY_BROKEN:
+                    # TODO: XFAIL
+                    continue
+                with self.subTest(method=getname(inversion_method),
+                                  bg_corr=getname(type(bg_corr)),
+                                  obs_corr=getname(type(obs_corr)),
+                                  obs_op=getname(type(obs_op))):
+                    post, post_cov = inversion_method(
+                        self.bg_vals, bg_corr,
+                        self.obs_vals, obs_corr,
+                        obs_op)
+
+
+class TestCovariances(unittest2.TestCase):
+    """Test the covariance classes."""
+
+    # SelfAdjointLinearOperator isn't really a concrete class
+
+    def test_diagonal_operator_from_domain_stds(self):
+        """Test DiagonalOperator creation from array of values."""
+        stds = np.arange(20).reshape(4, 5)
+
+        inversion.covariances.DiagonalOperator(stds)
+
+    def test_diagonal_operator_behavior(self):
+        """Test behavior of DiagonalOperator."""
+        diag = np.arange(10.) + 1.
+
+        op = inversion.covariances.DiagonalOperator(diag)
+        arry = np.diag(diag)
+
+        test_vecs = (np.arange(10.),
+                     np.ones(10),
+                     np.array((0., 1) * 5))
+        test_mats = (np.eye(10, 4),
+                     np.hstack(test_vecs))
+
+        for vec in test_vecs:
+            with self.subTest(test_vec=vec):
+                with self.subTest(direction="forward"):
+                    np_tst.assert_allclose(op.dot(vec), arry.dot(vec))
+                with self.subTest(direction="inverse"):
+                    np_tst.assert_allclose(np.asarray(op.solve(vec)),
+                                           np_la.solve(arry, vec))
+
+        for mat in test_mats:
+            with self.subTest(test_mat=mat):
+                np_tst.assert_allclose(op.dot(vec), arry.dot(vec))
+
+    def test_diagonal_self_adjoint(self):
+        """Test the self-adjoint methods of DiagonalOperator."""
+        operator = inversion.covariances.DiagonalOperator(np.arange(10.))
+
+        self.assertIs(operator, operator.H)
+        self.assertIs(operator, operator.T)
+
+    def test_product(self):
+        test_vecs = (np.arange(5.),
+                     np.ones(5, dtype=DTYPE),
+                     np.array((0, 1, 0, 1, 0.)))
+        test_mats = (np.eye(5, 4, dtype=DTYPE),
+                     np.vstack(test_vecs).T)
+
+        operator_list = (np.arange(25.).reshape(5, 5) + np.diag((2.,) * 5),
+                         np.eye(5, dtype=DTYPE),
+                         np.ones((5, 5), dtype=DTYPE) + np.diag((1.,) * 5))
+        operator = inversion.covariances.ProductLinearOperator(*operator_list)
+
+        arry = reduce(lambda x, y: x.dot(y), operator_list)
+
+        for vec in test_vecs:
+            with self.subTest(test_vec=vec):
+                with self.subTest(direction="forward"):
+                    np_tst.assert_allclose(operator.dot(vec),
+                                           arry.dot(vec))
+                with self.subTest(direction="inverse"):
+                    np_tst.assert_allclose(np.asanyarray(operator.solve(vec)),
+                                           np_la.solve(arry, vec))
+
+        for mat in test_mats:
+            with self.subTest(test_mat=mat):
+                np_tst.assert_allclose(operator.dot(mat),
+                                       arry.dot(mat))
 
 
 if __name__ == "__main__":
