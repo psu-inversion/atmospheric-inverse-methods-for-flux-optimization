@@ -30,6 +30,10 @@ ARRAY_TYPES = (np.ndarray, da.Array)
 These are combined for a direct product.
 """
 REAL_DTYPE_KINDS = "fiu"
+"""The kinds used by dtypes to represent real numbers.
+
+Includes subsets.
+"""
 MAX_EXPLICIT_ARRAY = 1 << 25
 """Maximum size for an array represented explicitly.
 
@@ -545,6 +549,7 @@ class DaskLinearOperator(LinearOperator):
     ndim = 2
 
     def __add__(self, x):
+        """Add self and x."""
         if isinstance(x, LinearOperator):
             return _DaskSumLinearOperator(
                 self, DaskLinearOperator.fromlinearoperator(x))
@@ -673,7 +678,7 @@ class ProductLinearOperator(LinearOperator):
         self._init_dtype()
 
     def _matvec(self, vector):
-        """The matrix-vector product with vector.
+        """Form matrix-vector product with vector.
 
         Parameters
         ----------

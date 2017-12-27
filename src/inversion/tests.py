@@ -810,12 +810,16 @@ class TestCorrelations(unittest2.TestCase):
 
 
 class TestSchmidtKroneckerProduct(unittest2.TestCase):
-    """Test the Kronecker product implementation for LinearOperators."""
+    """Test the Schmidt Kronecker product implementation for LinearOperators.
+
+    This class tests the implementation based on the Schmidt decomposition.
+    """
 
     def test_identity(self):
         """Test that the implementation works with identity matrices."""
         test_sizes = (4, 5)
-        SchmidtKroneckerProduct = inversion.correlations.SchmidtKroneckerProduct
+        SchmidtKroneckerProduct = (
+            inversion.correlations.SchmidtKroneckerProduct)
 
         # I want to be sure either being smaller works.
         # Even versus odd also causes problems occasionally
@@ -1351,7 +1355,7 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
 
                 reported_decomposition = inversion.util.schmidt_decomposition(
                     composite_state, vec1.shape[0], vec2.shape[0])
-                lambdas, vecs1, vecs2 = map(np.asarray, reported_decomposition)
+                lambdas, vecs1, vecs2 = da.compute(*reported_decomposition)
 
                 np_tst.assert_allclose(np.nonzero(lambdas),
                                        [[0]])

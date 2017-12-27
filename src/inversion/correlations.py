@@ -633,7 +633,7 @@ class BalgovindCorrelation(DistanceCorrelationFunction):
 
 
 class MaternCorrelation(DistanceCorrelationFunction):
-    """A Matern correlation structure.
+    r"""A Matern correlation structure.
 
     Follows Matern (1986) *Spatial Variation*
 
@@ -646,7 +646,7 @@ class MaternCorrelation(DistanceCorrelationFunction):
     """
 
     def __init__(self, length, kappa=1):
-        """Set up instance.
+        r"""Set up instance.
 
         Parameters
         ----------
@@ -657,7 +657,8 @@ class MaternCorrelation(DistanceCorrelationFunction):
             :math:`kappa=\infty` is equivalent to Gaussian correlations
             :math:`kappa=\frac{1}{2}` is equivalent to exponential
             Default value is only for full equivalence with other classes.
-            The default value is entirely arbitrary and may change without notice.
+            The default value is entirely arbitrary and may change without
+            notice.
         """
         super(MaternCorrelation, self).__init__(length)
         self._kappa = kappa
