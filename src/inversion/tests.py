@@ -985,7 +985,7 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
         self.assertIsInstance(
             # TODO remember to change this once I get
             # inversion.util.KroneckerProduct working
-            combined_op, inversion.correlations.SchmidtKroneckerProduct)
+            combined_op, inversion.util.DaskKroneckerProductOperator)
         self.assertSequenceEqual(combined_op.shape,
                                  tuple(np.multiply(mat1.shape, mat2.shape)))
         np_tst.assert_allclose(combined_op.dot(big_ident),

@@ -30,6 +30,13 @@ ARRAY_TYPES = (np.ndarray, da.Array)
 These are combined for a direct product.
 """
 REAL_DTYPE_KINDS = "fiu"
+MAX_EXPLICIT_ARRAY = 1 << 25
+"""Maximum size for an array represented explicitly.
+
+:func:`kronecker_product` will form products smaller than this as an
+explicit matrix using :func:`kron`.  Arrays larger than this will use
+:class:`DaskKroneckerProduct`.
+"""
 
 
 def chunk_sizes(shape, matrix_side=True):
@@ -264,9 +271,11 @@ def kronecker_product(operator1, operator2):
     """
     if hasattr(operator1, "kron"):
         return operator1.kron(operator2)
-    elif (isinstance(operator1, ARRAY_TYPES) and
-          isinstance(operator2, ARRAY_TYPES)):
-        return kron(operator1, operator2)
+    elif isinstance(operator1, ARRAY_TYPES):
+        if ((isinstance(operator2, ARRAY_TYPES) and
+             operator1.size * operator2.size < MAX_EXPLICIT_ARRAY)):
+            return kron(operator1, operator2)
+        return DaskKroneckerProductOperator(operator1, operator2)
     from inversion.correlations import SchmidtKroneckerProduct
     return SchmidtKroneckerProduct(operator1, operator2)
 
