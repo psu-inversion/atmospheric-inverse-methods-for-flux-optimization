@@ -14,7 +14,7 @@ from scipy.sparse.linalg.interface import (
     _ScaledLinearOperator)
 import dask.array as da
 import dask.array.linalg as la
-from dask.array import asarray, concatenate, stack, hstack
+from dask.array import asarray, concatenate, stack, hstack, vstack, zeros
 
 OPTIMAL_ELEMENTS = int(2e4)
 """Optimal elements per chunk in a dask array.
@@ -743,3 +743,95 @@ class _DaskScaledLinearOperator(_ScaledLinearOperator, DaskLinearOperator):
     """Scaled linear operator."""
 
     pass
+
+
+class DaskKroneckerProductOperator(DaskLinearOperator):
+    """Operator for Kronecker product.
+
+    Uses the :math:`O(n^{2.5})` algorithm of Yadav and Michalak (2013)
+    to make memory and computational requirements practical.
+
+    Left argument to Kronecker product must be array.
+
+    References
+    ----------
+    V. Yadav and A.M. Michalak. "Improving computational efficiency in
+    large linear inverse problems: an example from carbon dioxide flux
+    estimation" *Geosci. Model Dev.* 2013. Vol 6, pp. 583--590.
+    URL: http://www.geosci-model-dev.net/6/583/2013
+    DOI: 10.5194/gmd-6-583-2013.
+    """
+
+    def __init__(self, operator1, operator2):
+        """Set up the instance.
+
+        Parameters
+        ----------
+        operator1: array_like
+        operator2: array_like or DaskLinearOperator
+        """
+        if isinstance(operator1, (DaskMatrixLinearOperator,
+                                  MatrixLinearOperator)):
+            operator1 = asarray(operator1.A)
+        else:
+            operator1 = asarray(operator1)
+        operator2 = tolinearoperator(operator2)
+
+        total_shape = np.multiply(operator1.shape, operator2.shape)
+        super(DaskKroneckerProductOperator, self).__init__(
+            shape=tuple(total_shape),
+            dtype=np.result_type(operator1.dtype, operator2.dtype))
+        self._operator1 = operator1
+        self._operator2 = operator2
+        self._block_size = operator2.shape[1]
+        self._n_chunks = operator1.shape[0]
+
+    def _matmat(self, mat):
+        r"""Compute matrix-matrix product.
+
+        Parameters
+        ----------
+        mat: array_like
+
+        Returns
+        -------
+        result: array_like
+
+        Note
+        ----
+
+        Implementation depends on the structure of the Kronecker
+        product:
+
+        .. math::
+            A \otimes B = \begin{pmatrix}
+                A_{11} B & A_{12} B & \cdots & A_{1n} B \\
+                A_{21} B & A_{22} B & \cdots & A_{2n} B \\
+                \vdots   & \vdots   & \ddots & \vdots   \\
+                A_{m1} B & A_{m2} B & \cdots & A_{mn} B
+            \end{pmatrix}
+
+        Matrix-scalar products are commutative, and :math:`B` is the
+        same for each block.  When right-multiplying by a matrix
+        :math:`C`, we can take advantage of this by splitting
+        :math:`C` into chunks, multiplying each by the corresponding
+        element of :math:`A`, adding them up, and multiplying by
+        :math:`B`.
+
+        """
+        chunks = []
+        block_size = self._block_size
+        chunk_shape = (block_size, mat.shape[1])
+        chunk_dtype = np.result_type(self.dtype, mat.dtype)
+        operator1 = self._operator1
+        operator2 = self._operator2
+
+        for row1 in range(self._n_chunks):
+            chunk = zeros(chunk_shape, dtype=chunk_dtype,
+                          chunks=chunk_shape)
+            for col1, chunk_start in enumerate(
+                    range(0, mat.shape[0], block_size)):
+                chunk += (operator1[row1, col1] *
+                          mat[chunk_start:(chunk_start + block_size)])
+            chunks.append(operator2.dot(chunk))
+        return vstack(tuple(chunks))

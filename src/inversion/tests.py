@@ -869,6 +869,71 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
             matrix.dot(epr_state))
 
 
+class TestYMKroneckerProduct(unittest2.TestCase):
+    """Test the YM13 Kronecker product implementation for LinearOperators.
+
+    This tests the :class:`~inversion.util.DaskKroneckerProduct`
+    implementation based on the algorithm in Yadav and Michalak (2013)
+    """
+
+    def test_identity(self):
+        """Test that the implementation works with identity matrices."""
+        test_sizes = (4, 5)
+        DaskKroneckerProductOperator = (
+            inversion.util.DaskKroneckerProductOperator)
+
+        # I want to be sure either being smaller works.
+        # Even versus odd also causes problems occasionally
+        for size1, size2 in itertools.product(test_sizes, repeat=2):
+            with self.subTest(size1=size1, size2=size2):
+                mat1 = np.eye(size1)
+                mat2 = np.eye(size2)
+
+                full_mat = DaskKroneckerProductOperator(
+                    mat1, mat2)
+                big_ident = np.eye(size1 * size2)
+
+                np_tst.assert_allclose(
+                    full_mat.dot(big_ident),
+                    big_ident)
+
+    def test_identical_submatrices(self):
+        """Test whether the implementation will generate identical blocks."""
+        mat1 = np.ones((3, 3))
+        mat2 = ((1, .5, .25), (.5, 1, .5), (.25, .5, 1))
+
+        np_tst.assert_allclose(
+            inversion.util.DaskKroneckerProductOperator(
+                mat1, mat2).dot(np.eye(9)),
+            np.tile(mat2, (3, 3)))
+
+    def test_constant_blocks(self):
+        """Test whether the implementation will produce constant blocks."""
+        mat1 = ((1, .5, .25), (.5, 1, .5), (.25, .5, 1))
+        mat2 = np.ones((3, 3))
+
+        np_tst.assert_allclose(
+            inversion.util.DaskKroneckerProductOperator(
+                mat1, mat2).dot(np.eye(9)),
+            np.repeat(np.repeat(mat1, 3, 0), 3, 1))
+
+    def test_entangled_state(self):
+        """Test whether the implementation works with entangled states."""
+        sigmax = np.array(((0, 1), (1, 0)))
+        sigmaz = np.array(((1, 0), (0, -1)))
+
+        operator = inversion.util.DaskKroneckerProductOperator(
+            sigmax, sigmaz)
+        matrix = scipy.linalg.kron(sigmax, sigmaz)
+
+        # (k01 - k10) / sqrt(2)
+        epr_state = (0, .7071, -.7071, 0)
+
+        np_tst.assert_allclose(
+            operator.dot(epr_state),
+            matrix.dot(epr_state))
+
+
 class TestUtilKroneckerProduct(unittest2.TestCase):
     """Test inversion.util.kronecker_product."""
 
