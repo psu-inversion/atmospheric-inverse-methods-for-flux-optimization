@@ -33,6 +33,7 @@ class SelfAdjointLinearOperator(LinearOperator):
 
     def __init__(self, dtype, size):
         """Also set up transpose if operator is real."""
+        # TODO: Test complex self-adjoint operators
         super(SelfAdjointLinearOperator, self).__init__(dtype, size)
 
         if self.dtype.kind in REAL_DTYPE_KINDS:
@@ -50,6 +51,7 @@ class SelfAdjointLinearOperator(LinearOperator):
         -------
         array_like
         """
+        # TODO: Figure out how to test this and do it
         return self._matvec(vector)
 
     def _adjoint(self):
@@ -108,6 +110,7 @@ class DiagonalOperator(SelfAdjointLinearOperator):
         -------
         array_like
         """
+        # TODO: test
         return self._diag[:, newaxis] * other
 
     def solve(self, vector):

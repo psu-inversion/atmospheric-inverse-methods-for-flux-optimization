@@ -222,6 +222,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         """
         _shape = self._underlying_shape
         field = asarray(vec).reshape(_shape)
+        # TODO: Test this
         field = field.rechunk(
             chunks={i: shape_part
                     for i, shape_part in enumerate(_shape)})
@@ -248,6 +249,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         """
         _shape = self._underlying_shape
         fields = asarray(mat).reshape(_shape + (-1,))
+        # TODO: Test this
         fields = fields.rechunk(
             chunks={i: shape_part
                     for i, shape_part in enumerate(_shape)})
@@ -268,6 +270,8 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
 
     def inv(self):
         """Construct the matrix inverse of this operator."""
+        # TODO: Test this
+        # TODO: Return a HomogeneousIsotropicLinearOperator
         return LinearOperator(
             shape=self.shape, dtype=self.dtype,
             matvec=self.solve, rmatvec=self.solve)

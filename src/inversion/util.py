@@ -194,6 +194,7 @@ def solve(arr1, arr2):
             return linop_solve(arr1, arr2)
         elif isinstance(arr2, (MatrixLinearOperator,
                                DaskMatrixLinearOperator)):
+            # TODO: Test
             return linop_solve(arr1, arr2.A)
         else:
             def solver(vec):
@@ -243,6 +244,7 @@ def schmidt_decomposition(vector, dim1, dim2):
     Quantum Computation book in the reading library
     """
     if vector.ndim == 2 and vector.shape[1] != 1:
+        # TODO: Test failure mode
         raise ValueError("Schmidt decomposition only valid for vectors")
     state_matrix = asarray(vector).reshape(dim1, dim2)
 
@@ -280,6 +282,7 @@ def kronecker_product(operator1, operator2):
              operator1.size * operator2.size < MAX_EXPLICIT_ARRAY)):
             return kron(operator1, operator2)
         return DaskKroneckerProductOperator(operator1, operator2)
+    # TODO: write a $Linop \otimes array_like$ test for this
     from inversion.correlations import SchmidtKroneckerProduct
     return SchmidtKroneckerProduct(operator1, operator2)
 
