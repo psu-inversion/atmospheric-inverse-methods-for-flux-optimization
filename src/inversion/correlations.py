@@ -220,7 +220,11 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         -------
         array_like[N]
         """
-        field = asarray(vec).reshape(self._underlying_shape)
+        _shape = self._underlying_shape
+        field = asarray(vec).reshape(_shape)
+        field = field.rechunk(
+            chunks={i: shape_part
+                    for i, shape_part in enumerate(_shape)})
 
         spectral_field = self._fft(field)
         spectral_field *= self._corr_fourier
@@ -242,7 +246,11 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         -------
         array_like[N, K]
         """
-        fields = asarray(mat).reshape(self._underlying_shape + (-1,))
+        _shape = self._underlying_shape
+        fields = asarray(mat).reshape(_shape + (-1,))
+        fields = fields.rechunk(
+            chunks={i: shape_part
+                    for i, shape_part in enumerate(_shape)})
 
         spectral_fields = self._fft(fields)
         spectral_fields *= self._corr_fourier[..., np.newaxis]
