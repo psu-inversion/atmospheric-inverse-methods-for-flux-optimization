@@ -54,7 +54,8 @@ Note
 ----
 Must divide twenty-four.
 """
-OBS_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrfout_d01_*.nc"))
+OBS_FILES = glob.glob(os.path.join("/mc1s2/s4/dfw5129/inversion",
+                                   "2010_01_4tower_WRF*concentrations*.nc"))
 FLUX_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrf_fluxes_all.nc"))
 FLUX_FILES.sort()
 OBS_FILES.sort()
@@ -65,8 +66,9 @@ INFLUENCE_FILES = glob.glob(os.path.join(
 print("Flux files", FLUX_FILES)
 print("Influence Files", INFLUENCE_FILES)
 
-FLUX_NAME = "E_TRA1"
-TRACER_NAME = "tracer_1"
+FLUX_NAME = "E_TRA2"
+TRACER_NAME = "tracer_2_subset"
+FLUX_CHUNKS = 60
 
 HOURS_PER_DAY = 24
 DAYS_PER_WEEK = 7
@@ -88,6 +90,8 @@ treat night well)
 I really hope I can assume this doesn't depend on latitude. That would
 make this much more complicated.
 """
+OBS_TIMES_PER_DAY = OBS_HOURS[1].hour - OBS_HOURS[0].hour
+"""Observations used per site per day."""
 OBS_WINDOW = 1
 CO2_MOLAR_MASS = 16 * 2 + 12.01
 """Molar mass of CO2 (g/mol).
@@ -261,20 +265,14 @@ FLUX_DATASET = xarray.open_mfdataset(
 )
 OBS_DATASET = xarray.open_mfdataset(
     OBS_FILES,
-    chunks=dict(west_east=NX, south_north=NY, Time=1),
+    chunks=dict(time=HOURS_PER_DAY * DAYS_PER_WEEK),
     concat_dim="Time",
 )
-OBS_DATASET["ZS"] = OBS_DATASET.ZS.isel(Time=0)
-OBS_DATASET["ZNU"] = OBS_DATASET.ZNU.isel(Time=0)
-OBS_DATASET["ZNW"] = OBS_DATASET.ZNW.isel(Time=0)
+print(datetime.datetime.now(UTC).strftime("%c"), "Have obs, normalizing")
+sys.stdout.flush()
 
 # Many of the times are of by about four milliseconds.
 # This difference is irrelevant here.
-wrf_orig_times = OBS_DATASET["XTIME"].to_index()
-wrf_new_times = pd.DatetimeIndex([timestamp.replace(microsecond=0)
-                                  for timestamp in wrf_orig_times],
-                                 name="Time")
-OBS_DATASET["Time"] = wrf_new_times
 wrf_orig_times = FLUX_DATASET["XTIME"].to_index()
 timestamps = [timestamp.replace(microsecond=0)
               for timestamp in wrf_orig_times]
@@ -285,10 +283,12 @@ wrf_new_times = pd.DatetimeIndex(timestamps,
 FLUX_DATASET["Time"] = wrf_new_times
 
 
-OBS_DATASET.set_index(Time="Time",
-                      bottom_top="ZNU", bottom_top_stag="ZNW",
-                      soil_layers_stag="ZS",
+OBS_DATASET.set_index(dim3="projection_x_coordinate",
+                      dim2="projection_y_coordinate",
                       inplace=True)
+OBS_DATASET.rename(dict(dim3="projection_x_coordinate",
+                        dim2="projection_y_coordinate"),
+                   inplace=True)
 FLUX_DATASET.set_index(XTIME="Time", inplace=True)
 FLUX_DATASET = FLUX_DATASET.rename(
     dict(
@@ -296,25 +296,9 @@ FLUX_DATASET = FLUX_DATASET.rename(
         projection_x_coordinate="west_east"),
     inplace=True)
 # Assign a few more coords and pull out only the fluxes we need.
-OBS_DATASET = OBS_DATASET.assign_coords(
-    geopot_hgt=lambda ds: (ds.PH + ds.PHB) / 9.8,
-    HGT=lambda ds: ds.HGT,
-    )
 FLUX_DATASET = FLUX_DATASET.sel(Time=FLUX_TIMES_INDEX)
 
-# I changed the encoding. Changing it back
-for i in range(1, 10):
-    FLUX_DATASET["E_TRA{:d}".format(i+1)] = FLUX_DATASET["E_TRA1"].isel(tracer_number=i)
-FLUX_DATASET["E_TRA1"] = FLUX_DATASET["E_TRA1"].isel(tracer_number=0)
-
 WRF_DX = FLUX_DATASET.attrs["DX"]
-for dim in [dimname + suffix
-            for dimname in ("south_north", "west_east")
-            for suffix in ("", "_stag")]:
-    domain_bound = (OBS_DATASET.dims[dim] - 1) / 2 * WRF_DX
-    OBS_DATASET = OBS_DATASET.assign_coords(**{
-        dim: np.arange(-domain_bound, domain_bound + WRF_DX / 2, WRF_DX)
-    })
 
 TRUE_FLUXES = FLUX_DATASET.get(["E_TRA{:d}".format(i+1)
                                 for i in range(10)]).isel(emissions_zdim=0)
@@ -329,15 +313,15 @@ for flux_part, flux_orig in zip(TRUE_FLUXES_MATCHED.data_vars.values(), TRUE_FLU
     flux_part.attrs["units"] = str(FLUX_UNITS)
 
 WRF_OBS = OBS_DATASET.get(
-    ["tracer_{:d}".format(i+1)
-     for i in range(10)]).isel(
-             bottom_top=slice(8, 15))
+    ["tracer_{:d}_subset".format(i+1)
+     for i in (1, 6, 8)]).isel(
+             atmosphere_sigma_coordinate=slice(8, 15))
 WRF_OBS_MATCHED = WRF_OBS.rename(dict(
-    south_north="dim_y", west_east="dim_x", Time="observation_time"))
+    projection_y_coordinate="dim_y", projection_x_coordinate="dim_x", time="observation_time"))
 WRF_OBS_SITE = (
-    WRF_OBS_MATCHED.sel(bottom_top=OBS_ROUGH_SIGMA, method="nearest")
-    .sel_points(dim_x=WRF_TOWER_COORDS[:, 0], dim_y=WRF_TOWER_COORDS[:, 1],
-                method="nearest", dim=INFLUENCE_FUNCTIONS.coords["site"]))
+    WRF_OBS_MATCHED.sel(atmosphere_sigma_coordinate=OBS_ROUGH_SIGMA, method="nearest")
+    .isel_points(dim_x=range(4), dim_y=range(4),
+                dim=INFLUENCE_FUNCTIONS.coords["site"]))
 
 WRF_OBS_START = WRF_OBS_MATCHED.indexes["observation_time"][0]
 WRF_OBS_INTERVAL = WRF_OBS_START - WRF_OBS_MATCHED.indexes["observation_time"][1]
@@ -376,10 +360,12 @@ for i, site in enumerate(INFLUENCE_FUNCTIONS.indexes["site"]):
     site_obs_index.extend(zip(
         np.where((OBS_HOURS[0] < local_times.time) &
                  (local_times.time < OBS_HOURS[1]))[0],
-        itertools.repeat(i)))
+        itertools.repeat(site)))
 obs_index, site_index = zip(*site_obs_index)
+site_index = list(site_index)
+pd_obs_index = obs_times[list(obs_index)]
 site_obs_pd_index = pd.MultiIndex.from_tuples(
-    site_obs_index, names=("site", "observation_time"))
+    list(zip(site_index, pd_obs_index)), names=("site", "observation_time"))
 
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Aligning flux times in influence function")
@@ -392,8 +378,8 @@ aligned_influences = xarray.concat(
     [here_infl.set_index(
         time_before_observation="flux_time").rename(
             dict(time_before_observation="flux_time"))
-     for here_infl in INFLUENCE_FUNCTIONS.isel_points(
-             site=site_index, observation_time=obs_index)],
+     for here_infl in INFLUENCE_FUNCTIONS.sel_points(
+             site=site_index, observation_time=pd_obs_index)],
     "observation").set_index(
     observation=("observation_time", "site"))
 print(datetime.datetime.now(UTC).strftime("%c"), "Aligned flux times in influence function, aligning fluxes with influence function")
@@ -476,11 +462,11 @@ sys.stdout.flush()
 # average seasonal variation (or some fraction thereof) might work.
 FLUX_VARIANCE_VARYING_FRACTION = .3
 flux_stds = FLUX_VARIANCE_VARYING_FRACTION * da.fabs(aligned_fluxes.data)
-flux_stds_matrix = inversion.covariances.DiagonalOperator(flux_stds.data.reshape(-1))
+flux_stds_matrix = inversion.covariances.DiagonalOperator(flux_stds.reshape(-1))
 
 # TODO: use actual heights
-here_obs = WRF_OBS_SITE[TRACER_NAME].isel_points(
-    observation_time=obs_index, site=site_index
+here_obs = WRF_OBS_SITE[TRACER_NAME].sel_points(
+    observation_time=pd_obs_index, site=site_index
     )
 
 print(datetime.datetime.now(UTC).strftime("%c"), "Got covariance parts, getting posterior")
