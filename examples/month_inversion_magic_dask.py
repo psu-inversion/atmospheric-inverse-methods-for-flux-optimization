@@ -68,7 +68,7 @@ print("Influence Files", INFLUENCE_FILES)
 
 FLUX_NAME = "E_TRA2"
 TRACER_NAME = "tracer_2_subset"
-FLUX_CHUNKS = 60
+# FLUX_CHUNKS = 60
 
 HOURS_PER_DAY = 24
 DAYS_PER_WEEK = 7
@@ -205,10 +205,7 @@ OBS_VEC_TOTAL_SIZE = N_SITES * N_OBS_TIMES
 # seven days: > 288012
 # One day:
 INFLUENCE_DATASET = xarray.open_mfdataset(
-    INFLUENCE_FILES,
-    chunks=dict(observation_time=1, site=N_SITES,
-                time_before_observation=FLUX_WINDOW,
-                dim_y=NY, dim_x=NX)).isel(
+    INFLUENCE_FILES).isel(
     observation_time=slice(0, 2 * HOURS_PER_DAY),
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
 INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
@@ -260,12 +257,10 @@ print(datetime.datetime.now(UTC).strftime("%c"), "Have constants, getting priors
 # Read prior fluxes
 FLUX_DATASET = xarray.open_mfdataset(
     FLUX_FILES,
-    chunks=dict(projection_x_coordinate=NX, projection_y_coordinate=NY, XTIME=1),
     concat_dim="Time",
 )
 OBS_DATASET = xarray.open_mfdataset(
     OBS_FILES,
-    chunks=dict(time=HOURS_PER_DAY * DAYS_PER_WEEK),
     concat_dim="Time",
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have obs, normalizing")
@@ -461,7 +456,7 @@ sys.stdout.flush()
 # full stds would then be sqrt(fixed^2 + varying^2)
 # average seasonal variation (or some fraction thereof) might work.
 FLUX_VARIANCE_VARYING_FRACTION = .3
-flux_stds = FLUX_VARIANCE_VARYING_FRACTION * da.fabs(aligned_fluxes.data)
+flux_stds = FLUX_VARIANCE_VARYING_FRACTION * np.fabs(aligned_fluxes.data)
 flux_stds_matrix = inversion.covariances.DiagonalOperator(flux_stds.reshape(-1))
 
 # TODO: use actual heights
@@ -476,7 +471,7 @@ posterior = inversion.optimal_interpolation.fold_common(
     inversion.covariances.ProductLinearOperator(
         flux_stds_matrix, full_correlations, flux_stds_matrix),
     here_obs.data,
-    da.diag(da.full(here_obs.shape, .1, chunks=here_obs.shape)),
+    np.diag(np.full(here_obs.shape, .1)),
     (aligned_influences.data
      .transpose(transpose_arg)
      .reshape(aligned_influences.shape[0],
