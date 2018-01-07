@@ -3,7 +3,7 @@
 Iterative observation-space algorithm.
 """
 import numpy as np
-from dask.array import asarray
+from numpy import asarray
 from scipy.linalg import cholesky
 import scipy.optimize
 from scipy.sparse.linalg import LinearOperator

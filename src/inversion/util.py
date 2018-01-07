@@ -13,8 +13,9 @@ from scipy.sparse.linalg.interface import (
     _CustomLinearOperator, _SumLinearOperator,
     _ScaledLinearOperator)
 import dask.array as da
-import dask.array.linalg as la
-from dask.array import asarray, concatenate, stack, hstack, vstack, zeros
+import numpy.linalg as la
+from numpy import asarray, concatenate, stack, hstack, vstack, zeros
+from numpy import atleast_1d, atleast_2d
 
 OPTIMAL_ELEMENTS = int(2e4)
 """Optimal elements per chunk in a dask array.
@@ -96,56 +97,6 @@ def chunk_sizes(shape, matrix_side=True):
                 range(check_step, max_to_check + 1, check_step))
             if next_dimsize % i == 0)
     return tuple(chunks)
-
-
-def atleast_1d(arry):
-    """Ensure `arry` is dask array of rank at least one.
-
-    Parameters
-    ----------
-    arry: array_like
-
-    Returns
-    -------
-    new_arry: dask.array.core.Array
-    """
-    if isinstance(arry, da.Array):
-        if arry.ndim >= 1:
-            return arry
-        return arry[np.newaxis]
-    if isinstance(arry, (list, tuple, np.ndarray)):
-        arry = np.atleast_1d(arry)
-    if isinstance(arry, numbers.Number):
-        arry = np.atleast_1d(arry)
-
-    array_shape = arry.shape
-    return da.from_array(arry, chunks=chunk_sizes(array_shape))
-
-
-def atleast_2d(arry):
-    """Ensure arry is a dask array of rank at least two.
-
-    Parameters
-    ----------
-    arry: array_like
-
-    Returns
-    -------
-    new_arry: dask.array.core.Array
-    """
-    if isinstance(arry, da.Array):
-        if arry.ndim >= 2:
-            return arry
-        elif arry.ndim == 1:
-            return arry[np.newaxis, :]
-        return arry[np.newaxis, np.newaxis]
-    if isinstance(arry, (list, tuple, np.ndarray)):
-        arry = np.atleast_2d(arry)
-    if isinstance(arry, numbers.Number):
-        arry = np.atleast_2d(arry)
-
-    array_shape = arry.shape
-    return da.from_array(arry, chunks=chunk_sizes(array_shape))
 
 
 def linop_solve(operator, arr):
@@ -844,8 +795,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         operator2 = self._operator2
 
         for row1 in range(self._n_chunks):
-            chunk = zeros(chunk_shape, dtype=chunk_dtype,
-                          chunks=chunk_shape)
+            chunk = zeros(chunk_shape, dtype=chunk_dtype)
             for col1, chunk_start in enumerate(
                     range(0, mat.shape[0], block_size)):
                 chunk += (operator1[row1, col1] *

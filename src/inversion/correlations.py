@@ -16,12 +16,12 @@ from numpy.linalg import eigh, norm
 from numpy import arange, newaxis, asanyarray, where
 from scipy.special import gamma, kv as K_nu
 
-from dask.array import fromfunction, asarray, hstack
-from dask.array import exp, square, fmin, sqrt, zeros
-from dask.array import logical_or, concatenate, isnan
-from dask.array import sum as da_sum
+from numpy import fromfunction, asarray, hstack
+from numpy import exp, square, fmin, sqrt, zeros
+from numpy import logical_or, concatenate, isnan
+from numpy import sum as np_sum
 from dask.array import Array
-from dask.array.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
+from numpy.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
 import six
 
 from inversion.util import chunk_sizes, schmidt_decomposition, is_odd
@@ -172,11 +172,10 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
             # use the smaller components to get the distance to the
             # closest of the shifted origins
             comp2 = fmin(comp2_1, comp2_2)
-            return corr_func(sqrt(da_sum(comp2, axis=0)))
+            return corr_func(sqrt(np_sum(comp2, axis=0)))
 
         corr_struct = fromfunction(
             corr_from_index, shape=tuple(shape),
-            chunks=chunk_sizes(shape, matrix_side=False),
             dtype=DTYPE)
 
         # The dask fft functions require all relevant axes to be in
@@ -222,10 +221,6 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         """
         _shape = self._underlying_shape
         field = asarray(vec).reshape(_shape)
-        # TODO: Test this
-        field = field.rechunk(
-            chunks={i: shape_part
-                    for i, shape_part in enumerate(_shape)})
 
         spectral_field = self._fft(field)
         spectral_field *= self._corr_fourier
@@ -249,10 +244,6 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         """
         _shape = self._underlying_shape
         fields = asarray(mat).reshape(_shape + (-1,))
-        # TODO: Test this
-        fields = fields.rechunk(
-            chunks={i: shape_part
-                    for i, shape_part in enumerate(_shape)})
 
         spectral_fields = self._fft(fields)
         spectral_fields *= self._corr_fourier[..., np.newaxis]
@@ -332,13 +323,10 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         expanded_fft = hstack(
             (self._corr_fourier,
              self._corr_fourier[..., reverse_start:0:-1].conj()))
-        expanded_fft = expanded_fft.rechunk(expanded_fft.shape)
 
         expanded_near_zero = concatenate(
             (self._fourier_near_zero,
              self._fourier_near_zero[..., reverse_start:0:-1]), axis=-1)
-        expanded_near_zero = expanded_near_zero.rechunk(
-            expanded_near_zero.shape)
 
         newinst = HomogeneousIsotropicCorrelation(shape)
         newinst._corr_fourier = (expanded_fft[self_index] *
@@ -405,17 +393,10 @@ class SchmidtKroneckerProduct(LinearOperator):
         -------
         array_like[M]
         """
-        if isinstance(vector, Array):
-            chunks = vector.chunks
-        else:
-            chunks = chunk_sizes((self.shape[0], 1))
-
         if vector.ndim == 1:
             result_shape = self.shape[0]
-            result_chunks = chunks[:1]
         else:
             result_shape = (self.shape[0], 1)
-            result_chunks = chunks
 
         lambdas, vecs1, vecs2 = schmidt_decomposition(
             asarray(vector), self._inshape1, self._inshape2)
@@ -433,7 +414,6 @@ class SchmidtKroneckerProduct(LinearOperator):
             last_lambda = len(lambdas)
 
         result = zeros(shape=result_shape,
-                       chunks=result_chunks,
                        dtype=np.result_type(self.dtype, vector.dtype))
         for lambd, vec1, vec2 in islice(zip(lambdas, vecs1, vecs2),
                                         0, last_lambda):
