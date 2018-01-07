@@ -37,6 +37,7 @@ except NameError:
 
 import inversion.optimal_interpolation
 import inversion.correlations
+import inversion.covariances
 import inversion.noise
 import inversion.tests
 
@@ -45,10 +46,10 @@ isqrt = iris.analysis.maths.IFunc(
 
 NX = 60
 NY = 40
-N_FLUX_TIMES = 1
+N_FLUX_TIMES = 24 * 7
 
-N_TIMES_BACK = 1
-N_SITES = 6
+N_TIMES_BACK = 24 * 5
+N_SITES = 4
 
 N_GRID_POINTS = NX * NY
 N_OBS_TIMES = N_FLUX_TIMES - N_TIMES_BACK + 1
@@ -56,11 +57,11 @@ N_OBS_TIMES = N_FLUX_TIMES - N_TIMES_BACK + 1
 TRUE_CORR_LEN = 5
 ASSUMED_CORR_LEN = 5
 TRUE_SP_ERROR_CORRELATION_FUN = (
-    inversion.correlations.Exponential2DCorrelation(TRUE_CORR_LEN))
+    inversion.correlations.ExponentialCorrelation(TRUE_CORR_LEN))
 ASSUMED_SP_ERROR_CORRELATION_FUN = (
-    inversion.correlations.Exponential2DCorrelation(ASSUMED_CORR_LEN))
+    inversion.correlations.ExponentialCorrelation(ASSUMED_CORR_LEN))
 TM_ERROR_CORRELATION_FUN = (
-    inversion.correlations.Exponential1DCorrelation(2))
+    inversion.correlations.ExponentialCorrelation(2))
 STDS = np.ones((N_FLUX_TIMES, NY, NX))
 
 COORD_ADJOINT_STR = "adjoint_"
@@ -208,18 +209,23 @@ X_{CO2} is here in units of 1; multiply by 1e6 to get ppmv
 # I'm pretty sure this is the proper memory order for products to work
 # Unfortunately, this conflicts with the intuition I get from the
 # $E(\ce \ce^T)$ definition
-TRUE_SP_ERROR_CORRELATION = TRUE_SP_ERROR_CORRELATION_FUN.make_matrix(NY, NX)
+TRUE_SP_ERROR_CORRELATION = (
+    inversion.correlations.HomogeneousIsotropicCorrelation.from_function(
+        TRUE_SP_ERROR_CORRELATION_FUN, (NY, NX)))
 ASSUMED_SP_ERROR_CORRELATION = (
-    ASSUMED_SP_ERROR_CORRELATION_FUN.make_matrix(NY, NX))
-TM_ERROR_CORRELATION = TM_ERROR_CORRELATION_FUN.make_matrix(N_FLUX_TIMES)
-TRUE_ERROR_CORRELATION = scipy.linalg.kron(TM_ERROR_CORRELATION,
-                                           TRUE_SP_ERROR_CORRELATION)
-ASSUMED_ERROR_CORRELATION = scipy.linalg.kron(TM_ERROR_CORRELATION,
-                                              ASSUMED_SP_ERROR_CORRELATION)
+    inversion.correlations.HomogeneousIsotropicCorrelation.from_function(
+        ASSUMED_SP_ERROR_CORRELATION_FUN, (NY, NX)))
+TM_ERROR_CORRELATION = (
+    inversion.correlations.HomogeneousIsotropicCorrelation.from_function(
+        TM_ERROR_CORRELATION_FUN, (N_FLUX_TIMES)))
+TRUE_ERROR_CORRELATION = inversion.util.kronecker_product(
+    TM_ERROR_CORRELATION, TRUE_SP_ERROR_CORRELATION)
+ASSUMED_ERROR_CORRELATION = inversion.util.kronecker_product(
+    TM_ERROR_CORRELATION, ASSUMED_SP_ERROR_CORRELATION)
 
 # Do this part before or after the kronecker product?
 STDS = np.ones(N_FLUX_TIMES * N_GRID_POINTS)
-DIAG_STDS = np.diag(STDS)
+DIAG_STDS = inversion.covariances.DiagonalOperator(STDS)
 TRUE_ERROR_COVARIANCE = DIAG_STDS.dot(TRUE_ERROR_CORRELATION.dot(DIAG_STDS))
 ASSUMED_ERROR_COVARIANCE = DIAG_STDS.dot(
     ASSUMED_ERROR_CORRELATION.dot(DIAG_STDS))
