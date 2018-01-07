@@ -264,8 +264,9 @@ ASSUMED_ERR_COV_CUBE = iris.cube.Cube(
 print(TRUE_ERR_COV_CUBE)
 
 # This one goes forward in time
+INFLUENCE_FUNCTION = iris.load_cube("/mc1s2/s4/dfw5129/data/LPEMLPDM_2010_01_03hrly_footprints_collapsed.nc4")
 OBSERVATION_OPERATOR = iris.cube.Cube(
-    np.zeros((N_OBS_TIMES, N_SITES, N_TIMES_BACK, NY, NX)),
+    INFLUENCE_FUNCTION[:N_OBS_TIMES, :N_SITES, :N_TIMES_BACK].lazy_data(),
     long_name="influence_function",
     units="ppmv/(g/km^2/hr)",
     dim_coords_and_dims=(
@@ -295,12 +296,6 @@ OBSERVATION_OPERATOR = iris.cube.Cube(
     )
 )
 
-# The next block fills this with gaussian puffs
-# This is the advection velocity and spread rate.
-WIND = iris.cube.Cube(.1, units="m/s")
-DIFFUSIVITY = iris.cube.Cube(3e2, units="km^2/day")
-
-
 def coord_to_cube(coord):
     """Turn the coord into a cube.
 
@@ -329,62 +324,8 @@ def coord_to_cube(coord):
     return result
 
 
-# def pr(thing):
-#     print(thing)
-#     if isinstance(thing, iris.cube.Cube):
-#         print(thing.data)
-#     return thing
-
 tower_x = OBSERVATION_OPERATOR.coord(long_name="tower_x")
 tower_y = OBSERVATION_OPERATOR.coord(long_name="tower_y")
-# Filling obs_op
-for site in range(N_SITES):
-    site_x = coord_to_cube(tower_x[site])
-    site_y = coord_to_cube(tower_y[site])
-
-    site_x.coord("projection_x_coordinate").long_name = None
-    site_y.coord("projection_y_coordinate").long_name = None
-
-    y_dist_part = (coord_to_cube(Y_COORD).data - site_y.data) ** 2
-
-    for curr_time in range(N_TIMES_BACK):
-        advection_time = coord_to_cube(TIME_BACK_COORD[curr_time]) + .25
-        # indexing apparently doesn't preserve name.
-        # Code says it does.
-        x_shift = advection_time * WIND
-        print(x_shift)
-        x_shift.convert_units(site_x.units)
-
-        x_dist_part = (coord_to_cube(X_COORD).data -
-                       (site_x.data - x_shift.data)) ** 2
-
-        # The sign is important
-        # Second time I've forgotten this
-        exponent = -1 * iris.cube.Cube(
-            y_dist_part[np.newaxis, :, np.newaxis] +
-            x_dist_part[np.newaxis, np.newaxis, :],
-            units=Y_COORD.units**2,
-            dim_coords_and_dims=(
-                (advection_time.coord("time_before_observation"), 0),
-                (Y_COORD, 1),
-                (X_COORD, 2),
-            ),
-        ) / (4 * advection_time * DIFFUSIVITY)
-        exponent.convert_units("1")
-        infl_fun = (
-            .5 * iris.analysis.maths.exp(exponent) *
-            isqrt(np.pi * advection_time * DIFFUSIVITY) ** -1 *
-            # Use proper flux units
-            GRAMS_TO_PPM *
-            # integrate over streamwise space and time
-            DX * DT
-        )
-        infl_fun.convert_units(OBSERVATION_OPERATOR.units)
-        OBSERVATION_OPERATOR.data[:, site, curr_time, :, :] = infl_fun.data * 100
-        del infl_fun, x_dist_part, x_shift, exponent
-    del y_dist_part
-del site_x, site_y, site
-del curr_time, advection_time
 
 fig = plt.figure()
 # Currently goes 0 to .05
