@@ -324,7 +324,7 @@ WRF_OBS_MATCHED = WRF_OBS.rename(dict(
 WRF_OBS_SITE = (
     WRF_OBS_MATCHED.sel(atmosphere_sigma_coordinate=OBS_ROUGH_SIGMA, method="nearest")
     .isel_points(dim_x=range(4), dim_y=range(4),
-                dim=INFLUENCE_FUNCTIONS.coords["site"]))
+                dim=INFLUENCE_FUNCTIONS.coords["site"])).transpose()
 
 WRF_OBS_START = WRF_OBS_MATCHED.indexes["observation_time"][0]
 WRF_OBS_INTERVAL = WRF_OBS_START - WRF_OBS_MATCHED.indexes["observation_time"][1]
