@@ -500,8 +500,7 @@ posterior = posterior.reshape(aligned_fluxes.shape)
 posterior_ds = xarray.Dataset(
     dict(posterior=(aligned_fluxes.dims, posterior,
                     posterior_var_atts),
-         prior=(aligned_fluxes.dims, aligned_fluxes,
-                aligned_fluxes.attrs),
+         prior=aligned_fluxes,
          increment=(aligned_fluxes.dims, posterior - aligned_fluxes,
                     increment_var_atts),
          ),
