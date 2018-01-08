@@ -1541,6 +1541,34 @@ class TestHomogeneousInversions(unittest2.TestCase):
                         obs_op)
 
 
+class TestLazyEval(unittest2.TestCase):
+    """Test that evaluation only occurs where expected."""
+
+    def test_methods(self):
+        """Test the inversion schemes."""
+        background = da.Array({("not_an_array", 0): None},
+                              "not_an_array", ((5,),), np.float32)
+        bg_corr = da.Array({("not_a_matrix", 0, 0): None},
+                           "not_a_matrix", ((5,), (5,)), np.float32)
+        obs = da.Array({("still_not_an_array", 0): None},
+                       "still_not_an_array", ((3,),), np.float32)
+        obs_corr = da.eye(3, chunks=3)
+        obs_op = da.Array({("not_an_operator", 0, 0): None},
+                          "not_an_operator", ((3,), (5,)), np.float32)
+        for inversion_method in ALL_METHODS:
+            if (("chol" in getname(inversion_method) or
+                 "psas" in getname(inversion_method) or
+                 "variational" in getname(inversion_method))):
+                # Cholesky currently written to require in-memory
+                # arrays
+                continue
+            with self.subTest(method=getname(inversion_method)):
+                post, post_cov = inversion_method(
+                    background, bg_corr,
+                    obs, obs_corr,
+                    obs_op)
+
+
 class TestCovariances(unittest2.TestCase):
     """Test the covariance classes."""
 
