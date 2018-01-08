@@ -27,7 +27,7 @@ try:
 except NameError:
     THIS_DIR = os.getcwd()
 
-sys.path.append(os.path.join(
+sys.path.insert(0, os.path.join(
     THIS_DIR, "..", "src"))
 sys.path.append(THIS_DIR)
 
