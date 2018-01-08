@@ -3,8 +3,8 @@
 Iterative observation-space algorithm.
 """
 import numpy as np
-from numpy import asarray
-from scipy.linalg import cholesky
+from dask.array import asarray
+from dask.array.linalg import cholesky
 import scipy.optimize
 from scipy.sparse.linalg import LinearOperator
 # I believe scipy's minimizer requires things that give boolean true

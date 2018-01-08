@@ -16,7 +16,7 @@ from scipy.sparse.linalg import LinearOperator
 # or false from the objective, rather than a yet-to-be-realized dask
 # array.
 from inversion.util import atleast_1d, atleast_2d
-from numpy import asarray
+from dask.array import asarray
 from numpy import zeros_like
 
 from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
