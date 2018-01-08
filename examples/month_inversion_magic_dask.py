@@ -344,6 +344,7 @@ print(datetime.datetime.now(UTC).strftime("%c"),
 ############################################################
 # Do the inversion
 ############################################################
+# The Kalman filter version subtracts an hour from these. Why?
 obs_times = (INFLUENCE_FUNCTIONS.indexes["observation_time"][::-1])
 
 ############################################################
@@ -351,6 +352,7 @@ obs_times = (INFLUENCE_FUNCTIONS.indexes["observation_time"][::-1])
 # Take care of missing obs
 # Also subsetting for late afternoon steady convective boundary layer
 # takes roughly 11 min.
+# Takes 6 min with everything in memory
 site_obs_index = []
 print(datetime.datetime.now(UTC).strftime("%c"), "Selecting observations")
 for i, site in enumerate(INFLUENCE_FUNCTIONS.indexes["site"]):
@@ -392,6 +394,13 @@ aligned_influences, aligned_fluxes = xarray.align(aligned_influences, TRUE_FLUXE
                                                   join="outer", copy=False)
 # aligned_influences.reindex(flux_time=FLUX_TIMES_INDEX)
 print(datetime.datetime.now(UTC).strftime("%c"), "Aligned fluxes and influence function")
+aligned_fluxes.chunk(dict(dim_y=NY, dim_x=NX, flux_time=FLUX_CHUNKS))
+aligned_influences.chunk(dict(dim_y=NY, dim_x=NW, flux_time=FLUX_CHUNKS
+print(datetime.datetime.now(UTC).strftime("%c"), "Rechunked to square")
+print("Aligned fluxes:", aligned_fluxes.dims, aligned_fluxes.shape)
+print(aligned_fluxes.chunks)
+print("Aligned influences:", aligned_influences.dims, aligned_influences.shape)
+print(aligned_influences.chunks)
 aligned_influences = aligned_influences.fillna(0)
 transpose_arg = sort_key_to_consecutive([dimension_order.index(dim)
                                          for dim in aligned_influences.dims])
