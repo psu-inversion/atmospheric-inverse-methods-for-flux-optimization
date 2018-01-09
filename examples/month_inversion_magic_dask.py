@@ -224,7 +224,8 @@ OBS_TIME_INDEX = INFLUENCE_DATASET.indexes["observation_time"]
 TIME_BACK_INDEX = INFLUENCE_DATASET.indexes["time_before_observation"]
 
 # NB: Remember to change frequency and time zone as necessary.
-FLUX_START = (OBS_TIME_INDEX[-1] - TIME_BACK_INDEX[-1]).replace(hour=0)
+FLUX_START = (OBS_TIME_INDEX[-1] - TIME_BACK_INDEX[-1]).replace(
+    hour=0, microsecond=0, nanosecond=0)
 if OBS_TIME_INDEX[0].hour != 0:
     FLUX_END = OBS_TIME_INDEX[0].replace(hour=0) + datetime.timedelta(days=1)
 else:
@@ -274,10 +275,11 @@ OBS_DATASET = xarray.open_mfdataset(
 print(datetime.datetime.now(UTC).strftime("%c"), "Have obs, normalizing")
 sys.stdout.flush()
 
-# Many of the times are of by about four milliseconds.
+# Many of the times are off by about four milliseconds.
 # This difference is irrelevant here.
 wrf_orig_times = FLUX_DATASET["XTIME"].to_index()
-timestamps = [timestamp.replace(microsecond=0)
+timestamps = [timestamp.replace(microsecond=0,
+                                nanosecond=0)
               for timestamp in wrf_orig_times]
 timestamps[-1] += datetime.timedelta(hours=FLUX_INTERVAL/2-1)
 timestamps[0] -= datetime.timedelta(hours=1)
@@ -367,7 +369,7 @@ for i, site in enumerate(INFLUENCE_FUNCTIONS.indexes["site"]):
                  (local_times.time < OBS_HOURS[1]))[0],
         itertools.repeat(site)))
 obs_index, site_index = zip(*site_obs_index)
-site_index = list(site_index)
+site_index = np.array(list(site_index))
 pd_obs_index = obs_times[list(obs_index)]
 site_obs_pd_index = pd.MultiIndex.from_tuples(
     list(zip(site_index, pd_obs_index)), names=("site", "observation_time"))
