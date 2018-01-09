@@ -20,7 +20,7 @@ from dask.array import asarray
 from numpy import zeros_like
 
 from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
-from inversion.util import solve
+from inversion.util import solve, chunk_sizes
 
 
 def simple(background, background_covariance,
@@ -58,10 +58,16 @@ def simple(background, background_covariance,
     background = atleast_1d(background)
     if not isinstance(background_covariance, LinearOperator):
         background_covariance = atleast_2d(background_covariance)
+        chunks = chunk_sizes((background_covariance.shape[0],))
+        background_covariance = background_covariance.rechunk(
+            chunks[0])
 
     observations = atleast_1d(observations)
     if not isinstance(observation_covariance, LinearOperator):
         observation_covariance = atleast_2d(observation_covariance)
+        chunks = chunk_sizes((observation_covariance.shape[0],))
+        observation_covariance = observation_covariance.rechunk(
+            chunks[0])
     if not isinstance(observation_operator, LinearOperator):
         observation_operator = atleast_2d(observation_operator)
 
@@ -189,10 +195,15 @@ def incremental(background, background_covariance,
     background = atleast_1d(background)
     if not isinstance(background_covariance, LinearOperator):
         background_covariance = atleast_2d(background_covariance)
+        chunks = chunk_sizes((background_covariance.shape[0],))
+        background_covariance = background_covariance.rechunk(chunks[0])
 
     observations = atleast_1d(observations)
     if not isinstance(observation_covariance, LinearOperator):
         observation_covariance = atleast_2d(observation_covariance)
+        chunks = chunk_sizes((observation_covariance.shape[0],))
+        observation_covariance = observation_covariance.rechunk(
+            chunks[0])
     if not isinstance(observation_operator, LinearOperator):
         observation_operator = atleast_2d(observation_operator)
 

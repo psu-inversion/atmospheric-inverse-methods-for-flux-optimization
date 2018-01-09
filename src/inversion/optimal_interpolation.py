@@ -5,8 +5,10 @@ Also known as Kalman Matrix Inversion or batch inversion.
 import scipy.linalg
 from scipy.sparse.linalg import LinearOperator
 
+from dask.array import Array
+
 from inversion.util import atleast_1d, atleast_2d, solve, tolinearoperator
-from inversion.util import ProductLinearOperator
+from inversion.util import ProductLinearOperator, chunk_sizes
 
 
 def simple(background, background_covariance,
@@ -53,12 +55,18 @@ def simple(background, background_covariance,
     if isinstance(observation_covariance, LinearOperator):
         projected_background_covariance = tolinearoperator(
             projected_background_covariance)
+
+    covariance_sum = projected_background_covariance + observation_covariance
+
+    if isinstance(covariance_sum, Array):
+        chunks = chunk_sizes((covariance_sum.shape[0],))
+        covariance_sum = covariance_sum.rechunk(chunks[0])
+
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
     analysis_increment = background_covariance.dot(
         observation_operator.T.dot(
             solve(
-                projected_background_covariance +
-                observation_covariance,
+                covariance_sum,
                 observation_increment)))
 
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
@@ -68,8 +76,7 @@ def simple(background, background_covariance,
     decrease = background_covariance.dot(
         observation_operator.T.dot(
             solve(
-                projected_background_covariance +
-                observation_covariance,
+                covariance_sum,
                 observation_operator).dot(
                 background_covariance)))
 
@@ -150,6 +157,10 @@ def fold_common(background, background_covariance,
     else:
         covariance_sum = (projected_background_covariance +
                           observation_covariance)
+
+    if isinstance(covariance_sum, Array):
+        chunks = chunk_sizes((covariance_sum.shape[0],))
+        covariance_sum = covariance_sum.rechunk(chunks[0])
 
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
     analysis_increment = B_HT.dot(

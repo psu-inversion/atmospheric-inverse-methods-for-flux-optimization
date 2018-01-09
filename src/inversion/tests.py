@@ -1569,6 +1569,36 @@ class TestLazyEval(unittest2.TestCase):
                     obs_op)
 
 
+class TestOddChunks(unittest2.TestCase):
+    """Test that input with odd chunks still works.
+
+    The chunking required for influence functions to load into memory
+    might not work all the way through the inversion, since
+    :func:`dask.array.linalg.solve` needs square chunks.  Make sure
+    inversion functions provide this.
+    """
+
+    N_BG = 50
+    BG_CHUNK = 30
+    N_OBS = 30
+    OBS_CHUNK = 20
+
+    def test_unusual(self):
+        """Test unusual chunking schemes."""
+        bg_cov = da.eye(self.N_BG, chunks=self.BG_CHUNK)
+        background = da.zeros(self.N_BG, chunks=self.BG_CHUNK)
+        observations = da.ones(self.N_OBS, chunks=self.OBS_CHUNK)
+        obs_cov = da.eye(self.N_OBS, chunks=self.OBS_CHUNK)
+        obs_op = da.eye(N=self.N_OBS, M=self.N_BG,
+                        chunks=30).rechunk(
+            (self.OBS_CHUNK, self.BG_CHUNK))
+
+        for inversion_method in ALL_METHODS:
+            with self.subTest(method=getname(inversion_method)):
+                post, post_cov = inversion_method(
+                    background, bg_cov, observations, obs_cov, obs_op)
+
+
 class TestCovariances(unittest2.TestCase):
     """Test the covariance classes."""
 
