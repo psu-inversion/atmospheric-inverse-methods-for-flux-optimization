@@ -68,7 +68,18 @@ print("Influence Files", INFLUENCE_FILES)
 
 FLUX_NAME = "E_TRA2"
 TRACER_NAME = "tracer_2_subset"
-FLUX_CHUNKS = 60
+FLUX_CHUNKS = 64
+"""How many flux times to treat at once.
+
+Must be a multiple of day length.
+"""
+OBS_CHUNKS = 62
+"""How many observations to treat at once.
+
+Must allow a few chunks of the influence function to be in memory at
+once.  Will need to extend this if (N_OBS_TIMES * N_SITES) ** 2 array
+stops fitting in memory.
+"""
 
 HOURS_PER_DAY = 24
 DAYS_PER_WEEK = 7
@@ -210,7 +221,7 @@ OBS_VEC_TOTAL_SIZE = N_SITES * N_OBS_TIMES
 # everything in memory: 5m59s
 INFLUENCE_DATASET = xarray.open_mfdataset(
     INFLUENCE_FILES,
-    chunks=dict(observation_time=24, site=N_SITES,
+    chunks=dict(observation_time=OBS_CHUNKS, site=N_SITES,
                 time_before_observation=FLUX_WINDOW,
                 dim_y=NY, dim_x=NX)).isel(
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
@@ -396,8 +407,12 @@ aligned_influences, aligned_fluxes = xarray.align(aligned_influences, TRUE_FLUXE
                                                   join="outer", copy=False)
 # aligned_influences.reindex(flux_time=FLUX_TIMES_INDEX)
 print(datetime.datetime.now(UTC).strftime("%c"), "Aligned fluxes and influence function")
-aligned_fluxes.chunk(dict(dim_y=NY, dim_x=NX, flux_time=FLUX_CHUNKS))
-aligned_influences.chunk(dict(dim_y=NY, dim_x=NW, flux_time=FLUX_CHUNKS
+aligned_fluxes = aligned_fluxes.chunk(dict(
+        dim_y=NY, dim_x=NX, flux_time=FLUX_CHUNKS))
+aligned_influences = aligned_influences.chunk(dict(
+        dim_y=NY, dim_x=NX, flux_time=FLUX_CHUNKS,
+        # One chunk per site.  Should be fast with the zeros in R.
+        observation=OBS_CHUNKS))
 print(datetime.datetime.now(UTC).strftime("%c"), "Rechunked to square")
 print("Aligned fluxes:", aligned_fluxes.dims, aligned_fluxes.shape)
 print(aligned_fluxes.chunks)
