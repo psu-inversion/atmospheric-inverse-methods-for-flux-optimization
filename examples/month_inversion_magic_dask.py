@@ -35,7 +35,7 @@ import inversion.optimal_interpolation
 import inversion.variational
 import inversion.correlations
 import inversion.covariances
-from inversion.util import kronecker_product, tolinearoperator
+from inversion.util import kronecker_product, tolinearoperator, asarray
 import cf_acdd
 
 INFLUENCE_PATH = "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/ACT-America_trial4/2010/01/GROUP1"
@@ -481,6 +481,17 @@ here_obs = WRF_OBS_SITE[TRACER_NAME].sel_points(
     observation_time=pd_obs_index, site=site_index
     )
 
+OBSERVATION_VARIANCE = .1
+# Since hourly obs are used, this is a three-hour decay in correlations
+OBS_CORR_FUN = (inversion.correlations.ExponentialCorrelation(3))
+OBS_INTERVAL = np.array(1, dtype='m8[h]')
+observation_covariance = OBS_CORR_FUN(
+    abs(pd_obs_index[:, np.newaxis] - pd_obs_index[np.newaxis, :]) /
+    OBS_INTERVAL)
+# Assumes no correlations between observations
+observation_covariance[site_index[:, np.newaxis] != site_index[np.newaxis, :]] = 0
+observation_covariance = asarray(observation_covariance)
+
 print(datetime.datetime.now(UTC).strftime("%c"), "Got covariance parts, getting posterior")
 sys.stdout.flush()
 posterior = inversion.optimal_interpolation.fold_common(
@@ -488,7 +499,7 @@ posterior = inversion.optimal_interpolation.fold_common(
     inversion.covariances.ProductLinearOperator(
         flux_stds_matrix, full_correlations, flux_stds_matrix),
     here_obs.data,
-    da.diag(da.full(here_obs.shape, .1, chunks=here_obs.shape)),
+    observation_covariance,
     (aligned_influences.data
      .transpose(transpose_arg)
      .reshape(aligned_influences.shape[0],
