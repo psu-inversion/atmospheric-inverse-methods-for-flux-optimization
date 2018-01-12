@@ -124,8 +124,12 @@ FLUX_UNITS = cf_units.Unit("g/m^2/hr")
 
 # Inverting two days of observations
 # FLUX_WINDOW is fourteen days: 86s -- OPTIMUM
+#  2m21s
 # Three days of four hours at four towers
 # fourteen days back: 168s
+#  3m16s
+# Four days of 4h/d 4tower
+# 11m55s
 
 # Two days of observations, FLUX_WINDOW=14 days
 # numpy OI: 108s
@@ -217,20 +221,21 @@ OBS_VEC_TOTAL_SIZE = N_SITES * N_OBS_TIMES
 # One day:
 # Time to align:
 # obs_time chunk is  1: 4m35s, 7m11s
-# obs_time chunk is 24: 8m30s
+# obs_time chunk is 24: 8m30s, 1m46s
 # everything in memory: 5m59s
 INFLUENCE_DATASET = xarray.open_mfdataset(
     INFLUENCE_FILES,
+    # Total runtime by chunks
+    # 6m10s for 62, 4, 8*7*2, full
+    # 6m to segfault with 62, 4, 64, full
     chunks=dict(observation_time=OBS_CHUNKS, site=N_SITES,
-                time_before_observation=FLUX_WINDOW,
+                time_before_observation=FLUX_WINDOW // FLUX_INTERVAL,
                 dim_y=NY, dim_x=NX)).isel(
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
 INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
 # Use site names as index/dim coord for site dim
 INFLUENCE_FUNCTIONS["site"] = np.char.decode(INFLUENCE_FUNCTIONS["site_names"].values, "ascii")
 
-# Not entirely sure why this is one too many
-# N_FLUX_TIMES = INFLUENCE_DATASET.dims["observation_time"] + FLUX_WINDOW - 1
 OBS_TIME_INDEX = INFLUENCE_DATASET.indexes["observation_time"]
 TIME_BACK_INDEX = INFLUENCE_DATASET.indexes["time_before_observation"]
 
@@ -296,7 +301,7 @@ timestamps[-1] += datetime.timedelta(hours=FLUX_INTERVAL/2-1)
 timestamps[0] -= datetime.timedelta(hours=1)
 wrf_new_times = pd.DatetimeIndex(timestamps,
                                  name="XTIME")
-FLUX_DATASET["Time"] = wrf_new_times
+FLUX_DATASET.coords["Time"] = wrf_new_times
 
 
 OBS_DATASET.set_index(dim3="projection_x_coordinate",
@@ -366,6 +371,7 @@ obs_times = (INFLUENCE_FUNCTIONS.indexes["observation_time"][::-1])
 # Also subsetting for late afternoon steady convective boundary layer
 # takes roughly 11 min.
 # Takes 6 min with everything in memory
+# Two minutes with big chunks?
 site_obs_index = []
 print(datetime.datetime.now(UTC).strftime("%c"), "Selecting observations")
 for i, site in enumerate(INFLUENCE_FUNCTIONS.indexes["site"]):
