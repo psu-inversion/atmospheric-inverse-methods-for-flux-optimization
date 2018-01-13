@@ -1,11 +1,16 @@
-* TODO Yadav and Michalak (2013) Kronecker products
+* DONE Yadav and Michalak (2013) Kronecker products
+* TODO Y&M2013 reduced posterior uncertainties
+  We don't usually care about uncertainties at a three-hour scale.
+  Summing the first axis of B to monthly time scale and reporting that
+  should be plenty.  We don't often care about sub-monthly fluxes
+  either, but the flexibility can be useful.
 * TODO Compare performance for different input chunk-sizes
   Doing everything in memory is only slightly slower, so there should
   be some optimum where caching is still good but I'm not spending so
   long building a huge dask graph and iterating through it.
 * TODO Investigate nonzero increments for spatial structure
   R packages geostatsp, geoR, fields, and RandomFields would probably
-  be useful
+  be useful.  Python package scikit-gstat.
 * TODO Check whether storing spectrum as a numpy array makes HomogeneousIsotropicCorrelations faster
   It may be re-calculating the weights on each trip through, which
   would be really slow.
@@ -17,4 +22,35 @@
   If LinearOperator handles this, code can be simpler.
   If not, expand things to handle this and test that.
 ** LinearOperator[N, N].dot(array_like[..., N])
-** LinearOperator[N, N].dot(array_like[..., N, K])
+   I'm not entirely sure where I'd use this.  What I can use more
+   easily is LinearOperator[..., N, N].dot(array_like[N, K])
+** DONE LinearOperator[N, N].dot(array_like[N, K])
+   B H_T does this, and is tested by the solvers.
+   I should write a specific test for this, though.
+* TODO Put glue code from example inversion into wrapper module
+** TODO Function to align influence functions
+** TODO Function running inversion given correlation functions et al. 
+   Takes prior(s?), influence function, spatial and temporal
+   correlation functions for obs and prior errors, and the lower-level
+   method to use; turns these in to relevant operators; reshapes
+   everything for the inversion, and runs it.
+*** TODO Have this also generate and use the reduced B to avoid full A.
+    Still need to implement this in the solvers.  For variational
+    methods, it's faster to use some other minimizer and have the
+    wrapper calculate the errors.  For OI, I already have (HBHT + R)
+    calculated in full, so using this directly might be faster.
+**** TODO Check whether saving and restoring (HBHT+R) works for a month
+     I think the current method may be trying to hold BH^T in memory,
+     to avoid extra computation.  Saving and restoring this matrix
+     would make it forget it ever knew the part, and recompute it as
+     needed.
+**** TODO Figure out interface for reduced A
+     Var is fairly straightforward (use CG or similar minimizer,
+     calculate A from scratch in wrapper), and PSAS is unreliable
+     enough that a similar approach may be a good idea.  OI calculates
+     (HBH^T + R) in full already, so using this directly is (in
+     theory) more accurate.  However, I would then need to pass in
+     either two versions for both H and B (inside and outside parens) 
+     or three of B (reduced, half reduced, and full).
+     $ (I - KH) B = B - B H^T (H B H^T + R)^{-1} H B $
+     
