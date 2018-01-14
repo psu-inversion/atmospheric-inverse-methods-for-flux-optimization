@@ -51,6 +51,7 @@ dask.set_options(get=dask.get)
 ALL_METHODS = (
     inversion.optimal_interpolation.simple,
     inversion.optimal_interpolation.fold_common,
+    inversion.optimal_interpolation.save_sum,
     inversion.optimal_interpolation.scipy_chol,
     inversion.variational.simple,
     inversion.variational.incremental,
@@ -58,7 +59,7 @@ ALL_METHODS = (
     inversion.psas.simple,
     inversion.psas.fold_common,
 )
-ITERATIVE_METHOD_START = 3
+ITERATIVE_METHOD_START = 4
 """Where the iterative methods start in the above list.
 
 Used to test failure modes for these solvers.
@@ -1558,6 +1559,7 @@ class TestLazyEval(unittest2.TestCase):
         for inversion_method in ALL_METHODS:
             if (("chol" in getname(inversion_method) or
                  "psas" in getname(inversion_method) or
+                 "save" in getname(inversion_method) or
                  "variational" in getname(inversion_method))):
                 # Cholesky currently written to require in-memory
                 # arrays
