@@ -87,9 +87,9 @@ def simple(background, background_covariance,
         obs_mismatch = asarray(test_obs - observations)
 
         prior_fit = prior_mismatch.dot(solve(
-                background_covariance, prior_mismatch))
+            background_covariance, prior_mismatch))
         obs_fit = obs_mismatch.dot(solve(
-                observation_covariance, obs_mismatch))
+            observation_covariance, obs_mismatch))
         return prior_fit + obs_fit
 
     def cost_jacobian(test_state):

@@ -27,7 +27,6 @@ import six
 from inversion.util import chunk_sizes, schmidt_decomposition, is_odd
 from inversion.util import tolinearoperator, kron
 from inversion.util import DaskLinearOperator as LinearOperator
-from inversion.util import DaskMatrixLinearOperator
 
 ROUNDOFF = 1e-13
 """Approximate size of roundoff error for correlation matrices.

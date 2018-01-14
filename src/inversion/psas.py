@@ -108,10 +108,10 @@ def simple(background, background_covariance,
         return (
             0.5 *
             test_observation_increment.dot(covariance_sum.dot(
-                    test_observation_increment)) -
+                test_observation_increment)) -
             observation_increment.dot(
                 test_observation_increment)
-            )
+        )
 
     def cost_jacobian(test_observation_increment):
         """Gradient of cost function at `test_observation_increment`.
