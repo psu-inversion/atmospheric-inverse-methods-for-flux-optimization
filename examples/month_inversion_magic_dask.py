@@ -236,12 +236,12 @@ INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
 # Use site names as index/dim coord for site dim
 INFLUENCE_FUNCTIONS["site"] = np.char.decode(INFLUENCE_FUNCTIONS["site_names"].values, "ascii")
 
-OBS_TIME_INDEX = INFLUENCE_DATASET.indexes["observation_time"]
+OBS_TIME_INDEX = INFLUENCE_DATASET.indexes["observation_time"].round("S")
 TIME_BACK_INDEX = INFLUENCE_DATASET.indexes["time_before_observation"]
 
 # NB: Remember to change frequency and time zone as necessary.
 FLUX_START = (OBS_TIME_INDEX[-1] - TIME_BACK_INDEX[-1]).replace(
-    hour=0, microsecond=0, nanosecond=0)
+    hour=0)
 if OBS_TIME_INDEX[0].hour != 0:
     FLUX_END = OBS_TIME_INDEX[0].replace(hour=0) + datetime.timedelta(days=1)
 else:
@@ -294,15 +294,12 @@ sys.stdout.flush()
 # Many of the times are off by about four milliseconds.
 # This difference is irrelevant here.
 wrf_orig_times = FLUX_DATASET["XTIME"].to_index()
-timestamps = [timestamp.replace(microsecond=0,
-                                nanosecond=0)
-              for timestamp in wrf_orig_times]
+timestamps = list(wrf_orig_times.round("S"))
 timestamps[-1] += datetime.timedelta(hours=FLUX_INTERVAL/2-1)
 timestamps[0] -= datetime.timedelta(hours=1)
 wrf_new_times = pd.DatetimeIndex(timestamps,
                                  name="XTIME")
 FLUX_DATASET.coords["Time"] = wrf_new_times
-
 
 OBS_DATASET.set_index(dim3="projection_x_coordinate",
                       dim2="projection_y_coordinate",
