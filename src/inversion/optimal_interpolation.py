@@ -238,7 +238,7 @@ def save_sum(background, background_covariance,
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
     # \Delta\vec{y} = \vec{y} - \vec{y}_b
-    observation_increment = observations - projected_obs
+    observation_increment = (observations - projected_obs).persist()
 
     # B_{proj} = HBH^T
     if obs_op_is_arry:
@@ -262,12 +262,7 @@ def save_sum(background, background_covariance,
                           observation_covariance)
 
     if isinstance(covariance_sum, Array):
-        _, tmpnam = mkstemp()
-        covariance_sum.to_hdf5(tmpnam, "/cov_sum")
-        chunks = chunk_sizes((covariance_sum.shape[0],))
-        ds = h5py.File(tmpnam)
-        covariance_sum = da.from_array(
-            ds["/cov_sum"], chunks=chunks[0])
+        covariance_sum = covariance_sum.persist()
 
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
     analysis_increment = B_HT.dot(
