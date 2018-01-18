@@ -26,7 +26,7 @@ import six
 
 from inversion.util import chunk_sizes, schmidt_decomposition, is_odd
 from inversion.util import tolinearoperator, kron
-from inversion.util import DaskLinearOperator as LinearOperator
+from inversion.util import DaskLinearOperator
 
 ROUNDOFF = 1e-13
 """Approximate size of roundoff error for correlation matrices.
@@ -57,7 +57,7 @@ FOURIER_NEAR_ZERO = 1e-15
 DTYPE = np.float64
 
 
-class HomogeneousIsotropicCorrelation(LinearOperator):
+class HomogeneousIsotropicCorrelation(DaskLinearOperator):
     """Homogeneous isotropic correlations using FFTs.
 
     Assumes periodic domain.  Use padding or a larger domain to avoid
@@ -271,7 +271,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         """Construct the matrix inverse of this operator."""
         # TODO: Test this
         # TODO: Return a HomogeneousIsotropicLinearOperator
-        return LinearOperator(
+        return DaskLinearOperator(
             shape=self.shape, dtype=self.dtype,
             matvec=self.solve, rmatvec=self.solve)
 
@@ -348,7 +348,7 @@ class HomogeneousIsotropicCorrelation(LinearOperator):
         return newinst
 
 
-class SchmidtKroneckerProduct(LinearOperator):
+class SchmidtKroneckerProduct(DaskLinearOperator):
     """Kronecker product of two operators using Schmidt decomposition.
 
     This works best when the input vectors are nearly Kronecker

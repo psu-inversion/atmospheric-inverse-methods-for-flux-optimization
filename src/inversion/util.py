@@ -667,7 +667,7 @@ class _DaskSumLinearOperator(_SumLinearOperator, DaskLinearOperator):
     pass
 
 
-class ProductLinearOperator(LinearOperator):
+class ProductLinearOperator(DaskLinearOperator):
     """Represent a product of linear operators."""
 
     def __init__(self, *operators):

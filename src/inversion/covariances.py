@@ -9,7 +9,7 @@ from numpy import newaxis
 from dask.array import where
 
 from inversion.util import REAL_DTYPE_KINDS
-from inversion.util import DaskLinearOperator as LinearOperator
+from inversion.util import DaskLinearOperator
 from inversion.util import ProductLinearOperator
 
 NEAR_ZERO = 1e-20
@@ -25,7 +25,7 @@ inversion.correlations.NEAR_ZERO
 """
 
 
-class SelfAdjointLinearOperator(LinearOperator):
+class SelfAdjointLinearOperator(DaskLinearOperator):
     """Self-adjoint linear operators.
 
     Provides :meth:`_rmatvec` and :meth:`_adjoint` methods.
