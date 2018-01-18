@@ -2,17 +2,14 @@
 
 Also known as Kalman Matrix Inversion or batch inversion.
 """
-from tempfile import mkstemp
-
 import scipy.linalg
 from scipy.sparse.linalg import LinearOperator
 
 import dask.array as da
 from dask.array import Array
-import h5py
 
 from inversion.util import atleast_1d, atleast_2d, solve, tolinearoperator
-from inversion.util import ProductLinearOperator, chunk_sizes
+from inversion.util import ProductLinearOperator, chunk_sizes, persist_to_disk
 
 
 def simple(background, background_covariance,
@@ -139,7 +136,7 @@ def fold_common(background, background_covariance,
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
     # \Delta\vec{y} = \vec{y} - \vec{y}_b
-    observation_increment = observations - projected_obs
+    observation_increment = (observations - projected_obs).persist()
 
     # B_{proj} = HBH^T
     if obs_op_is_arry:
@@ -164,13 +161,16 @@ def fold_common(background, background_covariance,
 
     if isinstance(covariance_sum, Array):
         chunks = chunk_sizes((covariance_sum.shape[0],))
-        covariance_sum = covariance_sum.rechunk(chunks[0])
+        covariance_sum = covariance_sum.rechunk(chunks[0]).persist()
 
-    # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
-    analysis_increment = B_HT.dot(
-        solve(
-            covariance_sum,
-            observation_increment))
+    # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y} 
+    # This does repeat work for in memory data, but is perhaps doable
+    # for out-of-core computations
+    analysis_increment = background_covariance.dot(
+        observation_operator.T.dot(
+            solve(
+                covariance_sum,
+                observation_increment)))
 
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
     analysis = background + analysis_increment
@@ -238,7 +238,7 @@ def save_sum(background, background_covariance,
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
     # \Delta\vec{y} = \vec{y} - \vec{y}_b
-    observation_increment = (observations - projected_obs).persist()
+    observation_increment = (observations - projected_obs)
 
     # B_{proj} = HBH^T
     if obs_op_is_arry:
@@ -262,13 +262,18 @@ def save_sum(background, background_covariance,
                           observation_covariance)
 
     if isinstance(covariance_sum, Array):
-        covariance_sum = covariance_sum.persist()
+        covariance_sum, observation_increment = persist_to_disk(
+            covariance_sum, observation_increment)
+    else:
+        observation_increment, = persist_to_disk(
+            observation_increment)
 
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
-    analysis_increment = B_HT.dot(
-        solve(
-            covariance_sum,
-            observation_increment))
+    analysis_increment = background_covariance.dot(
+        observation_operator.T.dot(
+            solve(
+                covariance_sum,
+                observation_increment)))
 
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
     analysis = background + analysis_increment

@@ -3,6 +3,7 @@
 These functions mirror :mod:`numpy` functions but produce dask output.
 """
 import itertools
+import tempfile
 import numbers
 import math
 
@@ -12,6 +13,8 @@ from scipy.sparse.linalg.interface import (
     MatrixLinearOperator,
     _CustomLinearOperator, _SumLinearOperator,
     _ScaledLinearOperator)
+import h5py
+
 import dask.array as da
 import dask.array.linalg as la
 from dask.array import asarray, concatenate, stack, hstack, vstack, zeros
@@ -852,3 +855,38 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
                           mat[chunk_start:(chunk_start + block_size)])
             chunks.append(operator2.dot(chunk))
         return vstack(tuple(chunks))
+
+
+def persist_to_disk(*arrays):
+    """Persist arrays to disk.
+
+    Save the arrays to a temporary file on disk, then read them back
+    in with an "optimal" chunking scheme.  This will trigger any lazy
+    computation, but shouldn't load all the data into memory.
+
+    Parameters
+    ----------
+    *arrays: array_like[N] or array_like[N, N]
+        Set of vectors or square matrices.
+
+    Returns
+    -------
+    *disk_arrays
+        The same arrays, but backed by an hdf5 file, not a series of
+        computations
+
+    See Also
+    --------
+    dask.array.persist
+    """
+    _, tmpname = tempfile.mkstemp()
+    names = ["/array{n:02d}".format(n=n)
+             for n in range(len(arrays))]
+    da.to_hdf5(tmpname,
+               {name: arry
+                for name, arry in zip(names, arrays)})
+    ds = h5py.File(tmpname)
+    return (
+        da.from_array(
+            ds[name], chunks=chunk_sizes((arry.shape[0],), arry.ndim == 2)[0])
+        for name, arry in zip(names, arrays))

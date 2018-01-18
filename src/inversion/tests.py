@@ -1556,19 +1556,14 @@ class TestLazyEval(unittest2.TestCase):
         obs_corr = da.eye(3, chunks=3)
         obs_op = da.Array({("not_an_operator", 0, 0): None},
                           "not_an_operator", ((3,), (5,)), np.float32)
-        for inversion_method in ALL_METHODS:
-            if (("chol" in getname(inversion_method) or
-                 "psas" in getname(inversion_method) or
-                 "save" in getname(inversion_method) or
-                 "variational" in getname(inversion_method))):
-                # Cholesky currently written to require in-memory
-                # arrays
-                continue
-            with self.subTest(method=getname(inversion_method)):
-                post, post_cov = inversion_method(
-                    background, bg_corr,
-                    obs, obs_corr,
-                    obs_op)
+
+        # Dask rewrites made this the only entirely lazy method.
+        inversion_method = inversion.optimal_interpolation.simple
+        with self.subTest(method=getname(inversion_method)):
+            post, post_cov = inversion_method(
+                background, bg_corr,
+                obs, obs_corr,
+                obs_op)
 
 
 class TestOddChunks(unittest2.TestCase):
