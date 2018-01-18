@@ -842,13 +842,14 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         chunks = []
         block_size = self._block_size
         chunk_shape = (block_size, mat.shape[1])
+        chunk_chunks = (block_size, mat.chunks[1][0])
         chunk_dtype = np.result_type(self.dtype, mat.dtype)
         operator1 = self._operator1
         operator2 = self._operator2
 
         for row1 in range(self._n_chunks):
             chunk = zeros(chunk_shape, dtype=chunk_dtype,
-                          chunks=chunk_shape)
+                          chunks=chunk_chunks)
             for col1, chunk_start in enumerate(
                     range(0, mat.shape[0], block_size)):
                 chunk += (operator1[row1, col1] *
