@@ -113,28 +113,6 @@ fitting nicely in memory.
 OBS_TIMES_PER_DAY = OBS_HOURS[1].hour - OBS_HOURS[0].hour
 """Observations used per site per day."""
 
-# Inverting a single day of observations
-# Four stations; afternoon is four hours
-# FLUX_WINDOW is one day: 25s, 19s
-# FLUX_WINDOW is two days: 17s
-# FLUX_WINDOW is four days: 25s
-# seven days: 29s
-# ten days: 57s
-# fourteen days: 78s
-# twenty-one days: >100s, 9.5 min.
-
-# Inverting two days of observations
-# FLUX_WINDOW is fourteen days: 86s -- OPTIMUM
-# Three days of four hours at four towers
-# fourteen days back: 168s
-
-# Two days of observations, FLUX_WINDOW=14 days
-# numpy OI: 108s
-# numpy var: >607s
-# dask var: >1228s
-# dask OI: 99s
-# Var may need differnt tuning; explore later
-
 ############################################################
 # Utility functions.
 def grouper(iterable, n, fillvalue=None):
@@ -143,25 +121,6 @@ def grouper(iterable, n, fillvalue=None):
     args = [iter(iterable)] * n
     return itertools.zip_longest(*args, fillvalue=fillvalue)
 
-
-# def grouper(lst, blocksize, total_len=None):
-#     """Return blocks of `blocksize` from `lst`.
-
-#     Parameters
-#     ----------
-#     lst: sequence
-#     blocksize: int
-#     total_len: int, optional
-#         Total length where this cannot be determined from
-    
-
-#     Yields
-#     ------
-#     sequence
-#         slices from lst
-#     """
-#     for start in range(0, len(lst), n):
-#         yield lst[start:start + n]
 
 def sort_key_to_consecutive(sequence):
     """Turn a list of sort keys into a list of consecutive numbers.
