@@ -514,7 +514,7 @@ observation_covariance = asarray(observation_covariance)
 
 print(datetime.datetime.now(UTC).strftime("%c"), "Got covariance parts, getting posterior")
 sys.stdout.flush()
-posterior = inversion.optimal_interpolation.save_sum(
+posterior = inversion.optimal_interpolation.fold_common(
     aligned_fluxes.data.reshape(N_GRID_POINTS * N_FLUX_TIMES),
     inversion.covariances.ProductLinearOperator(
         flux_stds_matrix, full_correlations, flux_stds_matrix),
