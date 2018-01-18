@@ -103,7 +103,7 @@ FLUX_CHUNKS = HOURS_PER_DAY * 8 // FLUX_INTERVAL
 
 Must be a multiple of day length.
 """
-OBS_CHUNKS = 62
+OBS_CHUNKS = 31
 """How many observations to treat at once.
 
 Must allow a few chunks of the influence function to be in memory at
@@ -175,6 +175,32 @@ OBS_VEC_TOTAL_SIZE = N_SITES * N_OBS_TIMES
 # with the time coordinate in the fluxes
 # seven days: > 288012
 # One day:
+
+# Laptop timings
+# 14-day flux window, 8-day flux chunk, 62-hour obs chunk, 4x4 obs
+#  2 days obs:  44s
+#  4 days obs:  79s
+#  8 days obs: 167s
+# 16 days obs: 467s
+# 31-hour obs chunk, all else equal:
+# 16 days obs: 446s (memory and CPU topped out)
+# save_sum, 31-hour chunk, all else equal:
+# 16 days obs: 409s (lots of disk)
+# simple, 31-hour chunk, all else equal:
+# 16 days obs: 537s (FAILS)
+# save_sum, 62-hour chunk, all else equal:
+# 16 days obs: 390s
+# 31 days obs: 350s (FAILS: memory)
+# save_sum, 31-hour chunk, all else equal:
+# 31 days obs: 560s (FAILS: async memory)
+# Fix YMKroneckerProduct chunking:
+#  2 days obs:  32s
+#  4 days obs:  72s
+#  8 days obs: 148s
+# 16 days obs: 398s
+# 31 days obs: 560s (FAILS: async mem)
+# Single-threaded, all else equal
+# 31 days obs: 1732s
 INFLUENCE_DATASET = xarray.open_mfdataset(
     INFLUENCE_FILES,
     chunks=dict(observation_time=OBS_CHUNKS, site=N_SITES,
@@ -461,7 +487,7 @@ here_obs = WRF_OBS_SITE[TRACER_NAME].sel_points(
 
 print(datetime.datetime.now(UTC).strftime("%c"), "Got covariance parts, getting posterior")
 sys.stdout.flush()
-posterior = inversion.optimal_interpolation.fold_common(
+posterior = inversion.optimal_interpolation.save_sum(
     aligned_fluxes.data.reshape(N_GRID_POINTS * N_FLUX_TIMES),
     inversion.covariances.ProductLinearOperator(
         flux_stds_matrix, full_correlations, flux_stds_matrix),
