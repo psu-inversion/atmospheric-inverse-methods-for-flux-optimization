@@ -5,7 +5,9 @@ These functions mirror :mod:`numpy` functions but produce dask output.
 import itertools
 import tempfile
 import numbers
+import atexit
 import math
+import os
 
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, aslinearoperator, lgmres
@@ -858,6 +860,9 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         return vstack(tuple(chunks))
 
 
+created_temporaries = []
+
+
 def persist_to_disk(*arrays):
     """Persist arrays to disk.
 
@@ -880,14 +885,27 @@ def persist_to_disk(*arrays):
     --------
     dask.array.persist
     """
-    _, tmpname = tempfile.mkstemp()
+    fid, tmpname = tempfile.mkstemp()
+    created_temporaries.append(tmpname)
     names = ["/array{n:02d}".format(n=n)
              for n in range(len(arrays))]
     da.to_hdf5(tmpname,
                {name: arry
                 for name, arry in zip(names, arrays)})
     ds = h5py.File(tmpname)
+    os.close(fid)
     return (
         da.from_array(
             ds[name], chunks=chunk_sizes((arry.shape[0],), arry.ndim == 2)[0])
         for name, arry in zip(names, arrays))
+
+
+@atexit.register
+def remove_temporaries():
+    """Remove the temporary files from `persist_to_disk`.
+
+    Closes the file descriptors and removes the files.
+    """
+    for tmpname in created_temporaries:
+        os.remove(tmpname)
+    created_temporaries.clear()
