@@ -402,7 +402,7 @@ class DaskLinearOperator(LinearOperator):
             # Operate as _DaskCustomLinearOperator factory.
             return _DaskCustomLinearOperator(*args, **kwargs)
         else:
-            obj = super(DaskLinearOperator, cls).__new__(cls)
+            obj = super(DaskLinearOperator, cls).__new__(cls, *args, **kwargs)
 
             if ((type(obj)._matvec == DaskLinearOperator._matvec and
                  type(obj)._matmat == DaskLinearOperator._matmat)):
