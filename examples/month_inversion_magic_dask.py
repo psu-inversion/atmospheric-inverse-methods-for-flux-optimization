@@ -539,6 +539,6 @@ posterior_ds = xarray.Dataset(
     posterior_global_atts)
 print(datetime.datetime.now(UTC).strftime("%c"), "Have posterior structure, evaluating and writing")
 sys.stdout.flush()
-posterior_ds.to_netcdf("monthly_inversion_{flux_interval:02d}h_output.nc4".format(flux_interval=FLUX_INTERVAL))
+posterior_ds.to_netcdf("monthly_inversion_{flux_interval:02d}h_027km_output.nc4".format(flux_interval=FLUX_INTERVAL))
 print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior")
 sys.stdout.flush()
