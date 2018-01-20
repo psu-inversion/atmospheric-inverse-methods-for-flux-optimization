@@ -10,7 +10,9 @@
   long building a huge dask graph and iterating through it.
 * TODO Investigate nonzero increments for spatial structure
   R packages geostatsp, geoR, fields, and RandomFields would probably
-  be useful.  Python package scikit-gstat.
+  be useful.  Python package scikit-gstat.  To be clear, this would
+  use the "large" increments to try to fit a variogram, and use that
+  to iterate.
 * TODO Check whether storing spectrum as a numpy array makes HomogeneousIsotropicCorrelations faster
   It may be re-calculating the weights on each trip through, which
   would be really slow.
@@ -53,4 +55,8 @@
      either two versions for both H and B (inside and outside parens) 
      or three of B (reduced, half reduced, and full).
      $ (I - KH) B = B - B H^T (H B H^T + R)^{-1} H B $
-     
+* TODO Check whether fancier statistical methods work better.
+  Statsmodels StateSpace API might make VARIMA simplish,
+  Python Arch package might allow GARCH on top of that.
+  Arch also has a few cross-validators built-in.
+* TODO Learn about cross-validation and implement it.
