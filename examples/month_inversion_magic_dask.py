@@ -73,7 +73,7 @@ FLUX_CHUNKS = 64
 
 Must be a multiple of day length.
 """
-OBS_CHUNKS = 62
+OBS_CHUNKS = 31
 """How many observations to treat at once.
 
 Must allow a few chunks of the influence function to be in memory at
@@ -228,9 +228,10 @@ INFLUENCE_DATASET = xarray.open_mfdataset(
     # Total runtime by chunks
     # 6m10s for 62, 4, 8*7*2, full
     # 6m to segfault with 62, 4, 64, full
-    chunks=dict(observation_time=OBS_CHUNKS, site=N_SITES,
+    chunks=dict(observation_time=OBS_CHUNKS, site=1,
                 time_before_observation=FLUX_WINDOW // FLUX_INTERVAL,
                 dim_y=NY, dim_x=NX)).isel(
+    observation_time=slice(0, HOURS_PER_DAY * 15),
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
 INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
 # Use site names as index/dim coord for site dim
@@ -514,7 +515,7 @@ observation_covariance = asarray(observation_covariance)
 
 print(datetime.datetime.now(UTC).strftime("%c"), "Got covariance parts, getting posterior")
 sys.stdout.flush()
-posterior = inversion.optimal_interpolation.fold_common(
+posterior = inversion.optimal_interpolation.save_sum(
     aligned_fluxes.data.reshape(N_GRID_POINTS * N_FLUX_TIMES),
     inversion.covariances.ProductLinearOperator(
         flux_stds_matrix, full_correlations, flux_stds_matrix),
