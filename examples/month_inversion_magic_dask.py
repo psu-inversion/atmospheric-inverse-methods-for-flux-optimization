@@ -192,12 +192,12 @@ SECONDS_PER_HOUR = 3600
 # Read sizes from influence function file
 TEST_DS = netCDF4.Dataset(INFLUENCE_FILES[0])
 
-NX = TEST_DS.dimensions["dim_x"].size
-NY = TEST_DS.dimensions["dim_y"].size
-N_TIMES_BACK = TEST_DS.dimensions["time_before_observation"].size
+NX = len(TEST_DS.dimensions["dim_x"])
+NY = len(TEST_DS.dimensions["dim_y"])
+N_TIMES_BACK = len(TEST_DS.dimensions["time_before_observation"])
 
-N_SITES = TEST_DS.dimensions["site"].size
-N_OBS_TIMES = TEST_DS.dimensions["observation_time"].size
+N_SITES = len(TEST_DS.dimensions["site"])
+N_OBS_TIMES = len(TEST_DS.dimensions["observation_time"])
 
 TEST_DS.close()
 del TEST_DS
