@@ -5,7 +5,6 @@ Also known as Kalman Matrix Inversion or batch inversion.
 import scipy.linalg
 from scipy.sparse.linalg import LinearOperator
 
-import dask.array as da
 from dask.array import Array
 
 from inversion.util import atleast_1d, atleast_2d, solve, tolinearoperator
@@ -163,7 +162,7 @@ def fold_common(background, background_covariance,
         chunks = chunk_sizes((covariance_sum.shape[0],))
         covariance_sum = covariance_sum.rechunk(chunks[0]).persist()
 
-    # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y} 
+    # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
     # This does repeat work for in memory data, but is perhaps doable
     # for out-of-core computations
     analysis_increment = background_covariance.dot(
