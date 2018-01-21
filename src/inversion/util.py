@@ -167,10 +167,10 @@ def linop_solve(operator, arr):
     array_like
     """
     if arr.ndim == 1:
-        return lgmres(operator, arr)[0]
-    return stack([lgmres(operator, col)[0]
-                  for col in atleast_2d(arr).T],
-                 axis=1)
+        return asarray(lgmres(operator, np.asarray(arr))[0])
+    return asarray(stack([lgmres(operator, np.asarray(col))[0]
+                          for col in atleast_2d(arr).T],
+                         axis=1))
 
 
 def solve(arr1, arr2):
