@@ -2,6 +2,7 @@
 
 These functions mirror :mod:`numpy` functions but produce dask output.
 """
+import functools
 import itertools
 import tempfile
 import numbers
@@ -891,3 +892,50 @@ def persist_to_disk(*arrays):
         da.from_array(
             ds[name], chunks=chunk_sizes((arry.shape[0],), arry.ndim == 2)[0])
         for name, arry in zip(names, arrays))
+
+
+def validate_args(inversion_method):
+    """Wrap method to validate args.
+
+    Parameters
+    ----------
+    inversion_method: function
+
+    Returns
+    -------
+    wrapped_method: function
+    """
+    @functools.wraps(inversion_method)
+    def wrapper(background, background_covariance,
+                observations, observation_covariance,
+                observation_operator):
+        """Solve the inversion problem.
+
+        Parameters
+        ----------
+        background: np.ndarray[N]
+        background_covariance:  np.ndarray[N,N]
+        observations: np.ndarray[M]
+        observation_covariance: np.ndarray[M,M]
+        observation_operator: np.ndarray[M,N]
+
+        Returns
+        -------
+        analysis: np.ndarray[N]
+        analysis_covariance: np.ndarray[N,N]
+        """
+        background = atleast_1d(background)
+        if not isinstance(background_covariance, LinearOperator):
+            background_covariance = atleast_2d(background_covariance)
+
+        observations = atleast_1d(observations)
+        if not isinstance(observation_covariance, LinearOperator):
+            observation_covariance = atleast_2d(observation_covariance)
+
+        if not isinstance(observation_operator, LinearOperator):
+            observation_operator = atleast_2d(observation_operator)
+
+        return inversion_method(background, background_covariance,
+                                observations, observation_covariance,
+                                observation_operator)
+    return wrapper
