@@ -106,7 +106,7 @@ def fold_common(background, background_covariance,
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
     # \Delta\vec{y} = \vec{y} - \vec{y}_b
-    observation_increment = (observations - projected_obs).persist()
+    innovation = (observations - projected_obs).persist()
 
     # B_{proj} = HBH^T
     if isinstance(observation_operator, LinearOperator):
@@ -135,11 +135,11 @@ def fold_common(background, background_covariance,
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
     # This does repeat work for in memory data, but is perhaps doable
     # for out-of-core computations
+    observation_increment = solve(
+        covariance_sum, innovation).persist()
     analysis_increment = background_covariance.dot(
         observation_operator.T.dot(
-            solve(
-                covariance_sum,
-                observation_increment)))
+            observation_increment))
 
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
     analysis = background + analysis_increment
@@ -184,7 +184,7 @@ def save_sum(background, background_covariance,
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
     # \Delta\vec{y} = \vec{y} - \vec{y}_b
-    observation_increment = (observations - projected_obs)
+    innovation = (observations - projected_obs)
 
     # B_{proj} = HBH^T
     if isinstance(observation_operator, Array):
@@ -208,18 +208,18 @@ def save_sum(background, background_covariance,
                           observation_covariance)
 
     if isinstance(covariance_sum, Array):
-        covariance_sum, observation_increment = persist_to_disk(
-            covariance_sum, observation_increment)
+        covariance_sum, innovation = persist_to_disk(
+            covariance_sum, innovation)
     else:
-        observation_increment, = persist_to_disk(
-            observation_increment)
+        innovation, = persist_to_disk(
+            innovation)
 
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
+    observation_increment, = persist_to_disk(solve(
+        covariance_sum, innovation))
     analysis_increment = background_covariance.dot(
         observation_operator.T.dot(
-            solve(
-                covariance_sum,
-                observation_increment)))
+            observation_increment))
 
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
     analysis = background + analysis_increment
@@ -262,7 +262,7 @@ def scipy_chol(background, background_covariance,
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
     # \Delta\vec{y} = \vec{y} - \vec{y}_b
-    observation_increment = observations - projected_obs
+    innovation = observations - projected_obs
 
     B_HT = background_covariance.dot(observation_operator.T)
     # B_{proj} = HBH^T
@@ -281,9 +281,9 @@ def scipy_chol(background, background_covariance,
     analysis_increment = B_HT.dot(
         scipy.linalg.cho_solve(
             cov_sum_chol_up,
-            observation_increment,
+            innovation,
             overwrite_b=True))
-    del observation_increment
+    del innovation
 
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
     analysis = background + analysis_increment
