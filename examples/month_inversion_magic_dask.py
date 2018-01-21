@@ -17,7 +17,6 @@ import pandas as pd
 import dateutil.tz
 import numpy as np
 import cf_units
-import cartopy
 import netCDF4
 import xarray
 import wrf
@@ -35,7 +34,7 @@ import inversion.optimal_interpolation
 import inversion.variational
 import inversion.correlations
 import inversion.covariances
-from inversion.util import kronecker_product, tolinearoperator, asarray
+from inversion.util import kronecker_product, asarray
 import cf_acdd
 
 INFLUENCE_PATH = os.path.join(THIS_DIR, "..", "data_files")
@@ -101,12 +100,12 @@ Used to convert WRF fluxes to units expected by observation operator.
 CO2_MOLAR_MASS_UNITS = cf_units.Unit("g/mol")
 FLUX_UNITS = cf_units.Unit("g/m^2/hr")
 
-FLUX_CHUNKS = HOURS_PER_DAY * 6 // FLUX_INTERVAL
+FLUX_CHUNKS = HOURS_PER_DAY * 1 // FLUX_INTERVAL
 """How many flux times to treat at once.
 
 Must be a multiple of day length.
 """
-OBS_CHUNKS = 24
+OBS_CHUNKS = 1
 """How many observations to treat at once.
 
 Must allow a few chunks of the influence function to be in memory at
@@ -114,31 +113,6 @@ once.  Will need to extend this if (N_OBS_TIMES * N_SITES) ** 2 arrays
 stop fitting nicely in memory.
 """
 
-# Inverting a single day of observations
-# Four stations; afternoon is four hours
-# FLUX_WINDOW is one day: 25s, 19s
-# FLUX_WINDOW is two days: 17s
-# FLUX_WINDOW is four days: 25s
-# seven days: 29s
-# ten days: 57s
-# fourteen days: 78s
-# twenty-one days: >100s, 9.5 min.
-
-# Inverting two days of observations
-# FLUX_WINDOW is fourteen days: 86s -- OPTIMUM
-#  2m21s
-# Three days of four hours at four towers
-# fourteen days back: 168s
-#  3m16s
-# Four days of 4h/d 4tower
-# 11m55s
-
-# Two days of observations, FLUX_WINDOW=14 days
-# numpy OI: 108s
-# numpy var: >607s
-# dask var: >1228s
-# dask OI: 99s
-# Var may need differnt tuning; explore later
 
 ############################################################
 # Utility functions.
@@ -197,23 +171,19 @@ OBS_VEC_TOTAL_SIZE = N_SITES * N_OBS_TIMES
 ############################################################
 # Read influence functions
 
-# obs time chunk size works best as one.  Need to iterate over single
-# hyperslabs along this dimension to have single flux time to line up
-# with the time coordinate in the fluxes
-# seven days: > 288012
-# One day:
-# Time to align:
-# obs_time chunk is  1: 4m35s, 7m11s
-# obs_time chunk is 24: 8m30s, 1m46s
-# everything in memory: 5m59s
+# Laptop timings
+# save_sum, obs chunk 24, flux_chunk 6 days
+# Flux window 14 days
+# 1 day obs:   4m11s
+# 2 days obs:  5m48s,  8m
+# 4 days obs: 10m44s, 16m (high load)
+# 8 days obs: Crashes with smallest chunks possible, needs *128 chunks
 INFLUENCE_DATASET = xarray.open_mfdataset(
     INFLUENCE_FILES,
-    # Total runtime by chunks
-    # 6m10s for 62, 4, 8*7*2, full
-    # 6m to segfault with 62, 4, 64, full
     chunks=dict(observation_time=OBS_CHUNKS, site=1,
                 time_before_observation=FLUX_WINDOW // FLUX_INTERVAL,
                 dim_y=NY, dim_x=NX)).isel(
+    observation_time=slice(0, 8 * HOURS_PER_DAY),
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
 INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
 # Use site names as index/dim coord for site dim
@@ -280,7 +250,7 @@ sys.stdout.flush()
 # This difference is irrelevant here.
 wrf_orig_times = FLUX_DATASET["XTIME"].to_index().round("S")
 timestamps = list(wrf_orig_times)
-timestamps[-1] += datetime.timedelta(hours=FLUX_INTERVAL/2-1)
+timestamps[-1] += datetime.timedelta(hours=FLUX_INTERVAL / 2 - 1)
 timestamps[0] -= datetime.timedelta(hours=1)
 wrf_new_times = pd.DatetimeIndex(timestamps,
                                  name="XTIME")
