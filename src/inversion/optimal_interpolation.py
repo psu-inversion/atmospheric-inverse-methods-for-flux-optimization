@@ -5,13 +5,13 @@ Also known as Kalman Matrix Inversion or batch inversion.
 import scipy.linalg
 from scipy.sparse.linalg import LinearOperator
 
-import dask.array as da
 from dask.array import Array
 
-from inversion.util import atleast_1d, atleast_2d, solve, tolinearoperator
+from inversion.util import solve, tolinearoperator, validate_args
 from inversion.util import ProductLinearOperator, chunk_sizes, persist_to_disk
 
 
+@validate_args
 def simple(background, background_covariance,
            observations, observation_covariance,
            observation_operator):
@@ -33,17 +33,6 @@ def simple(background, background_covariance,
     analysis: np.ndarray[N]
     analysis_covariance: np.ndarray[N,N]
     """
-    background = atleast_1d(background)
-    if not isinstance(background_covariance, LinearOperator):
-        background_covariance = atleast_2d(background_covariance)
-
-    observations = atleast_1d(observations)
-    if not isinstance(observation_covariance, LinearOperator):
-        observation_covariance = atleast_2d(observation_covariance)
-
-    if not isinstance(observation_operator, LinearOperator):
-        observation_operator = atleast_2d(observation_operator)
-
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
     # \Delta\vec{y} = \vec{y} - \vec{y}_b
@@ -89,6 +78,7 @@ def simple(background, background_covariance,
     return analysis, analysis_covariance
 
 
+@validate_args
 def fold_common(background, background_covariance,
                 observations, observation_covariance,
                 observation_operator,
@@ -113,46 +103,25 @@ def fold_common(background, background_covariance,
     analysis: np.ndarray[N]
     analysis_covariance: np.ndarray[N,N]
     """
-    background = atleast_1d(background)
-    if not isinstance(background_covariance, LinearOperator):
-        background_covariance = atleast_2d(background_covariance)
-        bg_is_arry = True
-    else:
-        bg_is_arry = False
-
-    observations = atleast_1d(observations)
-    if not isinstance(observation_covariance, LinearOperator):
-        observation_covariance = atleast_2d(observation_covariance)
-        obs_is_arry = True
-    else:
-        obs_is_arry = False
-
-    if not isinstance(observation_operator, LinearOperator):
-        observation_operator = atleast_2d(observation_operator)
-        obs_op_is_arry = True
-    else:
-        obs_op_is_arry = False
-
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
     # \Delta\vec{y} = \vec{y} - \vec{y}_b
-    observation_increment = (observations - projected_obs).persist()
+    innovation = (observations - projected_obs).persist()
 
     # B_{proj} = HBH^T
-    if obs_op_is_arry:
-        B_HT = background_covariance.dot(observation_operator.T)
-
-        projected_background_covariance = observation_operator.dot(
-            B_HT)
-    else:
+    if isinstance(observation_operator, LinearOperator):
         B_HT = tolinearoperator(background_covariance).dot(
             observation_operator.T)
 
         projected_background_covariance = ProductLinearOperator(
             observation_operator, B_HT)
+    else:
+        B_HT = background_covariance.dot(observation_operator.T)
+        projected_background_covariance = observation_operator.dot(
+            B_HT)
 
     if ((isinstance(projected_background_covariance, LinearOperator) ^
-         (not obs_is_arry))):
+         isinstance(observation_covariance, LinearOperator))):
         covariance_sum = (tolinearoperator(projected_background_covariance) +
                           tolinearoperator(observation_covariance))
     else:
@@ -163,14 +132,14 @@ def fold_common(background, background_covariance,
         chunks = chunk_sizes((covariance_sum.shape[0],))
         covariance_sum = covariance_sum.rechunk(chunks[0]).persist()
 
-    # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y} 
+    # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
     # This does repeat work for in memory data, but is perhaps doable
     # for out-of-core computations
+    observation_increment = solve(
+        covariance_sum, innovation).persist()
     analysis_increment = background_covariance.dot(
         observation_operator.T.dot(
-            solve(
-                covariance_sum,
-                observation_increment)))
+            observation_increment))
 
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
     analysis = background + analysis_increment
@@ -182,15 +151,12 @@ def fold_common(background, background_covariance,
     decrease = (B_HT.dot(solve(
                 covariance_sum,
                 B_HT.T)))
-    if (not bg_is_arry) ^ isinstance(decrease, LinearOperator):
-        analysis_covariance = (tolinearoperator(background_covariance) -
-                               tolinearoperator(decrease))
-    else:
-        analysis_covariance = background_covariance - decrease
+    analysis_covariance = background_covariance - decrease
 
     return analysis, analysis_covariance
 
 
+@validate_args
 def save_sum(background, background_covariance,
              observations, observation_covariance,
              observation_operator,
@@ -215,33 +181,13 @@ def save_sum(background, background_covariance,
     analysis: np.ndarray[N]
     analysis_covariance: np.ndarray[N,N]
     """
-    background = atleast_1d(background)
-    if not isinstance(background_covariance, LinearOperator):
-        background_covariance = atleast_2d(background_covariance)
-        bg_is_arry = True
-    else:
-        bg_is_arry = False
-
-    observations = atleast_1d(observations)
-    if not isinstance(observation_covariance, LinearOperator):
-        observation_covariance = atleast_2d(observation_covariance)
-        obs_is_arry = True
-    else:
-        obs_is_arry = False
-
-    if not isinstance(observation_operator, LinearOperator):
-        observation_operator = atleast_2d(observation_operator)
-        obs_op_is_arry = True
-    else:
-        obs_op_is_arry = False
-
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
     # \Delta\vec{y} = \vec{y} - \vec{y}_b
-    observation_increment = (observations - projected_obs)
+    innovation = (observations - projected_obs)
 
     # B_{proj} = HBH^T
-    if obs_op_is_arry:
+    if isinstance(observation_operator, Array):
         B_HT = background_covariance.dot(observation_operator.T)
 
         projected_background_covariance = observation_operator.dot(
@@ -254,7 +200,7 @@ def save_sum(background, background_covariance,
             observation_operator, B_HT)
 
     if ((isinstance(projected_background_covariance, LinearOperator) ^
-         (not obs_is_arry))):
+         isinstance(observation_covariance, LinearOperator))):
         covariance_sum = (tolinearoperator(projected_background_covariance) +
                           tolinearoperator(observation_covariance))
     else:
@@ -262,18 +208,18 @@ def save_sum(background, background_covariance,
                           observation_covariance)
 
     if isinstance(covariance_sum, Array):
-        covariance_sum, observation_increment = persist_to_disk(
-            covariance_sum, observation_increment)
+        covariance_sum, innovation = persist_to_disk(
+            covariance_sum, innovation)
     else:
-        observation_increment, = persist_to_disk(
-            observation_increment)
+        innovation, = persist_to_disk(
+            innovation)
 
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
+    observation_increment, = persist_to_disk(solve(
+        covariance_sum, innovation))
     analysis_increment = background_covariance.dot(
         observation_operator.T.dot(
-            solve(
-                covariance_sum,
-                observation_increment)))
+            observation_increment))
 
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
     analysis = background + analysis_increment
@@ -285,15 +231,12 @@ def save_sum(background, background_covariance,
     decrease = (B_HT.dot(solve(
                 covariance_sum,
                 B_HT.T)))
-    if (not bg_is_arry) ^ isinstance(decrease, LinearOperator):
-        analysis_covariance = (tolinearoperator(background_covariance) -
-                               tolinearoperator(decrease))
-    else:
-        analysis_covariance = background_covariance - decrease
+    analysis_covariance = background_covariance - decrease
 
     return analysis, analysis_covariance
 
 
+@validate_args
 def scipy_chol(background, background_covariance,
                observations, observation_covariance,
                observation_operator):
@@ -316,21 +259,10 @@ def scipy_chol(background, background_covariance,
     analysis: np.ndarray[N]
     analysis_covariance: np.ndarray[N,N]
     """
-    background = atleast_1d(background)
-    if not isinstance(background_covariance, LinearOperator):
-        background_covariance = atleast_2d(background_covariance)
-
-    observations = atleast_1d(observations)
-    if not isinstance(observation_covariance, LinearOperator):
-        observation_covariance = atleast_2d(observation_covariance)
-
-    if not isinstance(observation_operator, LinearOperator):
-        observation_operator = atleast_2d(observation_operator)
-
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
     # \Delta\vec{y} = \vec{y} - \vec{y}_b
-    observation_increment = observations - projected_obs
+    innovation = observations - projected_obs
 
     B_HT = background_covariance.dot(observation_operator.T)
     # B_{proj} = HBH^T
@@ -349,9 +281,9 @@ def scipy_chol(background, background_covariance,
     analysis_increment = B_HT.dot(
         scipy.linalg.cho_solve(
             cov_sum_chol_up,
-            observation_increment,
+            innovation,
             overwrite_b=True))
-    del observation_increment
+    del innovation
 
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
     analysis = background + analysis_increment

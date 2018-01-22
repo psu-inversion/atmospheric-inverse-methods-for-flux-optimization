@@ -10,7 +10,6 @@ from dask.array import where
 
 from inversion.util import REAL_DTYPE_KINDS
 from inversion.util import DaskLinearOperator
-from inversion.util import ProductLinearOperator
 
 NEAR_ZERO = 1e-20
 """Where correlations are rounded to zero.

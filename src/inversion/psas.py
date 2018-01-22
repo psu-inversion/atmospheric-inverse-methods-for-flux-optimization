@@ -14,8 +14,10 @@ from inversion.util import atleast_1d, atleast_2d
 
 from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
 from inversion.util import tolinearoperator, ProductLinearOperator
+from inversion.util import validate_args
 
 
+@validate_args
 def simple(background, background_covariance,
            observations, observation_covariance,
            observation_operator):
@@ -50,33 +52,13 @@ def simple(background, background_covariance,
     approximately, with an iterative algorithm.
     There is an approximation to the analysis covariance, but it is very bad.
     """
-    background = atleast_1d(background)
-    if not isinstance(background_covariance, LinearOperator):
-        background_covariance = atleast_2d(background_covariance)
-        bg_is_arry = True
-    else:
-        bg_is_arry = False
-
-    observations = np.atleast_1d(observations)
-    if not isinstance(observation_covariance, LinearOperator):
-        observation_covariance = atleast_2d(observation_covariance)
-        obs_is_arry = True
-    else:
-        obs_is_arry = False
-
-    if not isinstance(observation_operator, LinearOperator):
-        observation_operator = atleast_2d(observation_operator)
-        obs_op_is_arry = True
-    else:
-        obs_op_is_arry = False
-
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
     # \Delta\vec{y} = \vec{y} - \vec{y}_b
     observation_increment = observations - projected_obs
 
     # B_{proj} = HBH^T
-    if obs_op_is_arry:
+    if not isinstance(observation_operator, LinearOperator):
         projected_background_covariance = observation_operator.dot(
             background_covariance.dot(observation_operator.T))
     else:
@@ -85,7 +67,8 @@ def simple(background, background_covariance,
             tolinearoperator(background_covariance),
             observation_operator.T)
 
-    if (obs_op_is_arry ^ obs_is_arry):
+    if ((isinstance(projected_background_covariance, LinearOperator) ^
+         isinstance(observation_covariance, LinearOperator))):
         covariance_sum = (tolinearoperator(projected_background_covariance) +
                           tolinearoperator(observation_covariance))
     else:
@@ -158,7 +141,7 @@ def simple(background, background_covariance,
     # this will be positive
     decrease = lower_decrease.dot(lower_decrease.T)
     # this may not
-    if not bg_is_arry:
+    if isinstance(background_covariance, LinearOperator):
         decrease = tolinearoperator(decrease)
     analysis_covariance = background_covariance - decrease
 

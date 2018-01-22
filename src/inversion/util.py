@@ -2,6 +2,7 @@
 
 These functions mirror :mod:`numpy` functions but produce dask output.
 """
+import functools
 import itertools
 import tempfile
 import numbers
@@ -168,10 +169,10 @@ def linop_solve(operator, arr):
     array_like
     """
     if arr.ndim == 1:
-        return lgmres(operator, arr)[0]
-    return stack([lgmres(operator, col)[0]
-                  for col in atleast_2d(arr).T],
-                 axis=1)
+        return asarray(lgmres(operator, np.asarray(arr))[0])
+    return asarray(stack([lgmres(operator, np.asarray(col))[0]
+                          for col in atleast_2d(arr).T],
+                         axis=1))
 
 
 def solve(arr1, arr2):
@@ -909,3 +910,50 @@ def remove_temporaries():
     for tmpname in created_temporaries:
         os.remove(tmpname)
     created_temporaries.clear()
+
+
+def validate_args(inversion_method):
+    """Wrap method to validate args.
+
+    Parameters
+    ----------
+    inversion_method: function
+
+    Returns
+    -------
+    wrapped_method: function
+    """
+    @functools.wraps(inversion_method)
+    def wrapper(background, background_covariance,
+                observations, observation_covariance,
+                observation_operator):
+        """Solve the inversion problem.
+
+        Parameters
+        ----------
+        background: np.ndarray[N]
+        background_covariance:  np.ndarray[N,N]
+        observations: np.ndarray[M]
+        observation_covariance: np.ndarray[M,M]
+        observation_operator: np.ndarray[M,N]
+
+        Returns
+        -------
+        analysis: np.ndarray[N]
+        analysis_covariance: np.ndarray[N,N]
+        """
+        background = atleast_1d(background)
+        if not isinstance(background_covariance, LinearOperator):
+            background_covariance = atleast_2d(background_covariance)
+
+        observations = atleast_1d(observations)
+        if not isinstance(observation_covariance, LinearOperator):
+            observation_covariance = atleast_2d(observation_covariance)
+
+        if not isinstance(observation_operator, LinearOperator):
+            observation_operator = atleast_2d(observation_operator)
+
+        return inversion_method(background, background_covariance,
+                                observations, observation_covariance,
+                                observation_operator)
+    return wrapper

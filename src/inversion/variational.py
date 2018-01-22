@@ -20,9 +20,10 @@ from dask.array import asarray
 from numpy import zeros_like
 
 from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
-from inversion.util import solve, chunk_sizes
+from inversion.util import solve, chunk_sizes, validate_args
 
 
+@validate_args
 def simple(background, background_covariance,
            observations, observation_covariance,
            observation_operator):
@@ -55,21 +56,15 @@ def simple(background, background_covariance,
 
         P_B^{-1} (x - x_0) + H^T R^{-1} (y - h(x))
     """
-    background = atleast_1d(background)
     if not isinstance(background_covariance, LinearOperator):
-        background_covariance = atleast_2d(background_covariance)
         chunks = chunk_sizes((background_covariance.shape[0],))
         background_covariance = background_covariance.rechunk(
             chunks[0])
 
-    observations = atleast_1d(observations)
     if not isinstance(observation_covariance, LinearOperator):
-        observation_covariance = atleast_2d(observation_covariance)
         chunks = chunk_sizes((observation_covariance.shape[0],))
         observation_covariance = observation_covariance.rechunk(
             chunks[0])
-    if not isinstance(observation_operator, LinearOperator):
-        observation_operator = atleast_2d(observation_operator)
 
     def cost_function(test_state):
         """Mismatch between state, prior, and obs.
@@ -150,6 +145,7 @@ def simple(background, background_covariance,
     return result.x, result.hess_inv
 
 
+@validate_args
 def incremental(background, background_covariance,
                 observations, observation_covariance,
                 observation_operator,
@@ -192,20 +188,15 @@ def incremental(background, background_covariance,
 
     where :math:`x = x_0 + dx`
     """
-    background = atleast_1d(background)
     if not isinstance(background_covariance, LinearOperator):
-        background_covariance = atleast_2d(background_covariance)
         chunks = chunk_sizes((background_covariance.shape[0],))
-        background_covariance = background_covariance.rechunk(chunks[0])
+        background_covariance = background_covariance.rechunk(
+            chunks[0])
 
-    observations = atleast_1d(observations)
     if not isinstance(observation_covariance, LinearOperator):
-        observation_covariance = atleast_2d(observation_covariance)
         chunks = chunk_sizes((observation_covariance.shape[0],))
         observation_covariance = observation_covariance.rechunk(
             chunks[0])
-    if not isinstance(observation_operator, LinearOperator):
-        observation_operator = atleast_2d(observation_operator)
 
     innovations = observations - observation_operator.dot(background)
 
@@ -290,6 +281,7 @@ def incremental(background, background_covariance,
     return analysis
 
 
+@validate_args
 def incr_chol(background, background_covariance,
               observations, observation_covariance,
               observation_operator):
@@ -329,16 +321,6 @@ def incr_chol(background, background_covariance,
     where :math:`x = x_0 + dx`
 
     """
-    background = atleast_1d(background)
-    if not isinstance(background_covariance, LinearOperator):
-        background_covariance = atleast_2d(background_covariance)
-
-    observations = atleast_1d(observations)
-    if not isinstance(observation_covariance, LinearOperator):
-        observation_covariance = atleast_2d(observation_covariance)
-    if not isinstance(observation_operator, LinearOperator):
-        observation_operator = atleast_2d(observation_operator)
-
     innovations = observations - observation_operator.dot(background)
 
     from scipy.linalg import cho_factor, cho_solve

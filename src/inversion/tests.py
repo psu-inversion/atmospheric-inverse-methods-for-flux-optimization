@@ -1659,7 +1659,7 @@ class TestCovariances(unittest2.TestCase):
         operator_list = (np.arange(25.).reshape(5, 5) + np.diag((2.,) * 5),
                          np.eye(5, dtype=DTYPE),
                          np.ones((5, 5), dtype=DTYPE) + np.diag((1.,) * 5))
-        operator = inversion.covariances.ProductLinearOperator(*operator_list)
+        operator = inversion.util.ProductLinearOperator(*operator_list)
 
         arry = reduce(lambda x, y: x.dot(y), operator_list)
 
