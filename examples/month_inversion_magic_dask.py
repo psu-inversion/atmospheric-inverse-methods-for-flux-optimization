@@ -37,9 +37,9 @@ import inversion.covariances
 from inversion.util import kronecker_product, asarray
 import cf_acdd
 
-INFLUENCE_PATH = os.path.join(THIS_DIR, "..", "data_files")
-PRIOR_PATH = INFLUENCE_PATH
-OBS_PATH = INFLUENCE_PATH
+INFLUENCE_PATH = "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/ACT-America_trial5/2010/01/GROUP1"
+PRIOR_PATH = "/mc1s2/s4/dfw5129/data/Marthas_2010_wrfouts"
+OBS_PATH = "/mc1s2/s4/dfw5129/inversion"
 
 FLUX_INTERVAL = 3
 """The interval at which fluxes become available in hours.
@@ -487,7 +487,7 @@ observation_covariance = asarray(observation_covariance)
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Got covariance parts, getting posterior")
 sys.stdout.flush()
-posterior = inversion.optimal_interpolation.save_sum(
+posterior, correlations = inversion.optimal_interpolation.save_sum(
     aligned_fluxes.data.reshape(N_GRID_POINTS * N_FLUX_TIMES),
     inversion.util.ProductLinearOperator(
         flux_stds_matrix, full_correlations, flux_stds_matrix),
@@ -496,8 +496,7 @@ posterior = inversion.optimal_interpolation.save_sum(
     (aligned_influences.data
      .transpose(transpose_arg)
      .reshape(aligned_influences.shape[0],
-              np.prod(aligned_influences.shape[-3:]))),
-    False)
+              np.prod(aligned_influences.shape[-3:]))))
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior values, making dataset")
 sys.stdout.flush()
