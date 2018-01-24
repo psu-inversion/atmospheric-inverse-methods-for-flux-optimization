@@ -174,10 +174,13 @@ OBS_VEC_TOTAL_SIZE = N_SITES * N_OBS_TIMES
 # Laptop timings
 # save_sum, obs chunk 24, flux_chunk 6 days
 # Flux window 14 days
-# 1 day obs:   4m11s
-# 2 days obs:  5m48s,  8m
-# 4 days obs: 10m44s, 16m (high load)
-# 8 days obs: Crashes with smallest chunks possible, needs *128 chunks
+#  1 day obs:   4m11s
+#  2 days obs:  5m48s,  8m
+#  4 days obs: 10m44s, 16m (high load)
+#  8 days obs: Crashes with smallest chunks possible, needs *128 chunks
+# On MC2
+#  8 days obs: 22m07s, 179GiB
+# 16 days obs: crashes after two hours.
 INFLUENCE_DATASET = xarray.open_mfdataset(
     INFLUENCE_FILES,
     chunks=dict(observation_time=OBS_CHUNKS, site=1,
@@ -248,13 +251,16 @@ sys.stdout.flush()
 
 # Many of the times are off by about four milliseconds.
 # This difference is irrelevant here.
-wrf_orig_times = FLUX_DATASET["XTIME"].to_index().round("S")
-timestamps = list(wrf_orig_times)
+wrf_times = FLUX_DATASET["XTIME"].to_index().round("S")
+timestamps = list(wrf_times)
 timestamps[-1] += datetime.timedelta(hours=FLUX_INTERVAL / 2 - 1)
 timestamps[0] -= datetime.timedelta(hours=1)
 wrf_new_times = pd.DatetimeIndex(timestamps,
                                  name="XTIME")
 FLUX_DATASET.coords["Time"] = wrf_new_times
+
+wrf_times = OBS_DATASET.indexes["time"].round("S")
+OBS_DATASET.coords["time"] = wrf_times
 
 print(OBS_DATASET.dims, OBS_DATASET.coords)
 OBS_DATASET.set_index(dim3="projection_x_coordinate",
