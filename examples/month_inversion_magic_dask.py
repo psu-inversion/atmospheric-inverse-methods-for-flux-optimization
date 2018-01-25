@@ -184,7 +184,7 @@ OBS_VEC_TOTAL_SIZE = N_SITES * N_OBS_TIMES
 INFLUENCE_DATASET = xarray.open_mfdataset(
     INFLUENCE_FILES,
     chunks=dict(observation_time=OBS_CHUNKS, site=1,
-                time_before_observation=FLUX_WINDOW // FLUX_INTERVAL,
+                time_before_observation=FLUX_CHUNKS,
                 dim_y=NY, dim_x=NX)).isel(
     observation_time=slice(0, 8 * HOURS_PER_DAY),
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
@@ -238,7 +238,7 @@ print(datetime.datetime.now(UTC).strftime("%c"),
 FLUX_DATASET = xarray.open_mfdataset(
     FLUX_FILES,
     chunks=dict(projection_x_coordinate=NX, projection_y_coordinate=NY,
-                XTIME=1),
+                XTIME=FLUX_CHUNKS),
     concat_dim="Time",
 )
 OBS_DATASET = xarray.open_mfdataset(
