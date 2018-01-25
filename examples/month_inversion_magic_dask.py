@@ -41,7 +41,7 @@ INFLUENCE_PATH = "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/ACT-America_trial5/2
 PRIOR_PATH = "/mc1s2/s4/dfw5129/data/Marthas_2010_wrfouts"
 OBS_PATH = "/mc1s2/s4/dfw5129/inversion"
 
-FLUX_INTERVAL = 3
+FLUX_INTERVAL = 6
 """The interval at which fluxes become available in hours.
 
 Fluxes are usually integrated forward from hourly input, but I can't
@@ -186,7 +186,7 @@ INFLUENCE_DATASET = xarray.open_mfdataset(
     chunks=dict(observation_time=OBS_CHUNKS, site=1,
                 time_before_observation=FLUX_CHUNKS,
                 dim_y=NY, dim_x=NX)).isel(
-    observation_time=slice(0, 8 * HOURS_PER_DAY),
+    # observation_time=slice(0, 12 * HOURS_PER_DAY),
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
 INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
 # Use site names as index/dim coord for site dim
