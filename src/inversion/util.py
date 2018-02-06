@@ -886,7 +886,7 @@ def persist_to_disk(*arrays):
     --------
     dask.array.persist
     """
-    fid, tmpname = tempfile.mkstemp()
+    fid, tmpname = tempfile.mkstemp(dir="/mc1s2/s4/dfw5129/tmp", suffix=".h5")
     created_temporaries.append(tmpname)
     names = ["/array{n:02d}".format(n=n)
              for n in range(len(arrays))]
