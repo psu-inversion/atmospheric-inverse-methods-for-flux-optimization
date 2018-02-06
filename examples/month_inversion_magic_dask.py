@@ -100,6 +100,8 @@ CO2_MOLAR_MASS = 16 * 2 + 12.01
 
 Used to convert WRF fluxes to units expected by observation operator.
 """
+OBS_DAYS = 31
+"""Number of days of obs to use."""
 CO2_MOLAR_MASS_UNITS = cf_units.Unit("g/mol")
 FLUX_UNITS = cf_units.Unit("g/m^2/hr")
 
@@ -108,12 +110,17 @@ FLUX_CHUNKS = HOURS_PER_DAY * 1 // FLUX_INTERVAL
 
 Must be a multiple of day length.
 """
-OBS_CHUNKS = 1
-"""How many observations to treat at once.
+OBS_CHUNKS_ALL = 24
+"""How many observations to load at once.
 
 Must allow a few chunks of the influence function to be in memory at
 once.  Will need to extend this if (N_OBS_TIMES * N_SITES) ** 2 arrays
 stop fitting nicely in memory.
+"""
+OBS_CHUNKS_USED = 120
+"""Obs chunks treated at once in inversion code.
+
+Must also allow a few chunks to be loaded at once.
 """
 
 
@@ -173,23 +180,49 @@ OBS_VEC_TOTAL_SIZE = N_SITES * N_OBS_TIMES
 
 ############################################################
 # Read influence functions
+print("Days of obs used:", OBS_DAYS)
 
-# Laptop timings
-# save_sum, obs chunk 24, flux_chunk 6 days
-# Flux window 14 days
-#  1 day obs:   4m11s
-#  2 days obs:  5m48s,  8m
-#  4 days obs: 10m44s, 16m (high load)
-#  8 days obs: Crashes with smallest chunks possible, needs *128 chunks
-# On MC2
-#  8 days obs: 22m07s, 179GiB
-# 16 days obs: crashes after two hours.
+# flux_chunk 6 days, obs chunk 24
+#  8 days obs:  8m43s,  18GiB,  2h11m cpu
+# obs chunk 48
+# 12 days obs: 14m44s,  48GiB,  4h14m cpu
+# obs chunk 64
+# 14 days obs: 16m52s,  86GiB,  4h56m cpu
+# obs chunk 96
+# 21 days obs: 34m59s, 239GiB, 11h49m cpu
+# flux_chunk 2 days, obs chunk 128
+# 28 days obs: not parallellizing
+# flux_chunk 3 days, obs chunk 96
+# 28 days obs: 62m48s, 160GiB, 24h24m cpu
+# use OBS_CHUNKS // N_SITES for obs_time chunksize in influence function
+# 31 days obs: 85m00s, 231GiB, 31h51m cpu
+# flux_chunk 1 day
+# 31 days obs: crash after 37m, >250GiB mem
+# flux_chunk 6 day, obs_time chunk back to OBS_CHUNK in influence function
+# 31 days obs: crash after 9m, >250GiB mem
+# obs_chunk 72 for load, 120 for processing
+# 31 days obs: crashes after 10m, >250GiB mem
+# obs_chunk 48 for load, 96 for processing
+# 31 days obs: crashes after 12m, >250GiB mem
+# flux_chunk 3 days, obs_chunks_all 24
+# obs_chunks_all 24, obs_chunks_used 96
+#  2 days obs:  2m04s,   2GiB,     5m cpu
+#  4 days obs:  3m20s,  22GiB,    14m cpu
+#  8 days obs:  7m34s,  21GiB,  1h07m cpu
+# 16 days obs: 20m35s,  47GiB,  5h25m cpu
+# max 25 threads
+# 28 days obs: 65m43s, 163GiB, 20h12m cpu
+# max 24 threads
+# 30 days obs: crash after 15 min. >250 GiB mem
+# max 16 threads
+# 30 days obs: crash after an hour. 249 GiB
+# There's currently about 10m serial setup before it parallelizes
 INFLUENCE_DATASET = xarray.open_mfdataset(
     INFLUENCE_FILES,
-    chunks=dict(observation_time=OBS_CHUNKS, site=1,
+    chunks=dict(observation_time=OBS_CHUNKS_ALL, site=1,
                 time_before_observation=FLUX_CHUNKS,
                 dim_y=NY, dim_x=NX)).isel(
-    # observation_time=slice(0, 12 * HOURS_PER_DAY),
+    observation_time=slice(0, OBS_DAYS * HOURS_PER_DAY),
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
 INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
 # Use site names as index/dim coord for site dim
@@ -246,11 +279,11 @@ FLUX_DATASET = xarray.open_mfdataset(
 )
 OBS_DATASET = xarray.open_mfdataset(
     OBS_FILES,
-    chunks=dict(time=OBS_CHUNKS),
+    chunks=dict(time=OBS_CHUNKS_USED),
     concat_dim="Time",
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have obs, normalizing")
-sys.stdout.flush()
+sys.stdout.flush(); sys.stderr.flush()
 
 # Many of the times are off by about four milliseconds.
 # This difference is irrelevant here.
@@ -391,7 +424,7 @@ aligned_fluxes = aligned_fluxes.chunk(dict(
 aligned_influences = aligned_influences.chunk(dict(
     dim_y=NY, dim_x=NX, flux_time=FLUX_CHUNKS,
     # One chunk per site.  Should be fast with the zeros in R.
-    observation=OBS_CHUNKS))
+    observation=OBS_CHUNKS_USED))
 print(datetime.datetime.now(UTC).strftime("%c"), "Rechunked to square")
 aligned_influences = aligned_influences.fillna(0)
 transpose_arg = sort_key_to_consecutive([dimension_order.index(dim)
