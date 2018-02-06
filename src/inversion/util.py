@@ -22,13 +22,15 @@ import dask.array as da
 import dask.array.linalg as la
 from dask.array import asarray, concatenate, stack, hstack, vstack, zeros
 
-OPTIMAL_ELEMENTS = int(2e4)
+OPTIMAL_ELEMENTS = int(3e3)
 """Optimal elements per chunk in a dask array.
 
 Magic number, arbitrarily chosen.  Dask documentation mentions many
 chunks should fit easily in memory, but each should contain at least a
-million elements.  This size matrix is fast to allocate and fill, but
-:math:`10^5` gives a memory error.
+million elements, recommending 10-100MiB per chunk.  This size matrix
+is fast to allocate and fill, but :math:`10^5` gives a memory error.
+A square matrix of float64 with ten thousand elements on a side is 762
+bytes.
 """
 ARRAY_TYPES = (np.ndarray, da.Array)
 """Array types for determining Kronecker product type.
