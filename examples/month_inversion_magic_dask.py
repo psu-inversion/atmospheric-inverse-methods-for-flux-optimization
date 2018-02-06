@@ -403,7 +403,7 @@ site_obs_pd_index = pd.MultiIndex.from_tuples(
 
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Aligning flux times in influence function")
-sys.stdout.flush()
+sys.stdout.flush(); sys.stderr.flush()
 dimension_order = [item for item in INFLUENCE_FUNCTIONS.dims]
 dimension_order.insert(dimension_order.index("time_before_observation"),
                        "flux_time")
@@ -421,7 +421,7 @@ aligned_influences = xarray.concat(
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Aligned flux times in influence function, "
       "aligning fluxes with influence function")
-sys.stdout.flush()
+sys.stdout.flush(); sys.stderr.flush()
 aligned_influences, aligned_fluxes = xarray.align(
     aligned_influences, TRUE_FLUXES_MATCHED[FLUX_NAME],
     exclude=("dim_x", "dim_y"),
@@ -470,7 +470,7 @@ posterior_global_atts.update(dict(
 ############################################################
 # Define correlation constants and get covariances
 print(datetime.datetime.now(UTC).strftime("%c"), "Getting covariances")
-sys.stdout.flush()
+sys.stdout.flush(); sys.stderr.flush()
 CORRELATION_LENGTH = 84
 GRID_RESOLUTION = 27
 spatial_correlations = (
@@ -482,7 +482,7 @@ spatial_correlations = (
         (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
          len(TRUE_FLUXES_MATCHED.coords["dim_x"]))))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have spatial correlations")
-sys.stdout.flush()
+sys.stdout.flush(); sys.stderr.flush()
 HOURLY_FLUX_TIMESCALE = 3
 hour_correlations = (
     inversion.correlations.HomogeneousIsotropicCorrelation.
@@ -490,7 +490,7 @@ hour_correlations = (
         inversion.correlations.ExponentialCorrelation(HOURLY_FLUX_TIMESCALE),
         (HOURS_PER_DAY // FLUX_INTERVAL,)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have hourly correlations")
-sys.stdout.flush()
+sys.stdout.flush(); sys.stderr.flush()
 DAILY_FLUX_TIMESCALE = 14
 day_correlations = (
     inversion.correlations.make_matrix(
@@ -498,13 +498,13 @@ day_correlations = (
         (len(TRUE_FLUXES_MATCHED.coords["flux_time"]) *
          FLUX_INTERVAL // HOURS_PER_DAY,)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have daily correlations")
-sys.stdout.flush()
+sys.stdout.flush(); sys.stderr.flush()
 
 full_correlations = kronecker_product(
     day_correlations,
     kronecker_product(hour_correlations, spatial_correlations))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have combined correlations")
-sys.stdout.flush()
+sys.stdout.flush(); sys.stderr.flush()
 
 # I would like to add a fixed minimum at some point.
 # full stds would then be sqrt(fixed^2 + varying^2)
@@ -537,7 +537,7 @@ observation_covariance = asarray(observation_covariance)
 
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Got covariance parts, getting posterior")
-sys.stdout.flush()
+sys.stdout.flush(); sys.stderr.flush()
 with dask.set_options(pool=multiprocessing.pool.ThreadPool(MAX_CPU)):
     posterior, correlations = inversion.optimal_interpolation.save_sum(
         aligned_fluxes.data.reshape(N_GRID_POINTS * N_FLUX_TIMES),
@@ -551,7 +551,7 @@ with dask.set_options(pool=multiprocessing.pool.ThreadPool(MAX_CPU)):
                   np.prod(aligned_influences.shape[-3:]))))
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior values, making dataset")
-sys.stdout.flush()
+sys.stdout.flush(); sys.stderr.flush()
 posterior = posterior.reshape(aligned_fluxes.shape)
 posterior_ds = xarray.Dataset(
     dict(posterior=(aligned_fluxes.dims, posterior,
@@ -564,8 +564,8 @@ posterior_ds = xarray.Dataset(
     posterior_global_atts)
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior structure, evaluating and writing")
-sys.stdout.flush()
+sys.stdout.flush(); sys.stderr.flush()
 posterior_ds.to_netcdf("monthly_inversion_{flux_interval:02d}h_027km_output.nc4"
                        .format(flux_interval=FLUX_INTERVAL))
 print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior")
-sys.stdout.flush()
+sys.stdout.flush(); sys.stderr.flush()
