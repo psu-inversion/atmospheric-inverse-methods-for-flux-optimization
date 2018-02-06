@@ -105,7 +105,7 @@ treat night well)
 I really hope I can assume this doesn't depend on latitude. That would
 make this much more complicated.
 """
-OBS_WINDOW = 2
+OBS_WINDOW = 4
 OBS_PER_DAY = (OBS_HOURS[1].hour - OBS_HOURS[0].hour)
 CO2_MOLAR_MASS = 16 * 2 + 12.01
 """Molar mass of CO2 (g/mol).
@@ -114,6 +114,10 @@ Used to convert WRF fluxes to units expected by observation operator.
 """
 CO2_MOLAR_MASS_UNITS = cf_units.Unit("g/mol")
 FLUX_UNITS = cf_units.Unit("g/m^2/hr")
+
+FLUX_CHUNKS = 3 * HOURS_PER_DAY // FLUX_INTERVAL
+OBS_CHUNKS_ALL = 24
+OBS_CHUNKS_USED = 96
 
 # Inverting a single day of observations
 # Four stations; afternoon is four hours
@@ -219,8 +223,8 @@ INFLUENCE_DATASET = xarray.open_mfdataset(
     INFLUENCE_FILES,
     # Kind of ad-hoc obs time chunk to match above
     # These may be too slow. I don't know how to check.
-    chunks=dict(observation_time=4, site=N_SITES,
-                time_before_observation=FLUX_WINDOW // FLUX_INTERVAL,
+    chunks=dict(observation_time=OBS_CHUNKS_ALL, site=1,
+                time_before_observation=FLUX_CHUNKS,
                 dim_y=NY, dim_x=NX)).isel(
     # observation_time=slice(0, 6 * HOURS_PER_DAY),
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
@@ -545,7 +549,11 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
     print(N_GRID_POINTS * N_FLUX_TIMES)
     # aligned_influences.reindex(flux_time=FLUX_TIMES_INDEX)
     print(datetime.datetime.now(UTC).strftime("%c"), "Aligned fluxes and influence function")
-    aligned_influences = aligned_influences.fillna(0)
+    aligned_influences = aligned_influences.fillna(0).chunk(dict(
+            dim_y=NY, dim_x=NX, flux_time=FLUX_CHUNKS,
+            observation=OBS_CHUNKS_USED))
+    aligned_fluxes = aligned_fluxes.chunk(dict(
+            dim_y=NY, dim_x=NX, flux_time=FLUX_CHUNKS))
     print(datetime.datetime.now(UTC).strftime("%c"), "Influence functions now H")
     transpose_arg = sort_key_to_consecutive([dimension_order.index(dim)
                                              for dim in aligned_influences.dims])
