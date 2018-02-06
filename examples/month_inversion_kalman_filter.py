@@ -61,9 +61,16 @@ Note
 ----
 Must divide twenty-four.
 """
+FLUX_RESOLUTION = 27
+"""FLux resolution in km.
+
+Resolution for the inversion.
+"""
 # OBS_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrfout_d01_*.nc"))
-OBS_FILES = glob.glob(os.path.join("/mc1s2/s4/dfw5129/inversion", "2010_01_4tower_WRF*concentrations*.nc"))
-FLUX_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrf_fluxes_all.nc"))
+OBS_FILES = glob.glob(os.path.join("/mc1s2/s4/dfw5129/inversion", "2010_01_4tower_WRF_concentrations?.nc"))
+FLUX_FILES = glob.glob(os.path.join(
+        PRIOR_PATH, "wrf_fluxes_all_{interval:02d}hrly_{res:02d}km.nc".format(
+            interval=FLUX_INTERVAL, res=FLUX_RESOLUTION)))
 FLUX_FILES.sort()
 OBS_FILES.sort()
 INFLUENCE_FILES = glob.glob(os.path.join(
@@ -223,8 +230,10 @@ INFLUENCE_FUNCTIONS["site"] = np.char.decode(INFLUENCE_FUNCTIONS["site_names"].v
 
 # Not entirely sure why this is one too many
 # N_FLUX_TIMES = INFLUENCE_DATASET.dims["observation_time"] + FLUX_WINDOW - 1
-OBS_TIME_INDEX = INFLUENCE_DATASET.indexes["observation_time"]
-TIME_BACK_INDEX = INFLUENCE_DATASET.indexes["time_before_observation"]
+OBS_TIME_INDEX = INFLUENCE_DATASET.indexes["observation_time"].round("S")
+TIME_BACK_INDEX = INFLUENCE_DATASET.indexes["time_before_observation"].round("S")
+
+INFLUENCE_FUNCTIONS.coords["observation_time"] = OBS_TIME_INDEX
 
 # NB: Remember to change frequency and time zone as necessary.
 FLUX_START = (OBS_TIME_INDEX[-1] - TIME_BACK_INDEX[-1]).replace(hour=0)
@@ -269,11 +278,10 @@ sys.stdout.flush()
 ############################################################
 # Read prior fluxes
 def fix_wrf_times(ds):
-    orig_times = ds["XTIME"].to_index()
+    wrf_times = ds["XTIME"].to_index().round("S")
     xtime_dim = "XTIME" in ds.dims
     timestamps = pd.DatetimeIndex(
-        [ts.replace(second=0, microsecond=0)
-         for ts in orig_times],
+        wrf_times,
         name="XTIME" if xtime_dim else "Time")
     ds.coords["Time"] = timestamps
     if xtime_dim:
@@ -305,14 +313,11 @@ sys.stdout.flush()
 
 # Many of the times are of by about four milliseconds.
 # This difference is irrelevant here.
-# wrf_orig_times = OBS_DATASET["XTIME"].to_index()
-# wrf_new_times = pd.DatetimeIndex([timestamp.replace(microsecond=0)
-#                                   for timestamp in wrf_orig_times],
-#                                  name="Time")
-# OBS_DATASET["Time"] = wrf_new_times
-wrf_orig_times = FLUX_DATASET["XTIME"].to_index()
-timestamps = [timestamp.replace(minute=0, second=0, microsecond=0)
-              for timestamp in wrf_orig_times]
+wrf_times = OBS_DATASET["time"].to_index().round("S")
+OBS_DATASET.coords["time"] = wrf_times
+
+wrf_times = FLUX_DATASET["XTIME"].to_index().round("S")
+timestamps = list(wrf_times)
 timestamps[-1] += datetime.timedelta(hours=FLUX_INTERVAL/2-1)
 timestamps[0] -= datetime.timedelta(hours=1)
 wrf_new_times = pd.DatetimeIndex(timestamps,
@@ -370,8 +375,8 @@ WRF_OBS_SITE = (
     .isel_points(dim_x=range(4), dim_y=range(4),
                  dim=INFLUENCE_FUNCTIONS.coords["site"]))
 
-WRF_OBS_START = WRF_OBS_MATCHED.indexes["observation_time"][0]
-WRF_OBS_INTERVAL = WRF_OBS_START - WRF_OBS_MATCHED.indexes["observation_time"][1]
+WRF_OBS_START = WRF_OBS_MATCHED.indexes["observation_time"].round("S")[0]
+WRF_OBS_INTERVAL = WRF_OBS_START - WRF_OBS_MATCHED.indexes["observation_time"].round("S")[1]
 
 print(datetime.datetime.now(UTC).strftime("%c"), "Getting solar times")
 sys.stdout.flush()
@@ -422,7 +427,7 @@ posterior_global_atts.update(dict(
 print(datetime.datetime.now(UTC).strftime("%c"), "Getting correlations")
 sys.stdout.flush()
 CORRELATION_LENGTH = 84
-GRID_RESOLUTION = 27
+GRID_RESOLUTION = FLUX_RESOLUTION
 spatial_correlations = (
     inversion.correlations.HomogeneousIsotropicCorrelation.
     # First guess at correlation length on the order of previous studies
