@@ -566,18 +566,17 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
 
     print(datetime.datetime.now(UTC).strftime("%c"), "Got covariance parts, getting posterior")
     sys.stdout.flush()
-    posterior = inversion.optimal_interpolation.fold_common(
+    posterior, post_cov = inversion.optimal_interpolation.save_sum(
         aligned_fluxes.data.reshape(
             N_GRID_POINTS * len(aligned_influences.indexes["flux_time"])),
-        inversion.covariances.ProductLinearOperator(
+        inversion.util.ProductLinearOperator(
             flux_stds_matrix, full_correlations, flux_stds_matrix),
         here_obs.data,
         da.diag(da.full(here_obs.shape, .1, chunks=here_obs.shape)),
         (aligned_influences.data
          .transpose(transpose_arg)
          .reshape(aligned_influences.shape[0],
-                  np.prod(aligned_influences.shape[-3:]))),
-        False)
+                  np.prod(aligned_influences.shape[-3:]))))
 
     print(datetime.datetime.now(UTC).strftime("%c"), "Have posterior values, making dataset")
     sys.stdout.flush()
