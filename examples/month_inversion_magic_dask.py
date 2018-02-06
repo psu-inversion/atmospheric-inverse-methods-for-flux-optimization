@@ -54,9 +54,12 @@ Note
 ----
 Must divide twenty-four.
 """
+# Linear interpolation in space
 OBS_FILES = glob.glob(os.path.join(OBS_PATH,
-                                   "2010_01_4tower_WRF*concentrations*.nc"))
-FLUX_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrf_fluxes_all.nc"))
+                                   "2010_01_4tower_WRF_concentrations?.nc"))
+FLUX_FILES = glob.glob(os.path.join(
+        PRIOR_PATH, "wrf_fluxes_all_{interval:02d}hrly_27km.nc".format(
+            interval=FLUX_INTERVAL)))
 FLUX_FILES.sort()
 OBS_FILES.sort()
 INFLUENCE_FILES = glob.glob(os.path.join(
