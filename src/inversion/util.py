@@ -127,7 +127,7 @@ def atleast_1d(arry):
         arry = np.atleast_1d(arry)
 
     array_shape = arry.shape
-    return da.from_array(arry, chunks=chunk_sizes(array_shape))
+    return da.from_array(arry, chunks=chunk_sizes(array_shape, matrix_side=False))
 
 
 def atleast_2d(arry):
@@ -153,7 +153,9 @@ def atleast_2d(arry):
         arry = np.atleast_2d(arry)
 
     array_shape = arry.shape
-    return da.from_array(arry, chunks=chunk_sizes(array_shape))
+    # Either this is a square matrix and this chunking makes products
+    # faster, or it is non-square and I can't optimize.
+    return da.from_array(arry, chunks=chunk_sizes(array_shape, matrix_side=False))
 
 
 def linop_solve(operator, arr):

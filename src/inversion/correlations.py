@@ -407,7 +407,7 @@ class SchmidtKroneckerProduct(DaskLinearOperator):
         if isinstance(vector, Array):
             chunks = vector.chunks
         else:
-            chunks = chunk_sizes((self.shape[0], 1))
+            chunks = chunk_sizes((self.shape[0],), matrix_side=False)
 
         if vector.ndim == 1:
             result_shape = self.shape[0]
