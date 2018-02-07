@@ -22,7 +22,7 @@ import dask.array as da
 import dask.array.linalg as la
 from dask.array import asarray, concatenate, stack, hstack, vstack, zeros
 
-OPTIMAL_ELEMENTS = int(3e3)
+OPTIMAL_ELEMENTS = int(2e4)
 """Optimal elements per chunk in a dask array.
 
 Magic number, arbitrarily chosen.  Dask documentation mentions many
