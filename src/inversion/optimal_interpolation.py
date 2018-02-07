@@ -190,9 +190,7 @@ def save_sum(background, background_covariance,
     if isinstance(observation_operator, Array):
         B_HT = background_covariance.dot(observation_operator.T)
 
-        projected_background_covariance, = persist_to_disk(
-            observation_operator.dot(
-                B_HT))
+        projected_background_covariance = observation_operator.dot(B_HT)
     else:
         B_HT = tolinearoperator(background_covariance).dot(
             observation_operator.T)
@@ -216,12 +214,10 @@ def save_sum(background, background_covariance,
             innovation)
 
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
-    observation_increment, = persist_to_disk(solve(
-        covariance_sum, innovation))
-    partial, = persist_to_disk(observation_operator.T.dot(
-            observation_increment))
+    observation_increment = solve(covariance_sum, innovation)
     analysis_increment = background_covariance.dot(
-        partial)
+        observation_operator.T.dot(
+            observation_increment))
 
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
     analysis = background + analysis_increment
