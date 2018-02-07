@@ -949,10 +949,16 @@ def validate_args(inversion_method):
         background = atleast_1d(background)
         if not isinstance(background_covariance, LinearOperator):
             background_covariance = atleast_2d(background_covariance)
+            chunks = chunk_sizes((background_covariance.shape[0],), matrix_side=True)
+            background_covariance = background_covariance.rechunk(
+                chunks[0])
 
         observations = atleast_1d(observations)
         if not isinstance(observation_covariance, LinearOperator):
             observation_covariance = atleast_2d(observation_covariance)
+            chunks = chunk_sizes((observation_covariance.shape[0],))
+            observation_covariance = observation_covariance.rechunk(
+                chunks[0])
 
         if not isinstance(observation_operator, LinearOperator):
             observation_operator = atleast_2d(observation_operator)

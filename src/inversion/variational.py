@@ -56,16 +56,6 @@ def simple(background, background_covariance,
 
         P_B^{-1} (x - x_0) + H^T R^{-1} (y - h(x))
     """
-    if not isinstance(background_covariance, LinearOperator):
-        chunks = chunk_sizes((background_covariance.shape[0],))
-        background_covariance = background_covariance.rechunk(
-            chunks[0])
-
-    if not isinstance(observation_covariance, LinearOperator):
-        chunks = chunk_sizes((observation_covariance.shape[0],))
-        observation_covariance = observation_covariance.rechunk(
-            chunks[0])
-
     def cost_function(test_state):
         """Mismatch between state, prior, and obs.
 
@@ -188,16 +178,6 @@ def incremental(background, background_covariance,
 
     where :math:`x = x_0 + dx`
     """
-    if not isinstance(background_covariance, LinearOperator):
-        chunks = chunk_sizes((background_covariance.shape[0],))
-        background_covariance = background_covariance.rechunk(
-            chunks[0])
-
-    if not isinstance(observation_covariance, LinearOperator):
-        chunks = chunk_sizes((observation_covariance.shape[0],))
-        observation_covariance = observation_covariance.rechunk(
-            chunks[0])
-
     innovations = observations - observation_operator.dot(background)
 
     def cost_function(test_change):
