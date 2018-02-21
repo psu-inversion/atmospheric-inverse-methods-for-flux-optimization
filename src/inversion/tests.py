@@ -41,7 +41,7 @@ import inversion.ensemble
 import inversion.noise
 import inversion.psas
 import inversion.util
-from inversion.util import chunk_sizes
+from inversion.util import chunk_sizes, tolinearoperator
 
 dask.set_options(get=dask.get)
 
@@ -1570,6 +1570,96 @@ class TestLazyEval(unittest2.TestCase):
                 background, bg_corr,
                 obs, obs_corr,
                 obs_op)
+
+
+class TestKroneckerQuadraticForm(unittest2.TestCase):
+    """Test that DaskKroneckerProductOperator.quadratic_form works."""
+
+    def test_simple(self):
+        """Test for identity matrix."""
+        mat1 = da.eye(2, chunks=2)
+        vectors = da.eye(4, chunks=4)
+
+        product = inversion.util.DaskKroneckerProductOperator(mat1, mat1)
+
+        for i, vec in enumerate(vectors):
+            with self.subTest(i=i):
+                np_tst.assert_allclose(
+                    product.quadratic_form(vec),
+                    1)
+
+    def test_shapes(self):
+        """Test for different shapes of input."""
+        mat1 = np.eye(2)
+        vectors = np.eye(4)
+
+        product = inversion.util.DaskKroneckerProductOperator(mat1, mat1)
+
+        for i in range(4):
+            stop = i + 1
+
+            with self.subTest(num=stop):
+                result = product.quadratic_form(vectors[:, :stop])
+                np_tst.assert_allclose(result, vectors[:stop, :stop])
+
+
+class TestProductQuadraticForm(unittest2.TestCase):
+    """Test that quadratic_form works properly for ProductLinearOperator."""
+
+    def test_added(self):
+        """Test that the method is added or not as appropriate."""
+        op1 = tolinearoperator(np.eye(2))
+        op2 = inversion.covariances.DiagonalOperator(np.ones(2))
+        ProductLinearOperator = inversion.util.ProductLinearOperator
+
+        with self.subTest(num=2, same=True):
+            product = ProductLinearOperator(op1.T, op1)
+
+            self.assertTrue(hasattr(product, "quadratic_form"))
+
+        with self.subTest(num=2, same=False):
+            product = ProductLinearOperator(op1.T, op2)
+
+            self.assertFalse(hasattr(product, "quadratic_form"))
+
+        with self.subTest(num=3, same=True):
+            product = ProductLinearOperator(op1.T, op2, op1)
+
+            self.assertTrue(hasattr(product, "quadratic_form"))
+
+        with self.subTest(num=3, same=False):
+            product = ProductLinearOperator(op1.T, op1, op2)
+
+            self.assertFalse(hasattr(product, "quadratic_form"))
+
+    def test_returned_shape(self):
+        """Test that the shape of the result is correct."""
+        op1 = tolinearoperator(np.eye(3))
+        op2 = inversion.covariances.DiagonalOperator(np.ones(3))
+        ProductLinearOperator = inversion.util.ProductLinearOperator
+
+        vectors = np.eye(3)
+
+        with self.subTest(num=2):
+            product = ProductLinearOperator(op1.T, op1)
+
+            for i in range(vectors.shape[0]):
+                stop = i + 1
+                with self.subTest(shape=stop):
+                    result = product.quadratic_form(vectors[:, :stop])
+                    self.assertEqual(result.shape, (stop, stop))
+                    np_tst.assert_allclose(result, vectors[:stop, :stop])
+
+        with self.subTest(num=3):
+            product = ProductLinearOperator(op1.T, op2, op1)
+
+            for i in range(vectors.shape[0]):
+                stop = i + 1
+
+                with self.subTest(shape=stop):
+                    result = product.quadratic_form(vectors[:, :stop])
+                    self.assertEqual(result.shape, (stop, stop))
+                    np_tst.assert_allclose(result, vectors[:stop, :stop])
 
 
 class TestOddChunks(unittest2.TestCase):

@@ -690,6 +690,14 @@ class ProductLinearOperator(DaskLinearOperator):
                                 for op in operators)
         self._init_dtype()
 
+        try:
+            if all(op is rop.T for op, rop in
+                   zip(operators, reversed(operators))):
+                self.quadratic_form = self._quadratic_form
+        except NotImplementedError:
+            # Transpose doesn't exist
+            pass
+
     def _matvec(self, vector):
         """Form matrix-vector product with vector.
 
@@ -765,6 +773,22 @@ class ProductLinearOperator(DaskLinearOperator):
 
         return vector
 
+    def _quadratic_form(self, mat):
+        operators = self._operators
+        n_ops = len(operators)
+        half_n_ops = n_ops // 2
+        for op in operators[:half_n_ops]:
+            mat = op.T.dot(mat)
+        if is_odd(n_ops):
+            middle_op = operators[half_n_ops]
+            if hasattr(middle_op, "quadratic_form"):
+                result = operators[half_n_ops].quadratic_form(mat)
+            else:
+                result = mat.T.dot(middle_op.dot(mat))
+        else:
+            result = mat.T.dot(mat)
+        return result
+
 
 class _DaskScaledLinearOperator(_ScaledLinearOperator, DaskLinearOperator):
     """Scaled linear operator."""
@@ -812,6 +836,25 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         self._operator2 = operator2
         self._block_size = operator2.shape[1]
         self._n_chunks = operator1.shape[0]
+
+        self.__transp = None
+
+    # TODO: test this.  It is probably very fragile.
+    def _transpose(self):
+        """Transpose the operator."""
+        if self.__transp is None:
+            operator1 = self._operator1
+            operator2 = self._operator2
+            if da.allclose(operator1, operator1.T).compute():
+                if operator2.T is operator2:
+                    self.__transp = self
+                else:
+                    self.__transp = DaskKroneckerProductOperator(
+                        operator1, operator2.T)
+            else:
+                self.__transp = DaskKroneckerProductOperator(
+                    operator1.T, operator2.T)
+        return self.__transp
 
     def _matmat(self, mat):
         r"""Compute matrix-matrix product.
@@ -863,6 +906,64 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
                           mat[chunk_start:(chunk_start + block_size)])
             chunks.append(operator2.dot(chunk))
         return vstack(tuple(chunks))
+
+    def quadratic_form(self, mat):
+        r"""Calculate the quadratic form mat.T @ self @ mat.
+
+        Parameters
+        ----------
+        mat: array_like[N, M]
+
+        Returns
+        -------
+        result: array_like[M, M]
+
+        Note
+        ----
+
+        Implementation depends on Kronecker structure, using the
+        :meth:`_matmat` algorithm for self @ mat.  If mat is a lazy
+        dask array, this implementation will load it multiple times to
+        avoid dask keeping it all in memory.
+        """
+        if not isinstance(mat, ARRAY_TYPES) or self.shape[0] != self.shape[1]:
+            raise TypeError("Unsupported")
+        elif mat.ndim == 1:
+            mat = mat[:, np.newaxis]
+        mat = asarray(mat)
+        if mat.shape[0] != self.shape[1]:
+            raise ValueError("Dim mismatch")
+        outer_size = mat.shape[-1]
+        result_shape = (outer_size, outer_size)
+        result_dtype = np.result_type(self.dtype, mat.dtype)
+        # I load this into memory, so may as well keep as one chunk
+        result = zeros(result_shape, dtype=result_dtype, chunks=result_shape)
+
+        block_size = self._block_size
+        chunk_shape = (block_size, mat.shape[1])
+        chunk_chunks = (block_size, mat.chunks[1][0])
+        operator1 = self._operator1
+        operator2 = self._operator2
+        row_chunk_size = mat.chunks[0][0]
+
+        for row_chunk_start in range(0, mat.shape[0], row_chunk_size):
+            for row1, row_start in enumerate(range(
+                    row_chunk_start, row_chunk_start + row_chunk_size,
+                    block_size)):
+                chunk = zeros(chunk_shape, dtype=result_dtype,
+                              chunks=chunk_chunks)
+                for col1, chunk_start in enumerate(range(0, mat.shape[0],
+                                                         block_size)):
+                    chunk += (operator1[row1, col1] *
+                              mat[chunk_start:(chunk_start + block_size)])
+                result += mat[row_start:(row_start + block_size)].T.dot(
+                    operator2.dot(chunk))
+            # Calculate this bit so we don't run out of memory
+            # Hopefully this pushes the memory barrier well past
+            # the flux correlation time
+            # It should at least get closer.
+            result.persist()
+        return result
 
 
 created_temporaries = []
