@@ -1642,6 +1642,15 @@ class TestCovariances(unittest2.TestCase):
             with self.subTest(test_mat=mat):
                 np_tst.assert_allclose(op.dot(vec), arry.dot(vec))
 
+    def test_diagonal_2d_vector(self):
+        """Test DiagonalOperator works with Nx1 vector."""
+        diag = np.arange(10.)
+        op = inversion.covariances.DiagonalOperator(diag)
+        vec = np.arange(10.)[:, np.newaxis]
+        result = op.dot(vec)
+        self.assertEqual(da.squeeze(result).ndim, 1)
+        self.assertEqual(result.shape, (10, 1))
+
     def test_diagonal_self_adjoint(self):
         """Test the self-adjoint methods of DiagonalOperator."""
         operator = inversion.covariances.DiagonalOperator(np.arange(10.))

@@ -96,6 +96,8 @@ class DiagonalOperator(SelfAdjointLinearOperator):
         -------
         array_like
         """
+        if vector.ndim == 2:
+            return self._diag[:, newaxis] * vector
         return self._diag * vector
 
     def _matmat(self, other):
