@@ -992,13 +992,27 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
         big_ident = np.eye(30)
 
         self.assertIsInstance(
-            # TODO remember to change this once I get
-            # inversion.util.KroneckerProduct working
             combined_op, inversion.util.DaskKroneckerProductOperator)
         self.assertSequenceEqual(combined_op.shape,
                                  tuple(np.multiply(mat1.shape, mat2.shape)))
         np_tst.assert_allclose(combined_op.dot(big_ident),
                                big_ident)
+
+    def test_linop_array(self):
+        """Test linop-sparse Kronecker products."""
+        HomogeneousIsotropicCorrelation = (
+            inversion.correlations.HomogeneousIsotropicCorrelation)
+        corr_class = inversion.correlations.GaussianCorrelation
+        corr_fun = corr_class(5)
+
+        op1 = HomogeneousIsotropicCorrelation.from_function(corr_fun, 15)
+        mat2 = np.eye(10)
+        combined_op = inversion.util.kronecker_product(op1, mat2)
+
+        self.assertIsInstance(
+            combined_op, inversion.correlations.SchmidtKroneckerProduct)
+        self.assertSequenceEqual(combined_op.shape,
+                                 tuple(np.multiply(op1.shape, mat2.shape)))
 
 
 class TestIntegrators(unittest2.TestCase):

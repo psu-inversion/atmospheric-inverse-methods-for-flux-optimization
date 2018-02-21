@@ -11,11 +11,9 @@ the covariance matrix from the return values.
 """
 import scipy.optimize
 import scipy.linalg
-from scipy.sparse.linalg import LinearOperator
 # I believe scipy's minimizer requires things that give boolean true
 # or false from the objective, rather than a yet-to-be-realized dask
 # array.
-from inversion.util import atleast_1d, atleast_2d
 from dask.array import asarray
 from numpy import zeros_like
 

@@ -127,7 +127,8 @@ def atleast_1d(arry):
         arry = np.atleast_1d(arry)
 
     array_shape = arry.shape
-    return da.from_array(arry, chunks=chunk_sizes(array_shape, matrix_side=False))
+    return da.from_array(
+        arry, chunks=chunk_sizes(array_shape, matrix_side=False))
 
 
 def atleast_2d(arry):
@@ -155,9 +156,11 @@ def atleast_2d(arry):
     array_shape = arry.shape
     # Either this is a square matrix and this chunking makes products
     # faster, or it is non-square and I can't optimize.
-    return da.from_array(arry, chunks=chunk_sizes(array_shape, matrix_side=False))
+    return da.from_array(
+        arry, chunks=chunk_sizes(array_shape, matrix_side=False))
 
 
+# TODO: Test
 def linop_solve(operator, arr):
     """Solve `operator @ x = arr`.
 
@@ -204,7 +207,6 @@ def solve(arr1, arr2):
             return linop_solve(arr1, arr2)
         elif isinstance(arr2, (MatrixLinearOperator,
                                DaskMatrixLinearOperator)):
-            # TODO: Test
             return linop_solve(arr1, arr2.A)
         else:
             def solver(vec):
@@ -869,7 +871,6 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
 
         Note
         ----
-
         Implementation depends on the structure of the Kronecker
         product:
 
@@ -1050,7 +1051,8 @@ def validate_args(inversion_method):
         background = atleast_1d(background)
         if not isinstance(background_covariance, LinearOperator):
             background_covariance = atleast_2d(background_covariance)
-            chunks = chunk_sizes((background_covariance.shape[0],), matrix_side=True)
+            chunks = chunk_sizes((background_covariance.shape[0],),
+                                 matrix_side=True)
             background_covariance = background_covariance.rechunk(
                 chunks[0])
 

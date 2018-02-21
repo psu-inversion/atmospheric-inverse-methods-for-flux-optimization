@@ -111,7 +111,6 @@ class DiagonalOperator(SelfAdjointLinearOperator):
         -------
         array_like
         """
-        # TODO: test
         return self._diag[:, newaxis] * other
 
     def solve(self, vector):
