@@ -6,7 +6,7 @@ inversion.correlations
 """
 from numpy import newaxis
 
-from dask.array import where
+from dask.array import where, asarray
 
 from inversion.util import REAL_DTYPE_KINDS
 from inversion.util import DaskLinearOperator
@@ -76,7 +76,7 @@ class DiagonalOperator(SelfAdjointLinearOperator):
         array: array_like
             The array of values to go on the diagonal.
         """
-        self._diag = array.reshape(-1)
+        self._diag = asarray(array).reshape(-1)
         side = self._diag.shape[0]
 
         super(DiagonalOperator, self).__init__(
