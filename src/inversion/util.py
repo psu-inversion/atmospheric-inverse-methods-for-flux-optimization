@@ -945,25 +945,31 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         chunk_chunks = (block_size, mat.chunks[1][0])
         operator1 = self._operator1
         operator2 = self._operator2
-        row_chunk_size = mat.chunks[0][0]
+        # row_chunk_size = mat.chunks[0][0]
+        # loops_between_save = row_chunk_size // block_size
+        #                     how many blocks there are
+        loops_between_save = (mat.shape[0] // block_size //
+                              # How many blocks it needs to be
+                              (mat.size // OPTIMAL_ELEMENTS**2 + 1))
+        row_count = 0
 
-        for row_chunk_start in range(0, mat.shape[0], row_chunk_size):
-            for row1, row_start in enumerate(range(
-                    row_chunk_start, row_chunk_start + row_chunk_size,
-                    block_size)):
-                chunk = zeros(chunk_shape, dtype=result_dtype,
-                              chunks=chunk_chunks)
-                for col1, chunk_start in enumerate(range(0, mat.shape[0],
-                                                         block_size)):
-                    chunk += (operator1[row1, col1] *
-                              mat[chunk_start:(chunk_start + block_size)])
-                result += mat[row_start:(row_start + block_size)].T.dot(
-                    operator2.dot(chunk))
+        for row1, row_start in enumerate(range(
+                0, mat.shape[0], block_size)):
+            chunk = zeros(chunk_shape, dtype=result_dtype,
+                          chunks=chunk_chunks)
+            for col1, chunk_start in enumerate(range(0, mat.shape[0],
+                                                     block_size)):
+                chunk += (operator1[row1, col1] *
+                          mat[chunk_start:(chunk_start + block_size)])
+            result += mat[row_start:(row_start + block_size)].T.dot(
+                operator2.dot(chunk))
             # Calculate this bit so we don't run out of memory
             # Hopefully this pushes the memory barrier well past
             # the flux correlation time
             # It should at least get closer.
-            result.persist()
+            row_count += 1
+            if row_count > loops_between_save:
+                result.persist()
         return result
 
 
