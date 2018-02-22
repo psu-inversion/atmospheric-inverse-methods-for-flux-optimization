@@ -81,8 +81,7 @@ def simple(background, background_covariance,
 @validate_args
 def fold_common(background, background_covariance,
                 observations, observation_covariance,
-                observation_operator,
-                calculate_posterior_error_covariance=True):
+                observation_operator):
     """Solve the inversion problem, evaluating sub-expressions only once.
 
     Assumes all arrays fit in memory with room to spare.
@@ -144,9 +143,6 @@ def fold_common(background, background_covariance,
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
     analysis = background + analysis_increment
 
-    if not calculate_posterior_error_covariance:
-        return analysis
-
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
     decrease = (B_HT.dot(solve(
                 covariance_sum,
@@ -159,8 +155,7 @@ def fold_common(background, background_covariance,
 @validate_args
 def save_sum(background, background_covariance,
              observations, observation_covariance,
-             observation_operator,
-             calculate_posterior_error_covariance=True):
+             observation_operator):
     """Solve the inversion problem, evaluating sub-expressions only once.
 
     Assumes all arrays fit in memory with room to spare.
@@ -190,6 +185,7 @@ def save_sum(background, background_covariance,
     if isinstance(observation_operator, Array):
         B_HT = background_covariance.dot(observation_operator.T)
 
+        # TODO: test this
         if hasattr(background_covariance, "quadratic_form"):
             projected_background_covariance = (
                 background_covariance.quadratic_form(
@@ -226,9 +222,6 @@ def save_sum(background, background_covariance,
 
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
     analysis = background + analysis_increment
-
-    if not calculate_posterior_error_covariance:
-        return analysis
 
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
     decrease = (B_HT.dot(solve(
