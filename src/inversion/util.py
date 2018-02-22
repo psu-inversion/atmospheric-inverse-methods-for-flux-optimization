@@ -954,7 +954,9 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         #                     how many blocks there are
         loops_between_save = (mat.shape[0] // block_size //
                               # How many blocks it needs to be
-                              (mat.size // OPTIMAL_ELEMENTS**2 + 1))
+                              # OPTIMAL_ELEMENTS is one chunk.
+                              # This constraint is total memory
+                              max(mat.size // (3 * OPTIMAL_ELEMENTS**2), 1))
         row_count = 0
 
         for row1, row_start in enumerate(range(
@@ -974,6 +976,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
             row_count += 1
             if row_count > loops_between_save:
                 result.persist()
+                row_count = 0
         return result
 
 
