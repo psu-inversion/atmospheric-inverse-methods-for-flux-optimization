@@ -136,8 +136,7 @@ def simple(background, background_covariance,
 @validate_args
 def incremental(background, background_covariance,
                 observations, observation_covariance,
-                observation_operator,
-                calculate_posterior_error_covariance=True):
+                observation_operator):
     """Feed everything to scipy's minimizer.
 
     Use the change from the background to try to avoid precision loss.
@@ -149,9 +148,6 @@ def incremental(background, background_covariance,
     observations: np.ndarray[M]
     observation_covariance: np.ndarray[M,M]
     observation_operator: np.ndarray[M,N]
-    calculate_posterior_error_covariance: bool, optional
-        Whether to calculate and return the posterior analysis error.
-        This may provide a significant memory and time savings.
 
     Returns
     -------
@@ -241,7 +237,7 @@ def incremental(background, background_covariance,
 
     result = scipy.optimize.minimize(
         cost_function, asarray(zeros_like(background)),
-        method="BFGS" if calculate_posterior_error_covariance else "CG",
+        method="BFGS",
         jac=cost_jacobian,
         # hessp=cost_hessian_product,
         options=dict(maxiter=MAX_ITERATIONS,
@@ -254,9 +250,7 @@ def incremental(background, background_covariance,
         raise ConvergenceError("Did not converge: {msg:s}".format(
             msg=result.message), result, analysis)
 
-    if calculate_posterior_error_covariance:
-        return analysis, result.hess_inv
-    return analysis
+    return analysis, result.hess_inv
 
 
 @validate_args

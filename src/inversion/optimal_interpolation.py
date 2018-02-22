@@ -93,9 +93,6 @@ def fold_common(background, background_covariance,
     observations: np.ndarray[M]
     observation_covariance: np.ndarray[M,M]
     observation_operator: np.ndarray[M,N]
-    calculate_posterior_error_covariance: bool, optional
-        Whether to calculate and return the posterior analysis error.
-        This may provide a significant memory and time savings.
 
     Returns
     -------
@@ -167,9 +164,6 @@ def save_sum(background, background_covariance,
     observations: np.ndarray[M]
     observation_covariance: np.ndarray[M,M]
     observation_operator: np.ndarray[M,N]
-    calculate_posterior_error_covariance: bool, optional
-        Whether to calculate and return the posterior analysis error.
-        This may provide a significant memory and time savings.
 
     Returns
     -------
