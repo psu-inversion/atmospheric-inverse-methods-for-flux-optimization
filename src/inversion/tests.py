@@ -517,12 +517,12 @@ class TestCorrelations(unittest2.TestCase):
 
         Checks against original value.
         """
-        test_nt = 300
+        test_nt = 200
 
         for corr_class in (
                 inversion.correlations.DistanceCorrelationFunction.
                 __subclasses__()):
-            for dist in (1, 5, 10, 30, 100):
+            for dist in (1, 5, 10, 30):
                 with self.subTest(corr_class=getname(corr_class),
                                   dist=dist):
                     corr_fun = corr_class(dist)
@@ -588,14 +588,14 @@ class TestCorrelations(unittest2.TestCase):
         Check against `make_matrix` and ignore values near the edges
         of the domain where the two methods are different.
         """
-        test_nt = 500
+        test_nt = 512
         test_lst = (np.zeros(test_nt), np.ones(test_nt), np.arange(test_nt),
                     np.eye(100, test_nt)[-1])
 
         for corr_class in (
                 inversion.correlations.DistanceCorrelationFunction.
                 __subclasses__()):
-            for dist in (1, 3, 10, 30):
+            for dist in (1, 3, 10):
                 # Magic numbers
                 # May need to increase for larger test_nt
                 noncorr_dist = 20 + 8 * dist
