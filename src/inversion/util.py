@@ -48,6 +48,10 @@ MAX_EXPLICIT_ARRAY = 1 << 25
 :func:`kronecker_product` will form products smaller than this as an
 explicit matrix using :func:`kron`.  Arrays larger than this will use
 :class:`DaskKroneckerProduct`.
+
+Currently completely arbitrary.
+`2 ** 16` works fine in memory, `2**17` gives a MemoryError.
+Hopefully Dask knows not to try this.
 """
 
 
@@ -207,6 +211,7 @@ def solve(arr1, arr2):
             return linop_solve(arr1, arr2)
         elif isinstance(arr2, (MatrixLinearOperator,
                                DaskMatrixLinearOperator)):
+            # TODO: test this branch
             return linop_solve(arr1, arr2.A)
         else:
             def solver(vec):
@@ -294,7 +299,6 @@ def kronecker_product(operator1, operator2):
              operator1.size * operator2.size < MAX_EXPLICIT_ARRAY)):
             return kron(operator1, operator2)
         return DaskKroneckerProductOperator(operator1, operator2)
-    # TODO: write a $Linop \otimes array_like$ test for this
     from inversion.correlations import SchmidtKroneckerProduct
     return SchmidtKroneckerProduct(operator1, operator2)
 

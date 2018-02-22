@@ -180,7 +180,7 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
 
         # The dask fft functions require all relevant axes to be in
         # memory already, so keeping the array in memory won't hurt.
-        # TODO Test this for real problems
+        # TODO delegate to from_array
         corr_fourier = (self._fft(corr_struct))
         self._corr_fourier = (corr_fourier)
         # This is also affected by roundoff
@@ -203,6 +203,7 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         self = cls(corr_array.shape)
         # The fft axes need to be a single chunk for the dask ffts
         # It's in memory already anyway
+        # TODO: create a from_spectrum to delegate to
         corr_fourier = (self._fft(corr_array))
         self._corr_fourier = (corr_fourier)
         self._fourier_near_zero = (corr_fourier < FOURIER_NEAR_ZERO)
