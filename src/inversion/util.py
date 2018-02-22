@@ -845,13 +845,13 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
 
         self.__transp = None
 
-    # TODO: test this.  It is probably very fragile.
     def _transpose(self):
         """Transpose the operator."""
         if self.__transp is None:
             operator1 = self._operator1
             operator2 = self._operator2
-            if da.allclose(operator1, operator1.T).compute():
+            if (operator1.shape[0] == operator1.shape[1] and
+                da.allclose(operator1, operator1.T).compute()):
                 if operator2.T is operator2:
                     self.__transp = self
                 else:

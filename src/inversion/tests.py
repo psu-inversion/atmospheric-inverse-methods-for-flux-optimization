@@ -958,6 +958,40 @@ class TestYMKroneckerProduct(unittest2.TestCase):
             operator.dot(epr_state),
             matrix.dot(epr_state))
 
+    def test_transpose(self):
+        """Test whether the transpose is properly implemented."""
+        mat1 = np.eye(3)
+        mat2 = inversion.covariances.DiagonalOperator((1, 1))
+        mat3 = np.eye(4)
+        DaskKroneckerProductOperator = (
+            inversion.util.DaskKroneckerProductOperator)
+
+        with self.subTest(check="symmetric"):
+            product = DaskKroneckerProductOperator(
+                mat1, mat2)
+
+            self.assertIs(product.T, product)
+
+        with self.subTest(check="asymmetric"):
+            mat1[0, 1] = 1
+            product = DaskKroneckerProductOperator(
+                mat1, mat2)
+            transpose = product.T
+
+            self.assertIsNot(transpose, product)
+            np_tst.assert_allclose(transpose._operator1,
+                                   mat1.T)
+
+        with self.subTest(check="rectangular"):
+            product = DaskKroneckerProductOperator(
+                mat1[:2], mat3[:3])
+            transpose = product.T
+
+            np_tst.assert_allclose(transpose._operator1,
+                                   mat1[:2].T)
+            np_tst.assert_allclose(transpose._operator2.A,
+                                   mat3[:3].T)
+
 
 class TestUtilKroneckerProduct(unittest2.TestCase):
     """Test inversion.util.kronecker_product."""
