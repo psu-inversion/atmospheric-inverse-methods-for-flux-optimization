@@ -190,7 +190,12 @@ def save_sum(background, background_covariance,
     if isinstance(observation_operator, Array):
         B_HT = background_covariance.dot(observation_operator.T)
 
-        projected_background_covariance = observation_operator.dot(B_HT)
+        if hasattr(background_covariance, "quadratic_form"):
+            projected_background_covariance = (
+                background_covariance.quadratic_form(
+                    observation_operator.T))
+        else:
+            projected_background_covariance = observation_operator.dot(B_HT)
     else:
         B_HT = tolinearoperator(background_covariance).dot(
             observation_operator.T)
