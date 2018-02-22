@@ -813,6 +813,22 @@ class TestCorrelations(unittest2.TestCase):
         self.assertIsInstance(combined_op,
                               inversion.correlations.SchmidtKroneckerProduct)
 
+    def test_sqrt_direct(self):
+        """Test the square root in the most direct manner possible.
+
+        Checks whether matrices corresponding to sqrt.T@sqrt and the
+        original matrix are approximately equal.
+        """
+        operator = (inversion.correlations.HomogeneousIsotropicCorrelation.
+                    from_array((1, .5, .25, .125)))
+        sqrt = operator.sqrt()
+        sqrt_squared = sqrt.T.dot(sqrt)
+
+        mat = np.eye(4)
+
+        np_tst.assert_allclose(operator.dot(mat),
+                               sqrt_squared.dot(mat))
+
 
 class TestSchmidtKroneckerProduct(unittest2.TestCase):
     """Test the Schmidt Kronecker product implementation for LinearOperators.

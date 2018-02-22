@@ -209,6 +209,19 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         self._fourier_near_zero = (corr_fourier < FOURIER_NEAR_ZERO)
         return self
 
+    def sqrt(self):
+        """Compute an S such that S.T @ S == self.
+
+        Returns
+        -------
+        S: HomogeneousLinearOperator
+        """
+        result = HomogeneousIsotropicCorrelation(self._underlying_shape)
+        result._corr_fourier = sqrt(self._corr_fourier)
+        # I still don't much trust these.
+        result._fourier_near_zero = self._fourier_near_zero
+        return result
+
     def _matvec(self, vec):
         """Evaluate the matrix product of this matrix and `vec`.
 
