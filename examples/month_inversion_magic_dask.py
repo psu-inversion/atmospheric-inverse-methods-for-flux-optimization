@@ -95,7 +95,6 @@ make this much more complicated.
 """
 OBS_TIMES_PER_DAY = OBS_HOURS[1].hour - OBS_HOURS[0].hour
 """Observations used per site per day."""
-OBS_WINDOW = 1
 CO2_MOLAR_MASS = 16 * 2 + 12.01
 """Molar mass of CO2 (g/mol).
 
@@ -103,10 +102,12 @@ Used to convert WRF fluxes to units expected by observation operator.
 """
 OBS_DAYS = 31
 """Number of days of obs to use."""
+OBS_WINDOW = OBS_DAYS * OBS_TIMES_PER_DAY
+"""Number of observation times."""
 CO2_MOLAR_MASS_UNITS = cf_units.Unit("g/mol")
 FLUX_UNITS = cf_units.Unit("g/m^2/hr")
 
-FLUX_CHUNKS = HOURS_PER_DAY * 1 // FLUX_INTERVAL
+FLUX_CHUNKS = HOURS_PER_DAY * 3 // FLUX_INTERVAL
 """How many flux times to treat at once.
 
 Must be a multiple of day length.
@@ -118,7 +119,7 @@ Must allow a few chunks of the influence function to be in memory at
 once.  Will need to extend this if (N_OBS_TIMES * N_SITES) ** 2 arrays
 stop fitting nicely in memory.
 """
-OBS_CHUNKS_USED = 120
+OBS_CHUNKS_USED = 96
 """Obs chunks treated at once in inversion code.
 
 Must also allow a few chunks to be loaded at once.
@@ -497,6 +498,7 @@ sys.stdout.flush(); sys.stderr.flush()
 full_correlations = kronecker_product(
     day_correlations,
     kronecker_product(hour_correlations, spatial_correlations))
+print("Full:", type(full_correlations))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have combined correlations")
 sys.stdout.flush(); sys.stderr.flush()
 
