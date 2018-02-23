@@ -201,12 +201,11 @@ def save_sum(background, background_covariance,
         covariance_sum = (projected_background_covariance +
                           observation_covariance)
 
-    if isinstance(covariance_sum, Array):
-        covariance_sum, innovation = persist_to_disk(
-            covariance_sum, innovation)
+    if isinstance(covariance_sum, ARRAY_TYPES):
+        covariance_sum, innovation = map(
+            asarray, da.compute(covariance_sum, innovation))
     else:
-        innovation, = persist_to_disk(
-            innovation)
+        innovation = innovation.persist()
 
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
     observation_increment = solve(covariance_sum, innovation)

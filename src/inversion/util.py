@@ -4,12 +4,9 @@ These functions mirror :mod:`numpy` functions but produce dask output.
 """
 import functools
 import itertools
-import tempfile
 import warnings
 import numbers
-import atexit
 import math
-import os
 
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, aslinearoperator, lgmres
@@ -18,7 +15,6 @@ from scipy.sparse.linalg.interface import (
     _CustomLinearOperator, _SumLinearOperator,
     _ScaledLinearOperator)
 from scipy.sparse.linalg.eigen import eigsh as linop_eigsh
-import h5py
 
 import dask.array as da
 import dask.array.linalg as la
@@ -1076,57 +1072,6 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
                 result.persist()
                 row_count = 0
         return result
-
-
-created_temporaries = []
-
-
-def persist_to_disk(*arrays):
-    """Persist arrays to disk.
-
-    Save the arrays to a temporary file on disk, then read them back
-    in with an "optimal" chunking scheme.  This will trigger any lazy
-    computation, but shouldn't load all the data into memory.
-
-    Parameters
-    ----------
-    *arrays: array_like[N] or array_like[N, N]
-        Set of vectors or square matrices.
-
-    Returns
-    -------
-    *disk_arrays
-        The same arrays, but backed by an hdf5 file, not a series of
-        computations
-
-    See Also
-    --------
-    dask.array.persist
-    """
-    fid, tmpname = tempfile.mkstemp(dir="/mc1s2/s4/dfw5129/tmp", suffix=".h5")
-    created_temporaries.append(tmpname)
-    names = ["/array{n:02d}".format(n=n)
-             for n in range(len(arrays))]
-    da.to_hdf5(tmpname,
-               {name: arry
-                for name, arry in zip(names, arrays)})
-    ds = h5py.File(tmpname)
-    os.close(fid)
-    return (
-        da.from_array(
-            ds[name], chunks=chunk_sizes((arry.shape[0],), arry.ndim == 2)[0])
-        for name, arry in zip(names, arrays))
-
-
-@atexit.register
-def remove_temporaries():
-    """Remove the temporary files from `persist_to_disk`.
-
-    Closes the file descriptors and removes the files.
-    """
-    for tmpname in created_temporaries:
-        os.remove(tmpname)
-    created_temporaries.clear()
 
 
 def validate_args(inversion_method):

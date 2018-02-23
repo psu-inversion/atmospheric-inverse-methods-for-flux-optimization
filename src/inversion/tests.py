@@ -346,10 +346,6 @@ class TestInversionSimple(unittest2.TestCase):
                                       scipy.optimize.OptimizeResult)
                 self.assertTrue(hasattr(conv_err, "hess_inv"))
 
-    def tearDown(self):
-        """Clean up after tests."""
-        inversion.util.remove_temporaries()
-
 
 class TestGaussianNoise(unittest2.TestCase):
     """Test the properties of the gaussian noise."""
@@ -1600,13 +1596,6 @@ class TestHomogeneousInversions(unittest2.TestCase):
                        # matrices don't do this.
                        obs_op.toarray())
 
-    def tearDown(self):
-        """Clean up after tests."""
-        del self.bg_vals, self.obs_vals
-        del self.bg_corr, self.obs_corr
-        del self.obs_op
-        inversion.util.remove_temporaries()
-
     def test_combinations_produce_answer(self):
         """Test that background error as a LinearOperator doesn't crash."""
         for inversion_method in ALL_METHODS:
@@ -1791,10 +1780,6 @@ class TestOddChunks(unittest2.TestCase):
             with self.subTest(method=getname(inversion_method)):
                 post, post_cov = inversion_method(
                     background, bg_cov, observations, obs_cov, obs_op)
-
-    def tearDown(self):
-        """Clean up after tests."""
-        inversion.util.remove_temporaries()
 
 
 class TestCovariances(unittest2.TestCase):
