@@ -6,7 +6,7 @@ inversion.correlations
 """
 from numpy import newaxis
 
-from dask.array import where, asarray
+from dask.array import where, asarray, sqrt
 
 from inversion.util import REAL_DTYPE_KINDS
 from inversion.util import DaskLinearOperator
@@ -128,3 +128,7 @@ class DiagonalOperator(SelfAdjointLinearOperator):
         result = vector / self._diag
         # result[self._diag_near_zero] = 0
         return where(self._diag_near_zero, 0, result)
+
+    def sqrt(self):
+        """Find S such that S.T @ S == self."""
+        return DiagonalOperator(sqrt(self._diag))

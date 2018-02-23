@@ -5,6 +5,7 @@ These functions mirror :mod:`numpy` functions but produce dask output.
 import functools
 import itertools
 import tempfile
+import warnings
 import numbers
 import atexit
 import math
@@ -16,6 +17,7 @@ from scipy.sparse.linalg.interface import (
     MatrixLinearOperator,
     _CustomLinearOperator, _SumLinearOperator,
     _ScaledLinearOperator)
+from scipy.sparse.linalg.eigen import eigsh as linop_eigsh
 import h5py
 
 import dask.array as da
@@ -236,6 +238,46 @@ def solve(arr1, arr2):
         #     chunks)
     # Shorter method for assuring dask arrays
     return la.solve(asarray(arr1), asarray(arr2))
+
+
+def matrix_sqrt(mat):
+    """Find a matrix S such that S.T @ S == mat.
+
+    Parameters
+    ----------
+    mat: array_like or LinearOperator
+
+    Returns
+    -------
+    S: array_like or LinearOperator
+
+    Raises
+    ------
+    ValueError: if mat is not symmetric
+    """
+    if mat.shape[0] != mat.shape[1]:
+        raise ValueError("Matrix square root only defined for square arrays")
+    if hasattr(mat, "sqrt"):
+        return mat.sqrt()
+    elif isinstance(mat, (MatrixLinearOperator, DaskMatrixLinearOperator)):
+        mat = mat.A
+
+    if isinstance(mat, ARRAY_TYPES):
+        return la.cholesky(
+            asarray(mat).rechunk(chunk_sizes(mat.shape[:1],
+                                             matrix_side=True)[0]))
+
+    if isinstance(mat, (LinearOperator, DaskLinearOperator)):
+        from inversion.covariances import DiagonalOperator
+        warnings.warn("The square root will be approximate.")
+        vals, vecs = linop_eigsh(
+            mat, min(mat.shape[0] // 2, OPTIMAL_ELEMENTS // mat.shape[0]))
+        sqrt_valop = DiagonalOperator(np.sqrt(vals))
+        vecop = DaskMatrixLinearOperator(vecs)
+        return ProductLinearOperator(vecop, sqrt_valop, vecop.T)
+
+    raise TypeError("Don't know how to find square root of {cls!s}".format(
+            cls=type(mat)))
 
 
 # TODO Test for handling of different chunking schemes
@@ -700,6 +742,7 @@ class ProductLinearOperator(DaskLinearOperator):
             if all(op is rop.T for op, rop in
                    zip(operators, reversed(operators))):
                 self.quadratic_form = self._quadratic_form
+                self.sqrt = self._sqrt
         except NotImplementedError:
             # Transpose doesn't exist
             pass
@@ -795,6 +838,21 @@ class ProductLinearOperator(DaskLinearOperator):
             result = mat.T.dot(mat)
         return result
 
+    def _sqrt(self):
+        """Find S such that S.T @ S == self."""
+        operators = self._operators
+        n_ops = len(operators)
+        half_n_ops = n_ops // 2
+
+        last_operators = operators[-half_n_ops:]
+
+        if is_odd(n_ops):
+            middle_operator = operators[half_n_ops]
+
+            return ProductLinearOperator(
+                matrix_sqrt(middle_operator), *last_operators)
+        return ProductLinearOperator(*last_operators)
+
 
 class _DaskScaledLinearOperator(_ScaledLinearOperator, DaskLinearOperator):
     """Scaled linear operator."""
@@ -861,6 +919,35 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
                 self.__transp = DaskKroneckerProductOperator(
                     operator1.T, operator2.T)
         return self.__transp
+
+    def sqrt(self):
+        """Find an operator S such that S.T @ S == self.
+
+        Requires self be symmetric.
+
+        Returns
+        -------
+        S: KroneckerProductOperator
+
+        Raises
+        ------
+        ValueError: if operator not self-adjoint
+        """
+        operator1 = self._operator1
+        if ((self.shape[0] != self.shape[1] or
+             operator1.shape[0] != operator1.shape[1])):
+            raise ValueError(
+                "Square root not defined for {shape!s} operators."
+                .format(shape=self.shape))
+        if self.T is not self:
+            raise ValueError(
+                "Square root not defined for non-symmetric operators.")
+        # Cholesky can be fragile, so delegate to central location for
+        # handling that.
+        sqrt1 = matrix_sqrt(operator1)
+        sqrt2 = matrix_sqrt(self._operator2)
+        return DaskKroneckerProductOperator(
+            sqrt1, sqrt2)
 
     def _matmat(self, mat):
         r"""Compute matrix-matrix product.

@@ -992,6 +992,19 @@ class TestYMKroneckerProduct(unittest2.TestCase):
             np_tst.assert_allclose(transpose._operator2.A,
                                    mat3[:3].T)
 
+    def test_sqrt(self):
+        """Test whether the sqrt method works as intended."""
+        matrix1 = np.eye(2)
+        matrix2 = inversion.covariances.DiagonalOperator((1, 2, 3))
+        tester = np.eye(6)
+
+        product = inversion.util.DaskKroneckerProductOperator(matrix1, matrix2)
+        sqrt = product.sqrt()
+        proposed = sqrt.T.dot(sqrt)
+
+        np_tst.assert_allclose(proposed.dot(tester), product.dot(tester))
+        # Should I check the submatrices or assume that's covered?
+
 
 class TestUtilKroneckerProduct(unittest2.TestCase):
     """Test inversion.util.kronecker_product."""
@@ -1725,6 +1738,30 @@ class TestProductQuadraticForm(unittest2.TestCase):
                     self.assertEqual(result.shape, (stop, stop))
                     np_tst.assert_allclose(result, vectors[:stop, :stop])
 
+    def test_product_sqrt(self):
+        """Test the square root of a ProductLinearOperator."""
+        mat1 = np.eye(3)
+        mat1[1, 0] = 1
+        op1 = tolinearoperator(mat1)
+        op2 = inversion.covariances.DiagonalOperator((1, .25, .0625))
+        ProductLinearOperator = inversion.util.ProductLinearOperator
+
+        tester = np.eye(3)
+
+        with self.subTest(num=2):
+            product = ProductLinearOperator(op1.T, op1)
+            mat_sqrt = product.sqrt()
+            test = mat_sqrt.T.dot(mat_sqrt)
+
+            np_tst.assert_allclose(test.dot(tester), product.dot(tester))
+
+        with self.subTest(num=3):
+            product = ProductLinearOperator(op1.T, op2, op1)
+            mat_sqrt = product.sqrt()
+            test = mat_sqrt.T.dot(mat_sqrt)
+
+            np_tst.assert_allclose(test.dot(tester), product.dot(tester))
+
 
 class TestOddChunks(unittest2.TestCase):
     """Test that input with odd chunks still works.
@@ -1812,6 +1849,16 @@ class TestCovariances(unittest2.TestCase):
         self.assertIs(operator, operator.H)
         self.assertIs(operator, operator.T)
 
+    def test_diagonal_sqrt(self):
+        """Test that DiagonalOperator.sqrt works as expected."""
+        DiagonalOperator = inversion.covariances.DiagonalOperator
+        diagonal = np.arange(10.)
+        operator = DiagonalOperator(diagonal)
+        sqrt = operator.sqrt()
+
+        self.assertIsInstance(sqrt, DiagonalOperator)
+        np_tst.assert_allclose(sqrt._diag, np.sqrt(diagonal))
+
     def test_product(self):
         test_vecs = (np.arange(5.),
                      np.ones(5, dtype=DTYPE),
@@ -1839,6 +1886,54 @@ class TestCovariances(unittest2.TestCase):
             with self.subTest(test_mat=mat):
                 np_tst.assert_allclose(operator.dot(mat),
                                        arry.dot(mat))
+
+
+class TestUtilMatrixSqrt(unittest2.TestCase):
+    """Test that inversion.util.sqrt works as planned."""
+
+    def test_array(self):
+        """Test that matrix_sqrt works with arrays."""
+        matrix_sqrt = inversion.util.matrix_sqrt
+
+        with self.subTest(trial="identity"):
+            mat = da.eye(3, chunks=2)
+            proposed = matrix_sqrt(mat)
+            expected = la.cholesky(mat.rechunk(3))
+
+            np_tst.assert_allclose(proposed, expected)
+
+        with self.subTest(trial="toeplitz"):
+            mat = scipy.linalg.toeplitz((1, .5, .25, .125))
+
+            proposed = matrix_sqrt(mat)
+            expected = la.cholesky(da.asarray(mat))
+
+            np_tst.assert_allclose(proposed, expected)
+
+    @unittest2.expectedFailure
+    def test_semidefinite_array(self):
+        """Test that matrix_sqrt works for semidefinite arrays.
+
+        This currently fails due to lazy evaluation.
+        """
+        mat = np.eye(2)
+        mat[1, 1] = 0
+
+        proposed = inversion.util.matrix_sqrt(mat)
+        # Fun with one and zero
+        np_tst.assert_allclose(proposed, mat)
+
+    def test_delegate(self):
+        """Test that matrix_sqrt delegates where possible."""
+        operator = (inversion.correlations.HomogeneousIsotropicCorrelation.
+                    from_array((1, .5, .25, .125, .25, .5, 1)))
+
+        proposed = inversion.util.matrix_sqrt(operator)
+
+        self.assertIsInstance(
+            proposed, inversion.correlations.HomogeneousIsotropicCorrelation)
+
+    # TODO: test arbitrary linear operators
 
 
 if __name__ == "__main__":
