@@ -5,10 +5,11 @@ Also known as Kalman Matrix Inversion or batch inversion.
 import scipy.linalg
 from scipy.sparse.linalg import LinearOperator
 
-from dask.array import Array
+import dask.array as da
+from dask.array import asarray
 
 from inversion.util import solve, tolinearoperator, validate_args
-from inversion.util import ProductLinearOperator, chunk_sizes, persist_to_disk
+from inversion.util import ProductLinearOperator, chunk_sizes, ARRAY_TYPES
 
 
 @validate_args
@@ -48,7 +49,7 @@ def simple(background, background_covariance,
 
     covariance_sum = projected_background_covariance + observation_covariance
 
-    if isinstance(covariance_sum, Array):
+    if isinstance(covariance_sum, ARRAY_TYPES):
         chunks = chunk_sizes((covariance_sum.shape[0],))
         covariance_sum = covariance_sum.rechunk(chunks[0])
 
@@ -124,7 +125,7 @@ def fold_common(background, background_covariance,
         covariance_sum = (projected_background_covariance +
                           observation_covariance)
 
-    if isinstance(covariance_sum, Array):
+    if isinstance(covariance_sum, ARRAY_TYPES):
         chunks = chunk_sizes((covariance_sum.shape[0],))
         covariance_sum = covariance_sum.rechunk(chunks[0]).persist()
 
@@ -176,7 +177,7 @@ def save_sum(background, background_covariance,
     innovation = (observations - projected_obs)
 
     # B_{proj} = HBH^T
-    if isinstance(observation_operator, Array):
+    if isinstance(observation_operator, ARRAY_TYPES):
         B_HT = background_covariance.dot(observation_operator.T)
 
         # TODO: test this
