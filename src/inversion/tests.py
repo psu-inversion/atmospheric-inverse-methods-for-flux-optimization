@@ -1680,10 +1680,10 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
                 np_tst.assert_allclose(result, vectors[:stop, :stop])
 
 
-class TestProductQuadraticForm(unittest2.TestCase):
+class TestUtilProduct(unittest2.TestCase):
     """Test that quadratic_form works properly for ProductLinearOperator."""
 
-    def test_added(self):
+    def test_symmetric_methods_added(self):
         """Test that the method is added or not as appropriate."""
         op1 = tolinearoperator(np.eye(2))
         op2 = inversion.covariances.DiagonalOperator(np.ones(2))
@@ -1860,6 +1860,8 @@ class TestCovariances(unittest2.TestCase):
         np_tst.assert_allclose(sqrt._diag, np.sqrt(diagonal))
 
     def test_product(self):
+        """Test that the product operator works as expected."""
+        # TODO: move this somewhere appropriate.
         test_vecs = (np.arange(5.),
                      np.ones(5, dtype=DTYPE),
                      np.array((0, 1, 0, 1, 0.)))

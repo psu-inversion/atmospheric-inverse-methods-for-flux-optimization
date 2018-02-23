@@ -726,7 +726,7 @@ class ProductLinearOperator(DaskLinearOperator):
     """Represent a product of linear operators."""
 
     def __init__(self, *operators):
-        """Set up a product on linear operators.
+        """Set up a product of linear operators.
 
         Parameters
         ----------
@@ -744,7 +744,7 @@ class ProductLinearOperator(DaskLinearOperator):
                 self.quadratic_form = self._quadratic_form
                 self.sqrt = self._sqrt
         except NotImplementedError:
-            # Transpose doesn't exist
+            # Transpose not implemented for a subclass
             pass
 
     def _matvec(self, vector):
@@ -823,9 +823,20 @@ class ProductLinearOperator(DaskLinearOperator):
         return vector
 
     def _quadratic_form(self, mat):
+        """Find the quadratic form mat.T @ self @ mat.
+
+        Parameters
+        ----------
+        mat: array_like[N, M]
+
+        Returns
+        -------
+        result: array_like[M, M]
+        """
         operators = self._operators
         n_ops = len(operators)
         half_n_ops = n_ops // 2
+
         for op in operators[:half_n_ops]:
             mat = op.T.dot(mat)
         if is_odd(n_ops):
@@ -908,8 +919,8 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         if self.__transp is None:
             operator1 = self._operator1
             operator2 = self._operator2
-            if (operator1.shape[0] == operator1.shape[1] and
-                da.allclose(operator1, operator1.T).compute()):
+            if ((operator1.shape[0] == operator1.shape[1] and
+                 da.allclose(operator1, operator1.T).compute())):
                 if operator2.T is operator2:
                     self.__transp = self
                 else:

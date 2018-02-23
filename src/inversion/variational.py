@@ -18,7 +18,7 @@ from dask.array import asarray
 from numpy import zeros_like
 
 from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
-from inversion.util import solve, chunk_sizes, validate_args
+from inversion.util import solve, validate_args
 
 
 @validate_args

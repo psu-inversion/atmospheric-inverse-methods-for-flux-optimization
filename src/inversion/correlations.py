@@ -421,6 +421,7 @@ class SchmidtKroneckerProduct(DaskLinearOperator):
         if isinstance(vector, Array):
             chunks = vector.chunks
         else:
+            # TODO: test this branch
             chunks = chunk_sizes((self.shape[0],), matrix_side=False)
 
         if vector.ndim == 1:
