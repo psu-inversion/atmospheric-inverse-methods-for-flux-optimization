@@ -37,7 +37,8 @@ import inversion.covariances
 from inversion.util import kronecker_product, asarray
 import cf_acdd
 
-INFLUENCE_PATH = "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/ACT-America_trial5/2010/01/GROUP1"
+INFLUENCE_PATH = ("/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
+                  "ACT-America_trial5/2010/01/GROUP1")
 PRIOR_PATH = "/mc1s2/s4/dfw5129/data/Marthas_2010_wrfouts"
 OBS_PATH = "/mc1s2/s4/dfw5129/inversion"
 
@@ -58,8 +59,8 @@ Must divide twenty-four.
 OBS_FILES = glob.glob(os.path.join(OBS_PATH,
                                    "2010_01_4tower_WRF_concentrations?.nc"))
 FLUX_FILES = glob.glob(os.path.join(
-        PRIOR_PATH, "wrf_fluxes_all_{interval:02d}hrly_27km.nc".format(
-            interval=FLUX_INTERVAL)))
+    PRIOR_PATH, "wrf_fluxes_all_{interval:02d}hrly_27km.nc".format(
+        interval=FLUX_INTERVAL)))
 FLUX_FILES.sort()
 OBS_FILES.sort()
 INFLUENCE_FILES = glob.glob(os.path.join(
@@ -127,7 +128,7 @@ Must also allow a few chunks to be loaded at once.
 ############################################################
 # Utility functions.
 def grouper(iterable, n, fillvalue=None):
-    "Collect data into fixed-length chunks or blocks"
+    """Collect data into fixed-length chunks or blocks."""
     # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
     args = [iter(iterable)] * n
     return itertools.zip_longest(*args, fillvalue=fillvalue)
@@ -475,11 +476,13 @@ spatial_correlations = (
 print(datetime.datetime.now(UTC).strftime("%c"), "Have spatial correlations")
 sys.stdout.flush(); sys.stderr.flush()
 HOURLY_FLUX_TIMESCALE = 3
+INTERVALS_PER_DAY = HOURS_PER_DAY // FLUX_INTERVAL
 hour_correlations = (
     inversion.correlations.HomogeneousIsotropicCorrelation.
     from_function(
-        inversion.correlations.ExponentialCorrelation(HOURLY_FLUX_TIMESCALE),
-        (HOURS_PER_DAY // FLUX_INTERVAL,)))
+        inversion.correlations.ExponentialCorrelation(
+            HOURLY_FLUX_TIMESCALE / FLUX_INTERVAL),
+        (INTERVALS_PER_DAY,)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have hourly correlations")
 sys.stdout.flush(); sys.stderr.flush()
 DAILY_FLUX_TIMESCALE = 14
