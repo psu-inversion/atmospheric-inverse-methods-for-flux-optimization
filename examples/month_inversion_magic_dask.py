@@ -6,7 +6,6 @@ files.
 """
 from __future__ import print_function, division, unicode_literals
 
-import multiprocessing.pool
 import itertools
 import datetime
 import os.path
@@ -14,7 +13,6 @@ import glob
 import sys
 
 import dask.array as da
-import dask
 import pandas as pd
 import dateutil.tz
 import numpy as np
@@ -104,13 +102,6 @@ Used to convert WRF fluxes to units expected by observation operator.
 """
 OBS_DAYS = 31
 """Number of days of obs to use."""
-MAX_CPU = 32
-"""Max # threads to create.
-
-I am going to try to use this to control memory use.  HBHT is the core
-driver of the problems, and seems to be largely CPU-bound, so this
-will hurt performance.
-"""
 CO2_MOLAR_MASS_UNITS = cf_units.Unit("g/mol")
 FLUX_UNITS = cf_units.Unit("g/m^2/hr")
 
@@ -538,17 +529,16 @@ observation_covariance = asarray(observation_covariance)
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Got covariance parts, getting posterior")
 sys.stdout.flush(); sys.stderr.flush()
-with dask.set_options(pool=multiprocessing.pool.ThreadPool(MAX_CPU)):
-    posterior, correlations = inversion.optimal_interpolation.save_sum(
-        aligned_fluxes.data.reshape(N_GRID_POINTS * N_FLUX_TIMES),
-        inversion.util.ProductLinearOperator(
-            flux_stds_matrix, full_correlations, flux_stds_matrix),
-        here_obs.data,
-        observation_covariance,
-        (aligned_influences.data
-         .transpose(transpose_arg)
-         .reshape(aligned_influences.shape[0],
-                  np.prod(aligned_influences.shape[-3:]))))
+posterior, correlations = inversion.optimal_interpolation.save_sum(
+    aligned_fluxes.data.reshape(N_GRID_POINTS * N_FLUX_TIMES),
+    inversion.util.ProductLinearOperator(
+        flux_stds_matrix, full_correlations, flux_stds_matrix),
+    here_obs.data,
+    observation_covariance,
+    (aligned_influences.data
+     .transpose(transpose_arg)
+     .reshape(aligned_influences.shape[0],
+              np.prod(aligned_influences.shape[-3:]))))
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior values, making dataset")
 sys.stdout.flush(); sys.stderr.flush()
