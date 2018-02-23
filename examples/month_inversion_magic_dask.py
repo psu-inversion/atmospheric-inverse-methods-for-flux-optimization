@@ -184,41 +184,21 @@ OBS_VEC_TOTAL_SIZE = N_SITES * N_OBS_TIMES
 # Read influence functions
 print("Days of obs used:", OBS_DAYS)
 
-# flux_chunk 6 days, obs chunk 24
-#  8 days obs:  8m43s,  18GiB,  2h11m cpu
-# obs chunk 48
-# 12 days obs: 14m44s,  48GiB,  4h14m cpu
-# obs chunk 64
-# 14 days obs: 16m52s,  86GiB,  4h56m cpu
-# obs chunk 96
-# 21 days obs: 34m59s, 239GiB, 11h49m cpu
-# flux_chunk 2 days, obs chunk 128
-# 28 days obs: not parallellizing
-# flux_chunk 3 days, obs chunk 96
-# 28 days obs: 62m48s, 160GiB, 24h24m cpu
-# use OBS_CHUNKS // N_SITES for obs_time chunksize in influence function
-# 31 days obs: 85m00s, 231GiB, 31h51m cpu
-# flux_chunk 1 day
-# 31 days obs: crash after 37m, >250GiB mem
-# flux_chunk 6 day, obs_time chunk back to OBS_CHUNK in influence function
-# 31 days obs: crash after 9m, >250GiB mem
-# obs_chunk 72 for load, 120 for processing
-# 31 days obs: crashes after 10m, >250GiB mem
-# obs_chunk 48 for load, 96 for processing
-# 31 days obs: crashes after 12m, >250GiB mem
-# flux_chunk 3 days, obs_chunks_all 24
-# obs_chunks_all 24, obs_chunks_used 96
+# Quadratic form in save_sum
+# flux_interval=6, flux chunk 3 days, flux window 2 weeks
+# obs_chunk_all=24, obs_chunk_used=96
+#  2 days obs:   1m32s,   2GiB,     5m cpu
+#  4 days obs:   2m46s,   4GiB,    13m cpu
+#  8 days obs:  41m07s,  70GiB,  9h17m cpu
+# Reduce number of blocks and reset counter
+# 16 days obs:  19m36s, 119GiB,  5h36m cpu
+# 31 days obs: doesn't parallelize
+# Without quadratic_form
 #  2 days obs:  2m04s,   2GiB,     5m cpu
 #  4 days obs:  3m20s,  22GiB,    14m cpu
 #  8 days obs:  7m34s,  21GiB,  1h07m cpu
 # 16 days obs: 20m35s,  47GiB,  5h25m cpu
-# max 25 threads
-# 28 days obs: 65m43s, 163GiB, 20h12m cpu
-# max 24 threads
-# 30 days obs: crash after 15 min. >250 GiB mem
-# max 16 threads
-# 30 days obs: crash after an hour. 249 GiB
-# There's currently about 10m serial setup before it parallelizes
+# Quadratic form in save_sum working
 INFLUENCE_DATASET = xarray.open_mfdataset(
     INFLUENCE_FILES,
     chunks=dict(observation_time=OBS_CHUNKS_ALL, site=1,
