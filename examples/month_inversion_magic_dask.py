@@ -560,7 +560,13 @@ posterior_ds = xarray.Dataset(
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior structure, evaluating and writing")
 sys.stdout.flush(); sys.stderr.flush()
-posterior_ds.to_netcdf("monthly_inversion_{flux_interval:02d}h_027km_output.nc4"
-                       .format(flux_interval=FLUX_INTERVAL))
+encoding = {name: {"_FillValue": -99}
+            for name in posterior_ds.data_vars}
+encoding.update({name: {"_FillValue": False}
+                 for name in posterior_ds.coords})
+posterior_ds.to_netcdf(
+    "monthly_inversion_{flux_interval:02d}h_027km_output.nc4"
+    .format(flux_interval=FLUX_INTERVAL),
+    encoding=encoding)
 print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior")
 sys.stdout.flush(); sys.stderr.flush()
