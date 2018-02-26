@@ -1068,8 +1068,8 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
             # the flux correlation time
             # It should at least get closer.
             row_count += 1
-            if row_count > loops_between_save:
-                result.persist()
+            if row_count >= loops_between_save:
+                result = result.persist()
                 row_count = 0
         return result
 
