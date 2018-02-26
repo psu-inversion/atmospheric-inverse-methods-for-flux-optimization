@@ -1668,6 +1668,20 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
                 result = product.quadratic_form(vectors[:, :stop])
                 np_tst.assert_allclose(result, vectors[:stop, :stop])
 
+    def test_off_diagonal(self):
+        """Test a case with off-diagonal elements."""
+        mat1 = scipy.linalg.toeplitz(3.**-np.arange(5))
+        mat2 = scipy.linalg.toeplitz(2.**-np.arange(10))
+
+        scipy_kron = scipy.linalg.kron(mat1, mat2)
+        linop_kron = inversion.util.DaskKroneckerProductOperator(mat1, mat2)
+
+        test_arry = np.eye(50, 20)
+
+        np_tst.assert_allclose(
+            linop_kron.quadratic_form(test_arry),
+            test_arry.T.dot(scipy_kron.dot(test_arry)))
+
 
 class TestUtilProduct(unittest2.TestCase):
     """Test that quadratic_form works properly for ProductLinearOperator."""
