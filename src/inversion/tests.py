@@ -385,6 +385,31 @@ class TestGaussianNoise(unittest2.TestCase):
                 sample_cov, None)
             self.assertEqual(res.shape, sample_shape)
 
+    def test_operator(self):
+        """Test that the code works with operator covariances."""
+        diagonal = (1, .5, .3, .2, .1)
+        sample_cov = inversion.covariances.DiagonalOperator(diagonal)
+        sample_shape = (len(diagonal),)
+        noise = inversion.noise.gaussian_noise(sample_cov, int(1e6))
+
+        np_tst.assert_allclose(noise.mean(axis=0),
+                               np.zeros(sample_shape),
+                               rtol=1e-2, atol=1e-2)
+        np_tst.assert_allclose(np.cov(noise.T), np.diag(diagonal),
+                               rtol=1e-2, atol=1e-2)
+
+    def test_off_diagonal(self):
+        """Test that the code works with off-diagonal elements."""
+        sample_cov = scipy.linalg.toeplitz((1, .5, .25, .125))
+        sample_shape = (4,)
+        noise = inversion.noise.gaussian_noise(sample_cov, int(1e6))
+
+        np_tst.assert_allclose(noise.mean(axis=0),
+                               np.zeros(sample_shape),
+                               rtol=1e-2, atol=1e-2)
+        np_tst.assert_allclose(np.cov(noise.T), sample_cov,
+                               rtol=1e-2, atol=1e-2)
+
 
 class TestCorrelations(unittest2.TestCase):
     """Test the generation of correlation matrices."""
