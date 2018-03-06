@@ -35,6 +35,7 @@ import inversion.variational
 import inversion.correlations
 import inversion.covariances
 from inversion.util import kronecker_product, asarray
+from inversion.noise import gaussian_noise
 import cf_acdd
 
 INFLUENCE_PATH = ("/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
@@ -123,6 +124,12 @@ OBS_CHUNKS_USED = 96
 """Obs chunks treated at once in inversion code.
 
 Must also allow a few chunks to be loaded at once.
+"""
+N_REALIZATIONS = 20
+"""Number of realizations of the gaussian noise process to include.
+
+This is used for calculating both the prior and observations fed to
+the inversion code.
 """
 
 
@@ -412,6 +419,12 @@ aligned_influences = aligned_influences.fillna(0)
 transpose_arg = sort_key_to_consecutive([dimension_order.index(dim)
                                          for dim in aligned_influences.dims])
 
+prior_var_atts = aligned_fluxes.attrs.copy()
+prior_var_atts.update(dict(
+    long_name="prior_fluxes",
+    units=TRUE_FLUXES_MATCHED[FLUX_NAME].attrs["units"],
+    description="prior fluxes for a monthlong inversion identical-twin OSSE",
+    origin="Identical-twin OSSE"))
 posterior_var_atts = aligned_fluxes.attrs.copy()
 posterior_var_atts.update(dict(
     long_name="posterior_fluxes",
@@ -490,6 +503,29 @@ flux_stds = FLUX_VARIANCE_VARYING_FRACTION * da.fabs(aligned_fluxes.data)
 flux_stds_matrix = inversion.covariances.DiagonalOperator(
     flux_stds.reshape(-1))
 
+prior_covariance = inversion.util.ProductLinearOperator(
+            flux_stds_matrix, full_correlations, flux_stds_matrix)
+print("Covariance:", type(prior_covariance))
+print(datetime.datetime.now(UTC).strftime("%c"), "Have covariances")
+sys.stdout.flush(); sys.stderr.flush()
+
+# Persist to ensure I have only one realization
+prior_flux_vals = (
+    aligned_fluxes.data[:, :, :, np.newaxis] +
+    gaussian_noise(prior_covariance, N_REALIZATIONS).T.reshape(
+        aligned_fluxes.shape + (N_REALIZATIONS,))).persist()
+prior_fluxes = xarray.DataArray(
+    prior_flux_vals,
+    aligned_fluxes.coords,
+    aligned_fluxes.dims + ("realization",),
+    "prior",
+    prior_var_atts)
+prior_fluxes.coords["realization"] = range(N_REALIZATIONS)
+prior_fluxes.coords["realization"].attrs.update(dict(
+    standard_name="realization"))
+print(datetime.datetime.now(UTC).strftime("%c"), "Have prior noise")
+sys.stdout.flush(); sys.stderr.flush()
+
 # TODO: use actual heights
 here_obs = WRF_OBS_SITE[TRACER_NAME].sel_points(
     observation_time=pd_obs_index, site=site_index
@@ -511,14 +547,31 @@ observation_covariance[
     site_index[:, np.newaxis] != site_index[np.newaxis, :]] = 0
 observation_covariance = asarray(observation_covariance)
 
+used_observation_vals = (
+    here_obs.data[:, np.newaxis] +
+    gaussian_noise(observation_covariance, N_REALIZATIONS).T.reshape(
+        here_obs.shape + (N_REALIZATIONS,))).persist()
+used_observations = xarray.DataArray(
+    used_observation_vals,
+    here_obs.coords,
+    here_obs.dims + ("realization",),
+    "pseudo_observations",
+    # obs_atts
+)
+used_observations.coords["realization"] = range(N_REALIZATIONS)
+used_observations.coords["realization"].attrs.update(dict(
+    standard_name="realization"))
+print(datetime.datetime.now(UTC).strftime("%c"), "Have observation noise")
+sys.stdout.flush(); sys.stderr.flush()
+
+
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Got covariance parts, getting posterior")
 sys.stdout.flush(); sys.stderr.flush()
 posterior, correlations = inversion.optimal_interpolation.save_sum(
-    aligned_fluxes.data.reshape(N_GRID_POINTS * N_FLUX_TIMES),
-    inversion.util.ProductLinearOperator(
-        flux_stds_matrix, full_correlations, flux_stds_matrix),
-    here_obs.data,
+    prior_fluxes.data.reshape(N_GRID_POINTS * N_FLUX_TIMES, N_REALIZATIONS),
+    prior_covariance,
+    used_observations.data,
     observation_covariance,
     (aligned_influences.data
      .transpose(transpose_arg)
@@ -527,16 +580,17 @@ posterior, correlations = inversion.optimal_interpolation.save_sum(
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior values, making dataset")
 sys.stdout.flush(); sys.stderr.flush()
-posterior = posterior.reshape(aligned_fluxes.shape)
+posterior = posterior.reshape(prior_fluxes.shape)
 posterior_ds = xarray.Dataset(
-    dict(posterior=(aligned_fluxes.dims, posterior,
+    dict(posterior=(prior_fluxes.dims, posterior,
                     posterior_var_atts),
-         prior=aligned_fluxes,
-         increment=(aligned_fluxes.dims, posterior - aligned_fluxes,
+         prior=prior_fluxes,
+         increment=(prior_fluxes.dims, posterior - prior_fluxes,
                     increment_var_atts),
          ),
     TRUE_FLUXES_MATCHED.coords,
     posterior_global_atts)
+posterior_ds["pseudo_observations"] = used_observations
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior structure, evaluating and writing")
 sys.stdout.flush(); sys.stderr.flush()
