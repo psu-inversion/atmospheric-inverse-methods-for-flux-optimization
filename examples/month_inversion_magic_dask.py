@@ -477,6 +477,8 @@ hour_correlations = (
         inversion.correlations.ExponentialCorrelation(
             HOURLY_FLUX_TIMESCALE / FLUX_INTERVAL),
         (INTERVALS_PER_DAY,)))
+hour_correlations_matrix = hour_correlations.dot(np.eye(
+        hour_correlations.shape[0]))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have hourly correlations")
 sys.stdout.flush(); sys.stderr.flush()
 DAILY_FLUX_TIMESCALE = 14
@@ -486,6 +488,11 @@ day_correlations = (
         (len(TRUE_FLUXES_MATCHED.coords["flux_time"]) *
          FLUX_INTERVAL // HOURS_PER_DAY,)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have daily correlations")
+sys.stdout.flush(); sys.stderr.flush()
+temporal_correlations = kronecker_product(day_correlations,
+                                          hour_correlations_matrix)
+print("Temporal:", type(temporal_correlations))
+print(datetime.datetime.now(UTC).strftime("%c"), "Have temporal correlations")
 sys.stdout.flush(); sys.stderr.flush()
 
 full_correlations = kronecker_product(
@@ -499,12 +506,15 @@ sys.stdout.flush(); sys.stderr.flush()
 # full stds would then be sqrt(fixed^2 + varying^2)
 # average seasonal variation (or some fraction thereof) might work.
 FLUX_VARIANCE_VARYING_FRACTION = .3
-flux_stds = FLUX_VARIANCE_VARYING_FRACTION * da.fabs(aligned_fluxes.data)
+flux_std_pattern = xarray.open_dataset("../data_files/wrf_flux_rms.nc")
+flux_stds = FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern[FLUX_NAME].data
 flux_stds_matrix = inversion.covariances.DiagonalOperator(
     flux_stds.reshape(-1))
 
-prior_covariance = inversion.util.ProductLinearOperator(
-            flux_stds_matrix, full_correlations, flux_stds_matrix)
+prior_covariance = kronecker_product(
+        temporal_correlations,
+        inversion.util.ProductLinearOperator(
+            flux_stds_matrix, spatial_correlations, flux_stds_matrix))
 print("Covariance:", type(prior_covariance))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have covariances")
 sys.stdout.flush(); sys.stderr.flush()
