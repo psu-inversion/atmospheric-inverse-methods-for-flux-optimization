@@ -1791,6 +1791,41 @@ class TestUtilProduct(unittest2.TestCase):
             np_tst.assert_allclose(test.dot(tester), product.dot(tester))
 
 
+class TestCorrelationStandardDeviation(unittest2.TestCase):
+    """Test that this sub-class works as intended."""
+
+    def test_transpose(self):
+        """Test transpose works as expected."""
+        correlations = np.eye(2)
+        stds = np.ones(2)
+
+        covariances = inversion.util.CorrelationStandardDeviation(
+            correlations, stds)
+
+        self.assertIs(covariances, covariances.T)
+
+    def test_values(self):
+        """Test that the combined operator is equivalent."""
+        correlations = np.array(((1, .5), (.5, 1)))
+        stds = (2, 1)
+
+        linop_cov = inversion.util.CorrelationStandardDeviation(
+            correlations, stds)
+        np_cov = np.diag(stds).dot(correlations.dot(np.diag(stds)))
+
+        np_tst.assert_allclose(linop_cov.dot(np.eye(2)), np_cov)
+
+    def test_adjoint(self):
+        """Test that the adjoint works as expected."""
+        correlations = np.eye(2)
+        stds = np.ones(2)
+
+        covariances = inversion.util.CorrelationStandardDeviation(
+            correlations, stds)
+
+        self.assertIs(covariances, covariances.H)
+
+
 class TestOddChunks(unittest2.TestCase):
     """Test that input with odd chunks still works.
 

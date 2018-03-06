@@ -861,6 +861,24 @@ class ProductLinearOperator(DaskLinearOperator):
         return ProductLinearOperator(*last_operators)
 
 
+class CorrelationStandardDeviation(ProductLinearOperator):
+    """Represent correlation-std product."""
+
+    def __init__(self, correlation, std):
+        from inversion.covariances import DiagonalOperator
+        std_matrix = DiagonalOperator(std)
+        super(CorrelationStandardDeviation, self).__init__(
+            std_matrix, correlation, std_matrix)
+
+    def _transpose(self):
+        """Return transpose of self."""
+        return self
+
+    def _adjoint(self):
+        """Return hermetian adjoint of self."""
+        return self
+
+
 class _DaskScaledLinearOperator(_ScaledLinearOperator, DaskLinearOperator):
     """Scaled linear operator."""
 
