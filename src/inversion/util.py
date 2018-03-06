@@ -263,6 +263,7 @@ def matrix_sqrt(mat):
             asarray(mat).rechunk(chunk_sizes(mat.shape[:1],
                                              matrix_side=True)[0]))
 
+    # TODO: test this
     if isinstance(mat, (LinearOperator, DaskLinearOperator)):
         from inversion.covariances import DiagonalOperator
         warnings.warn("The square root will be approximate.")
@@ -272,6 +273,7 @@ def matrix_sqrt(mat):
         vecop = DaskMatrixLinearOperator(vecs)
         return ProductLinearOperator(vecop, sqrt_valop, vecop.T)
 
+    # TODO: test on xarray datasets or iris cubes
     raise TypeError("Don't know how to find square root of {cls!s}".format(
             cls=type(mat)))
 
@@ -334,6 +336,7 @@ def kronecker_product(operator1, operator2):
         return operator1.kron(operator2)
     elif isinstance(operator1, ARRAY_TYPES):
         if ((isinstance(operator2, ARRAY_TYPES) and
+             # TODO: test this
              operator1.size * operator2.size < MAX_EXPLICIT_ARRAY)):
             return kron(operator1, operator2)
         return DaskKroneckerProductOperator(operator1, operator2)
@@ -770,6 +773,7 @@ class ProductLinearOperator(DaskLinearOperator):
         -------
         array_like
         """
+        # TODO: test this
         for op in self._operators:
             vector = op.H.matvec(vector)
 
@@ -793,6 +797,7 @@ class ProductLinearOperator(DaskLinearOperator):
 
     def _adjoint(self):
         """The Hermitian adjoint of the operator."""
+        # TODO: test this
         return ProductLinearOperator(
             [op.H for op in reversed(self._operators)])
 
@@ -838,6 +843,7 @@ class ProductLinearOperator(DaskLinearOperator):
         if is_odd(n_ops):
             middle_op = operators[half_n_ops]
             if hasattr(middle_op, "quadratic_form"):
+                # TODO: test this
                 result = operators[half_n_ops].quadratic_form(mat)
             else:
                 result = mat.T.dot(middle_op.dot(mat))
@@ -912,6 +918,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         """
         if isinstance(operator1, (DaskMatrixLinearOperator,
                                   MatrixLinearOperator)):
+            # TODO: test this
             operator1 = asarray(operator1.A)
         else:
             operator1 = asarray(operator1)
@@ -938,6 +945,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
                 if operator2.T is operator2:
                     self.__transp = self
                 else:
+                    # TODO: test this
                     self.__transp = DaskKroneckerProductOperator(
                         operator1, operator2.T)
             else:
@@ -961,10 +969,12 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         operator1 = self._operator1
         if ((self.shape[0] != self.shape[1] or
              operator1.shape[0] != operator1.shape[1])):
+            # TODO: test this
             raise ValueError(
                 "Square root not defined for {shape!s} operators."
                 .format(shape=self.shape))
         if self.T is not self:
+            # TODO: test this
             raise ValueError(
                 "Square root not defined for non-symmetric operators.")
         # Cholesky can be fragile, so delegate to central location for
@@ -1044,11 +1054,13 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         avoid dask keeping it all in memory.
         """
         if not isinstance(mat, ARRAY_TYPES) or self.shape[0] != self.shape[1]:
+            # TODO: test failure mode
             raise TypeError("Unsupported")
         elif mat.ndim == 1:
             mat = mat[:, np.newaxis]
         mat = asarray(mat)
         if mat.shape[0] != self.shape[1]:
+            # TODO: test failure mode
             raise ValueError("Dim mismatch")
         outer_size = mat.shape[-1]
         result_shape = (outer_size, outer_size)

@@ -1971,6 +1971,17 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
 
             np_tst.assert_allclose(proposed, expected)
 
+    def test_matrix_op(self):
+        """Test that matrix_sqrt recognizes MatrixLinearOperator."""
+        mat = np.eye(10)
+        mat_op = inversion.util.DaskMatrixLinearOperator(mat)
+
+        result1 = inversion.util.matrix_sqrt(mat_op)
+        self.assertIsInstance(result1, da.Array)
+
+        result2 = inversion.util.matrix_sqrt(mat)
+        np_tst.assert_allclose(mat, mat_op)
+
     @unittest2.expectedFailure
     def test_semidefinite_array(self):
         """Test that matrix_sqrt works for semidefinite arrays.
@@ -1994,7 +2005,13 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
         self.assertIsInstance(
             proposed, inversion.correlations.HomogeneousIsotropicCorrelation)
 
+    def test_nonsquare(self):
+        """Test matrix_sqrt raises for non-square input."""
+        with self.assertRaises(ValueError):
+            inversion.util.matrix_sqrt(np.eye(4, 3))
+
     # TODO: test arbitrary linear operators
+    # TODO: Test odd chunking
 
 
 if __name__ == "__main__":
