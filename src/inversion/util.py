@@ -1075,13 +1075,21 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         operator2 = self._operator2
         # row_chunk_size = mat.chunks[0][0]
         # loops_between_save = row_chunk_size // block_size
-        #                     how many blocks there are
-        loops_between_save = (mat.shape[0] // block_size //
-                              # How many blocks it needs to be
-                              # OPTIMAL_ELEMENTS is one chunk.
-                              # This constraint is total memory
-                              max(mat.size // (3 * OPTIMAL_ELEMENTS**2), 1))
+        loops_between_save = max(
+            # How many blocks there are
+            mat.shape[0] // block_size //
+            # How many blocks it needs to be
+            # OPTIMAL_ELEMENTS is one chunk.
+            # Each chunk will be the sum of multiple chunks
+            # The three is a magic constant that will depend on machine
+            # It is roughly how many chunks fit in memory at once.
+            # It varies with the size of mat.
+            max(mat.size // (10 * OPTIMAL_ELEMENTS**2), 1), 1)
         row_count = 0
+        print("Total loops", mat.shape[0] // block_size)
+        print("Number of chunks in mat", mat.size / (OPTIMAL_ELEMENTS**2))
+        print("Loop chunk:", loops_between_save)
+        import sys; sys.stdout.flush(); sys.stderr.flush()
 
         for row1, row_start in enumerate(range(
                 0, mat.shape[0], block_size)):
@@ -1101,7 +1109,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
             if row_count >= loops_between_save:
                 result = result.persist()
                 row_count = 0
-        return result
+        return result.persist()
 
 
 def validate_args(inversion_method):
