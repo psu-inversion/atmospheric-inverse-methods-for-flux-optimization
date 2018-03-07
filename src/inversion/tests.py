@@ -410,6 +410,18 @@ class TestGaussianNoise(unittest2.TestCase):
         np_tst.assert_allclose(np.cov(noise.T), sample_cov,
                                rtol=1e-2, atol=1e-2)
 
+    def test_slow_decay(self):
+        """Test that the code handles slowly-decaying covariances."""
+        sample_cov = scipy.linalg.toeplitz(.8 ** np.arange(10))
+        sample_shape = (10,)
+        noise = inversion.noise.gaussian_noise(sample_cov, int(1e6))
+
+        np_tst.assert_allclose(noise.mean(axis=0),
+                               np.zeros(sample_shape),
+                               rtol=1e-2, atol=1e-2)
+        np_tst.assert_allclose(np.cov(noise.T), sample_cov,
+                               rtol=1e-2, atol=1e-2)
+
 
 class TestCorrelations(unittest2.TestCase):
     """Test the generation of correlation matrices."""

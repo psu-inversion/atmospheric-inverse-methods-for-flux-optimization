@@ -37,13 +37,14 @@ def gaussian_noise(cov, size=None):
     sample_shape = cov.shape[0]
     final_shape = list(shape[:])
     final_shape.append(sample_shape)
+    transposed_shape = final_shape[::-1]
 
     x = _standard_normal(
-        size=final_shape, chunks=reversed(chunk_sizes(reversed(final_shape),
-                                                      matrix_side=False))
-    ).reshape(-1, sample_shape)
+        size=transposed_shape, chunks=chunk_sizes(
+            transposed_shape, matrix_side=False)
+    ).reshape(sample_shape, -1)
 
     chol_upper = matrix_sqrt(cov)
 
-    x = chol_upper.T.dot(x.T).T
+    x = chol_upper.T.dot(x).T
     return x.reshape(final_shape)
