@@ -148,6 +148,29 @@ class TestInversionSimple(unittest2.TestCase):
                 np_tst.assert_allclose(
                     post_cov, PRECISE_DTYPE(fractions.Fraction(2, 3)))
 
+    def test_multiple_priors(self):
+        """Test doing multiple assimilations at once.
+
+        Simple test.
+        """
+        bg = np.array([[2., 3.]])
+        bg_cov = np.atleast_2d(1.)
+
+        obs = np.array([[3., 4.]])
+        obs_cov = np.atleast_2d(1.)
+
+        obs_op = np.atleast_2d(1.)
+
+        for method in ALL_METHODS[:ITERATIVE_METHOD_START]:
+            name = getname(method)
+
+            with self.subTest(method=name):
+                post, post_cov = method(
+                    bg, bg_cov, obs, obs_cov, obs_op)
+
+                np_tst.assert_allclose(post, [[2.5, 3.5]])
+                np_tst.assert_allclose(post_cov, .5)
+
     def test_homework_one(self):
         """Verify that this can reproduce the answers to HW1.
 
