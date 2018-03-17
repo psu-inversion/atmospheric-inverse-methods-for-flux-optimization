@@ -425,6 +425,26 @@ class TestGaussianNoise(unittest2.TestCase):
         np_tst.assert_allclose(np.cov(noise.T), np.diag(diagonal),
                                rtol=1e-2, atol=1e-2)
 
+    def test_kron_op(self):
+        """Test that large kronecker operators don't break the handling."""
+        op1 = scipy.linalg.toeplitz(.6 ** np.arange(15))
+        diag = (1, .9, .8, .7, .6, .5, .4, .3, .2, .1)
+        op2 = inversion.covariances.DiagonalOperator(diag)
+
+        combined = inversion.util.kronecker_product(op1, op2)
+
+        noise = inversion.noise.gaussian_noise(combined, int(1e6))
+
+        # calculate this only once
+        noise = noise.persist()
+
+        np_tst.assert_allclose(noise.mean(axis=0),
+                               np.zeros(combined.shape[0]),
+                               rtol=1e-2, atol=1e-2)
+        np_tst.assert_allclose(np.cov(noise.T),
+                               scipy.linalg.kron(op1, np.diag(diag)),
+                               rtol=1e-2, atol=1e-2)
+
     def test_off_diagonal(self):
         """Test that the code works with off-diagonal elements."""
         sample_cov = scipy.linalg.toeplitz((1, .5, .25, .125))
