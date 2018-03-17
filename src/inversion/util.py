@@ -887,6 +887,15 @@ class CorrelationStandardDeviation(ProductLinearOperator):
         """Return hermetian adjoint of self."""
         return self
 
+    def sqrt(self):
+        """Find S such that S.T @ S == self."""
+        std_matrix, correlation, _ = self._operators
+
+        return ProductLinearOperator(
+            matrix_sqrt(correlation), std_matrix)
+
+    _sqrt = sqrt
+
 
 class _DaskScaledLinearOperator(_ScaledLinearOperator, DaskLinearOperator):
     """Scaled linear operator."""
