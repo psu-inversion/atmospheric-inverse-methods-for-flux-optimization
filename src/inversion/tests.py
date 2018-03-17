@@ -379,6 +379,8 @@ class TestGaussianNoise(unittest2.TestCase):
         cov = np.eye(sample_shape)
         noise = inversion.noise.gaussian_noise(cov, int(1e6))
 
+        noise = noise.persist()
+
         np_tst.assert_allclose(noise.mean(axis=0),
                                np.zeros((sample_shape,)),
                                rtol=1e-2, atol=1e-2)
@@ -415,6 +417,8 @@ class TestGaussianNoise(unittest2.TestCase):
         sample_shape = (len(diagonal),)
         noise = inversion.noise.gaussian_noise(sample_cov, int(1e6))
 
+        noise = noise.persist()
+
         np_tst.assert_allclose(noise.mean(axis=0),
                                np.zeros(sample_shape),
                                rtol=1e-2, atol=1e-2)
@@ -427,6 +431,8 @@ class TestGaussianNoise(unittest2.TestCase):
         sample_shape = (4,)
         noise = inversion.noise.gaussian_noise(sample_cov, int(1e6))
 
+        noise = noise.persist()
+
         np_tst.assert_allclose(noise.mean(axis=0),
                                np.zeros(sample_shape),
                                rtol=1e-2, atol=1e-2)
@@ -438,6 +444,8 @@ class TestGaussianNoise(unittest2.TestCase):
         sample_cov = scipy.linalg.toeplitz(.8 ** np.arange(10))
         sample_shape = (10,)
         noise = inversion.noise.gaussian_noise(sample_cov, int(1e6))
+
+        noise = noise.persist()
 
         np_tst.assert_allclose(noise.mean(axis=0),
                                np.zeros(sample_shape),
