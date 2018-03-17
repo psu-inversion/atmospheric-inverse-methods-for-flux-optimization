@@ -731,11 +731,14 @@ class ProductLinearOperator(DaskLinearOperator):
         ----------
         operators: LinearOperator
         """
+        operators = tuple(tolinearoperator(op)
+                          for op in operators)
+        result_type = np.result_type(
+            *(op.dtype for op in operators))
         super(ProductLinearOperator, self).__init__(
-            None, (operators[0].shape[0], operators[-1].shape[1]))
-        self._operators = tuple(tolinearoperator(op)
-                                for op in operators)
-        self._init_dtype()
+            result_type, (operators[0].shape[0], operators[-1].shape[1]))
+        self._operators = operators
+        # self._init_dtype()
 
         try:
             if all(op is rop.T for op, rop in
