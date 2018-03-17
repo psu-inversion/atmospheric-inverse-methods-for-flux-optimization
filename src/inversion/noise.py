@@ -34,6 +34,9 @@ def gaussian_noise(cov, size=None):
     else:
         shape = size
 
+    if (len(cov.shape) != 2) or (cov.shape[0] != cov.shape[1]):
+        raise ValueError("cov must be 2 dimensional and square")
+
     sample_shape = cov.shape[0]
     final_shape = list(shape[:])
     final_shape.append(sample_shape)
