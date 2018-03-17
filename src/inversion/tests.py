@@ -126,7 +126,7 @@ class TestInversionSimple(unittest2.TestCase):
                 np_tst.assert_allclose(post_cov, .5)
 
     def test_scalar_unequal_variance(self):
-        """Test the a direct measurement fo a scalar state.
+        """Test assimilation of a direct measurement fo a scalar state.
 
         Variances not equal.
         """
@@ -2056,7 +2056,8 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
         self.assertIsInstance(result1, da.Array)
 
         result2 = inversion.util.matrix_sqrt(mat)
-        np_tst.assert_allclose(mat, mat_op)
+        tester = np.eye(*result1.shape)
+        np_tst.assert_allclose(result1.dot(tester), result2.dot(tester))
 
     @unittest2.expectedFailure
     def test_semidefinite_array(self):

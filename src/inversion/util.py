@@ -28,7 +28,7 @@ chunks should fit easily in memory, but each should contain at least a
 million elements, recommending 10-100MiB per chunk.  This size matrix
 is fast to allocate and fill, but :math:`10^5` gives a memory error.
 A square matrix of float64 with ten thousand elements on a side is 762
-bytes.
+megabytes.
 """
 ARRAY_TYPES = (np.ndarray, da.Array)
 """Array types for determining Kronecker product type.
@@ -1107,9 +1107,9 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
                      mat.reshape(in_chunk)).sum(axis=0)
             result += mat[row_start:(row_start + block_size)].T.dot(
                 operator2.dot(chunk))
-            # Calculate this bit so we don't run out of memory
-            # Hopefully this pushes the memory barrier well past
-            # the flux correlation time
+            # Calculate this bit so we don't run out of memory.
+            # Hopefully this pushes the memory barrier well past the
+            # flux correlation time.
             # It should at least get closer.
             row_count += 1
             if row_count >= loops_between_save:
