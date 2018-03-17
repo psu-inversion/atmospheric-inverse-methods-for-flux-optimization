@@ -1089,6 +1089,19 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         np_tst.assert_allclose(proposed.dot(tester), product.dot(tester))
         # Should I check the submatrices or assume that's covered?
 
+    def test_quadratic_form(self):
+        """Test whether quadratic_form returns the intended result."""
+        matrix1 = scipy.linalg.toeplitz((1., 1/3., 1/9., 1/27., 1/81.))
+        matrix2 = scipy.linalg.toeplitz((1., .5, .25, .125, .0625, .03125))
+
+        product = inversion.util.DaskKroneckerProductOperator(
+            matrix1, matrix2)
+
+        tester = np.eye(product.shape[0])
+
+        np_tst.assert_allclose(product.quadratic_form(tester),
+                               scipy.linalg.kron(matrix1, matrix2))
+
 
 class TestUtilKroneckerProduct(unittest2.TestCase):
     """Test inversion.util.kronecker_product."""
