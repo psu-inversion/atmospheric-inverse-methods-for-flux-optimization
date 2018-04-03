@@ -8,6 +8,7 @@ from __future__ import absolute_import
 import multiprocessing
 import threading
 import abc
+import sys
 
 import numpy as np
 import six
@@ -21,6 +22,9 @@ MAX_PARALLEL = None
 
 None means use CPU count.
 """
+if ((hasattr(multiprocessing, "set_start_method") and
+     sys.platform == "cygwin")):
+    multiprocessing.set_start_method("spawn")
 
 
 class EnsembleIntegrator(six.with_metaclass(abc.ABCMeta)):
