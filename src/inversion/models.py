@@ -2,7 +2,12 @@
 # TODO: Test
 from __future__ import division
 
-from numpy import empty_like, array
+from numpy import empty_like, array, atleast_1d, newaxis
+from scipy.spatial import distance_matrix
+try:
+    from bottleneck import nansum
+except ImportError:
+    from numpy import nansum
 
 
 class Lorenz63:
@@ -42,7 +47,7 @@ class Lorenz63:
 class Lorenz96:
     """Lorenz '96 model."""
 
-    def __init__(self, forcing=8, size=40):
+    def __init__(self, forcing=8., size=40):
         """Set up instance with parameters.
 
         Parameters
@@ -58,11 +63,11 @@ class Lorenz96:
 
         Parameters
         ----------
-        state: np.ndarray[`size`]
+        state: array_like[`size`]
 
         Returns
         -------
-        deriv: np.ndarray[`size`]
+        deriv: array_like[`size`]
         """
         res = empty_like(state)
         res[2:-1] = state[1:-2] * (state[3:] - state[:-3])
@@ -74,6 +79,44 @@ class Lorenz96:
         res += self._forcing
 
         return res
+
+
+class PointVortex:
+    """Point-vortex model."""
+
+    def __init__(self, strengths):
+        """Set up an instance for n-vortex problem.
+
+        Parameters
+        ----------
+        strengths: array_like[nvortices]
+            The strength of each vortex
+        """
+        self._strengths = atleast_1d(strengths)
+        self._nvortices = len(self._strengths)
+
+    def __call__(self, state):
+        """Describe the velocities of the vortices.
+
+        Parameters
+        ----------
+        state: array_like[nvortices, 3]
+            Rows are (x, y, strength)
+
+        Returns
+        -------
+        velocities: array_like[nvortices, 2]
+            Rows are (xvel, yvel)
+        """
+        distances = distance_matrix(state, state)
+        displacements = state[:, newaxis, :] - state[newaxis, :, :]
+        vel_components = (
+            self._strengths[newaxis, :, newaxis] /
+            distances[:, :, newaxis]**2 *
+            displacements[:, :, ::-1])
+        vortex_vel = nansum(vel_components, axis=1)
+        vortex_vel[:, 0] *= -1
+        return vortex_vel
 
 
 class ArgsYTWrapper:

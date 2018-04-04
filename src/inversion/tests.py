@@ -38,6 +38,7 @@ import inversion.covariances
 import inversion.integrators
 import inversion.variational
 import inversion.ensemble
+import inversion.models
 import inversion.noise
 import inversion.psas
 import inversion.util
@@ -2089,6 +2090,143 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
 
     # TODO: test arbitrary linear operators
     # TODO: Test odd chunking
+
+
+class TestPointVortex(unittest2.TestCase):
+    """Test the point-vortex model."""
+
+    def test_equilateral(self):
+        """Test derivative for equilateral triangle."""
+        model = inversion.models.PointVortex((1, 1, 1.))
+
+        triangle = ((0, 0),
+                    (2, 0),
+                    (1, math.sqrt(3)))
+        velocities = model(np.asarray(triangle))
+        np_tst.assert_allclose(
+            velocities,
+            ((.25 * math.sqrt(3), -.75),
+             (.25 * math.sqrt(3), .75),
+             (-.5 * math.sqrt(3), 0)))
+
+    def test_line(self):
+        """Test derivative for a line."""
+        model = inversion.models.PointVortex((1, 1, 1.))
+
+        with self.subTest(orientation="horiz"):
+            line = ((1, 0),
+                    (0, 0),
+                    (-1, 0.))
+            velocities = model(np.asarray(line))
+            np_tst.assert_allclose(
+                velocities,
+                ((0, 1.5),
+                 (0, 0),
+                 (0, -1.5)))
+
+        with self.subTest(orientation="vert"):
+            line = ((0, 1),
+                    (0, 0),
+                    (0, -1.))
+            velocities = model(np.asarray(line))
+            np_tst.assert_allclose(
+                velocities,
+                ((-1.5, 0),
+                 (0, 0),
+                 (1.5, 0)))
+
+    def test_self_advection(self):
+        """Test advection for a pair of vortices."""
+        model = inversion.models.PointVortex((1, -1.))
+
+        locs = ((0, 0),
+                (1, 0.))
+        velocities = model(np.asarray(locs))
+        np_tst.assert_allclose(
+            velocities,
+            ((0, 1),
+             (0, 1)))
+
+    def test_uneven_orbit(self):
+        """Test orbit with unequal vortices."""
+        model = inversion.models.PointVortex((2, 1))
+
+        with self.subTest(orientation="+x"):
+            locs = ((0, 0),
+                    (1, 0.))
+            velocities = model(np.asarray(locs))
+            np_tst.assert_allclose(
+                velocities,
+                ((0, -1),
+                 (0, 2)))
+
+        with self.subTest(orientation="+y"):
+            locs = ((0, 0),
+                    (0, 1.))
+            velocities = model(np.asarray(locs))
+            np_tst.assert_allclose(
+                velocities,
+                ((1, 0),
+                 (-2, 0)))
+
+        with self.subTest(orientation="-x"):
+            locs = ((0, 0),
+                    (-1, 0.))
+            velocities = model(np.asarray(locs))
+            np_tst.assert_allclose(
+                velocities,
+                ((0, 1),
+                 (0, -2)))
+
+        with self.subTest(orientation="-y"):
+            locs = ((0, 0),
+                    (0, -1.))
+            velocities = model(np.asarray(locs))
+            np_tst.assert_allclose(
+                velocities,
+                ((-1, 0),
+                 (2, 0)))
+
+
+class TestLorenz96(unittest2.TestCase):
+    """Test Lorenz96 system."""
+
+    def test_zero(self):
+        """Test model with state of all zeros."""
+        model = inversion.models.Lorenz96(8., 40)
+
+        state = np.zeros(40)
+        deriv = model(state)
+        np_tst.assert_allclose(
+            deriv,
+            np.full(40, 8))
+
+    def test_equilibrium(self):
+        """Test model at equilibrium."""
+        model = inversion.models.Lorenz96(8., 40)
+
+        state = np.full(40, 8.)
+        deriv = model(state)
+        np_tst.assert_allclose(
+            deriv,
+            np.zeros(40))
+
+    def test_single_perturbation(self):
+        """Test simple perturbation from eq."""
+        model = inversion.models.Lorenz96(8., 40)
+
+        for i in range(40):
+            with self.subTest(i=i):
+                state = np.full(40, 8.)
+                state[i] += 1
+                deriv = model(state)
+
+                analytic = np.zeros(40)
+                analytic[i - 1] = 8
+                analytic[i] = -1
+                analytic[(i + 2) % 40] = -8
+
+                np_tst.assert_allclose(deriv, analytic)
 
 
 if __name__ == "__main__":
