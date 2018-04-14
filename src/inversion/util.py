@@ -4,6 +4,7 @@ These functions mirror :mod:`numpy` functions but produce dask output.
 """
 import functools
 import itertools
+import operator
 import warnings
 import numbers
 import math
@@ -68,6 +69,23 @@ Currently completely arbitrary.
 `2 ** 16` works fine in memory, `2**17` gives a MemoryError.
 Hopefully Dask knows not to try this.
 """
+DASK_OPTIMIZATIONS = dict(
+    inline_functions_fast_functions=(
+        # default value
+        da.core.getter_inline,
+        # recommended in dask #3139
+        da.core.getter,
+        operator.getitem,
+        # recommended in dask#874
+        np.ones,
+        # extension of previous
+        np.zeros,
+        np.ones_like,
+        np.zeros_like,
+        np.full,
+        np.full_like,
+    ),
+)
 
 
 def chunk_sizes(shape, matrix_side=True):
@@ -1140,9 +1158,9 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
             # It should at least get closer.
             row_count += 1
             if row_count >= loops_between_save:
-                result = result.persist()
+                result = result.persist(**DASK_OPTIMIZATIONS)
                 row_count = 0
-        return result.persist()
+        return result.persist(**DASK_OPTIMIZATIONS)
 
 
 def validate_args(inversion_method):
