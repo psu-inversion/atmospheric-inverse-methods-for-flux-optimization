@@ -8,14 +8,16 @@ from scipy.sparse.linalg import LinearOperator
 import dask.array as da
 from dask.array import asarray
 
-from inversion.util import solve, tolinearoperator, validate_args
+from inversion.util import solve, tolinearoperator, method_common
 from inversion.util import ProductLinearOperator, chunk_sizes, ARRAY_TYPES
 
 
-@validate_args
+@method_common
 def simple(background, background_covariance,
            observations, observation_covariance,
-           observation_operator):
+           observation_operator,
+           reduced_background_covariance,
+           reduced_observation_operator):
     """Solve the inversion problem using the equations literally.
 
     Assumes all arrays fit in memory with room to spare.  A direct
@@ -28,6 +30,8 @@ def simple(background, background_covariance,
     observations: np.ndarray[M]
     observation_covariance: np.ndarray[M,M]
     observation_operator: np.ndarray[M,N]
+    reduced_background_covariance: array_like[Nred, Nred], optional
+    reduced_observation_operator: array_like[M, Nred], optional
 
     Returns
     -------
@@ -64,25 +68,36 @@ def simple(background, background_covariance,
     analysis = background + analysis_increment
 
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
-    decrease = background_covariance.dot(
-        observation_operator.T.dot(
-            solve(
-                covariance_sum,
-                observation_operator).dot(
-                background_covariance)))
+    if reduced_background_covariance is None:
+        decrease = background_covariance.dot(
+            observation_operator.T.dot(
+                solve(
+                    covariance_sum,
+                    observation_operator).dot(
+                    background_covariance)))
 
-    if isinstance(background_covariance, LinearOperator):
-        decrease = tolinearoperator(decrease)
+        if isinstance(background_covariance, LinearOperator):
+            decrease = tolinearoperator(decrease)
 
-    analysis_covariance = background_covariance - decrease
+        analysis_covariance = background_covariance - decrease
+    else:
+        decrease = reduced_background_covariance.dot(
+            reduced_observation_operator.T.dot(
+                solve(
+                    covariance_sum,
+                    reduced_observation_operator).dot(
+                    reduced_background_covariance)))
+        analysis_covariance = reduced_background_covariance - decrease
 
     return analysis, analysis_covariance
 
 
-@validate_args
+@method_common
 def fold_common(background, background_covariance,
                 observations, observation_covariance,
-                observation_operator):
+                observation_operator,
+                reduced_background_covariance,
+                reduced_observation_operator):
     """Solve the inversion problem, evaluating sub-expressions only once.
 
     Assumes all arrays fit in memory with room to spare.
@@ -94,6 +109,8 @@ def fold_common(background, background_covariance,
     observations: np.ndarray[M]
     observation_covariance: np.ndarray[M,M]
     observation_operator: np.ndarray[M,N]
+    reduced_background_covariance: array_like[Nred, Nred], optional
+    reduced_observation_operator: array_like[M, Nred], optional
 
     Returns
     -------
@@ -126,7 +143,7 @@ def fold_common(background, background_covariance,
                           observation_covariance)
 
     if isinstance(covariance_sum, ARRAY_TYPES):
-        chunks = chunk_sizes((covariance_sum.shape[0],))
+        chunks = chunk_sizes((covariance_sum.shape[0],), matrix_side=True)
         covariance_sum = covariance_sum.rechunk(chunks[0]).persist()
 
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
@@ -142,18 +159,28 @@ def fold_common(background, background_covariance,
     analysis = background + analysis_increment
 
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
-    decrease = (B_HT.dot(solve(
-                covariance_sum,
-                B_HT.T)))
-    analysis_covariance = background_covariance - decrease
+    if reduced_background_covariance is None:
+        decrease = B_HT.dot(solve(
+            covariance_sum,
+            B_HT.T))
+        analysis_covariance = background_covariance - decrease
+    else:
+        B_HT_red = reduced_background_covariance.dot(
+            reduced_observation_operator)
+        decrease = B_HT_red.dot(solve(
+            covariance_sum,
+            B_HT_red.T))
+        analysis_covariance = reduced_background_covariance - decrease
 
     return analysis, analysis_covariance
 
 
-@validate_args
+@method_common
 def save_sum(background, background_covariance,
              observations, observation_covariance,
-             observation_operator):
+             observation_operator,
+             reduced_background_covariance=None,
+             reduced_observation_operator=None):
     """Solve the inversion problem, evaluating sub-expressions only once.
 
     Assumes all arrays fit in memory with room to spare.
@@ -165,6 +192,8 @@ def save_sum(background, background_covariance,
     observations: np.ndarray[M]
     observation_covariance: np.ndarray[M,M]
     observation_operator: np.ndarray[M,N]
+    reduced_background_covariance: array_like[Nred, Nred], optional
+    reduced_observation_operator: array_like[M, Nred], optional
 
     Returns
     -------
@@ -218,18 +247,28 @@ def save_sum(background, background_covariance,
     analysis = background + analysis_increment
 
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
-    decrease = (B_HT.dot(solve(
-                covariance_sum,
-                B_HT.T)))
-    analysis_covariance = background_covariance - decrease
+    if reduced_background_covariance is None:
+        decrease = B_HT.dot(solve(
+            covariance_sum,
+            B_HT.T))
+        analysis_covariance = background_covariance - decrease
+    else:
+        B_HT_red = reduced_background_covariance.dot(
+            reduced_observation_operator)
+        decrease = B_HT_red.dot(solve(
+            covariance_sum,
+            B_HT_red.T))
+        analysis_covariance = reduced_background_covariance - decrease
 
     return analysis, analysis_covariance
 
 
-@validate_args
+@method_common
 def scipy_chol(background, background_covariance,
                observations, observation_covariance,
-               observation_operator):
+               observation_operator,
+               reduced_background_covariance=None,
+               reduced_observation_operator=None):
     """Use the Cholesky decomposition to solve the inverison problem.
 
     Assumes all arrays fit in memory with room to spare.
@@ -243,6 +282,8 @@ def scipy_chol(background, background_covariance,
     observations: np.ndarray[M]
     observation_covariance: np.ndarray[M,M]
     observation_operator: np.ndarray[M,N]
+    reduced_background_covariance: array_like[Nred, Nred], optional
+    reduced_observation_operator: array_like[M, Nred], optional
 
     Returns
     -------
@@ -279,13 +320,25 @@ def scipy_chol(background, background_covariance,
     analysis = background + analysis_increment
 
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
-    decrease = B_HT.dot(
-        scipy.linalg.cho_solve(
-            cov_sum_chol_up,
-            B_HT.T,
-            overwrite_b=False))
-    if isinstance(background_covariance, LinearOperator):
-        decrease = tolinearoperator(decrease)
-    analysis_covariance = background_covariance - decrease
+    if reduced_background_covariance is None:
+        decrease = B_HT.dot(
+            scipy.linalg.cho_solve(
+                cov_sum_chol_up,
+                B_HT.T,
+                overwrite_b=False))
+        if isinstance(background_covariance, LinearOperator):
+            decrease = tolinearoperator(decrease)
+        analysis_covariance = background_covariance - decrease
+    else:
+        B_HT_red = reduced_background_covariance.dot(
+            reduced_observation_operator)
+        decrease = B_HT_red.dot(
+            scipy.linalg.cho_solve(
+                cov_sum_chol_up,
+                B_HT_red.T,
+                overwrite_b=False))
+        if isinstance(reduced_background_covariance, LinearOperator):
+            decrease = tolinearoperator(decrease)
+        analysis_covariance = reduced_background_covariance - decrease
 
     return analysis, analysis_covariance

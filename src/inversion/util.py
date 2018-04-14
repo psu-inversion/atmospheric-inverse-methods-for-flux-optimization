@@ -1163,7 +1163,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         return result.persist(**DASK_OPTIMIZATIONS)
 
 
-def validate_args(inversion_method):
+def method_common(inversion_method):
     """Wrap method to validate args.
 
     Parameters
@@ -1177,21 +1177,50 @@ def validate_args(inversion_method):
     @functools.wraps(inversion_method)
     def wrapper(background, background_covariance,
                 observations, observation_covariance,
-                observation_operator):
+                observation_operator,
+                reduced_background_covariance=None,
+                reduced_observation_operator=None):
         """Solve the inversion problem.
+
+        Assumes everything follows a multivariate normal distribution
+        with the specified covariance matrices.  Under this assumption
+        `analysis_covariance` is exact, and `analysis` is the Maximum
+        Likelihood Estimator and the Best Linear Unbiased Estimator
+        for the underlying state in the frequentist framework, and
+        specify the posterior distribution for the state in the
+        Bayesian framework.  If these are not satisfied, these still
+        form the Generalized Least Squares estimates for the state and
+        an estimated uncertainty.
 
         Parameters
         ----------
-        background: np.ndarray[N]
-        background_covariance:  np.ndarray[N,N]
-        observations: np.ndarray[M]
-        observation_covariance: np.ndarray[M,M]
-        observation_operator: np.ndarray[M,N]
+        background: array_like[N]
+            The background state estimate.
+        background_covariance:  array_like[N, N]
+            Covariance of background state estimate across
+            realizations/ensemble members.  "Ensemble" is here
+            interpreted in the sense used in statistical mechanics or
+            frequentist statistics, and may not be derived from a
+            sample as in meteorological ensemble Kalman filters
+        observations: array_like[M]
+            The observations constraining the background estimate.
+        observation_covariance: array_like[M, M]
+            Covariance of observations across realizations/ensemble
+            members.  "Ensemble" again has the statistical meaning.
+        observation_operator: array_like[M, N]
+            The relationship between the state and the observations.
+        reduced_background_covariance: array_like[Nred, Nred], optional
+        reduced_observation_operator: array_like[M, Nred], optional
 
         Returns
         -------
-        analysis: np.ndarray[N]
-        analysis_covariance: np.ndarray[N,N]
+        analysis: array_like[N]
+            Analysis state estimate
+        analysis_covariance: array_like[Nred, Nred] or array_like[N, N]
+            Estimated uncertainty of analysis across
+            realizations/ensemble members.  Calculated using
+            reduced_background_covariance and
+            reduced_observation_operator if possible
         """
         background = atleast_1d(background)
         if not isinstance(background_covariance, LinearOperator):
@@ -1204,14 +1233,33 @@ def validate_args(inversion_method):
         observations = atleast_1d(observations)
         if not isinstance(observation_covariance, LinearOperator):
             observation_covariance = atleast_2d(observation_covariance)
-            chunks = chunk_sizes((observation_covariance.shape[0],))
+            chunks = chunk_sizes((observation_covariance.shape[0],),
+                                 matrix_side=True)
             observation_covariance = observation_covariance.rechunk(
                 chunks[0])
 
         if not isinstance(observation_operator, LinearOperator):
             observation_operator = atleast_2d(observation_operator)
 
-        return inversion_method(background, background_covariance,
-                                observations, observation_covariance,
-                                observation_operator)
+        analysis_estimate, analysis_covariance = (
+            inversion_method(background, background_covariance,
+                             observations, observation_covariance,
+                             observation_operator,
+                             reduced_background_covariance,
+                             reduced_observation_operator))
+
+        if analysis_covariance is None:
+            B_HT = reduced_background_covariance.dot(
+                reduced_observation_operator)
+            # (I - KH) B
+            analysis_covariance = (
+                # May need to be a LinearOperator to work properly
+                reduced_background_covariance -
+                B_HT.dot(solve(
+                    reduced_observation_operator.dot(B_HT) +
+                    observation_covariance,
+                    B_HT.T))
+            )
+
+        return analysis_estimate, analysis_covariance
     return wrapper
