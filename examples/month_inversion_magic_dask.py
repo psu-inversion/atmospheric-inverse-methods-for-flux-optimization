@@ -62,7 +62,9 @@ OBS_FILES = glob.glob(os.path.join(OBS_PATH,
 CORR_FUN = "exp"
 CORR_LEN = 84
 FLUX_FILES = glob.glob(os.path.join(
-    PRIOR_PATH, "osse_priors_{interval:1d}h_27km_noise_{corr_fun:s}{corr_len:d}km_exp14d_exp3h.nc".format(
+    PRIOR_PATH,
+    ("osse_priors_{interval:1d}h_27km_noise_{corr_fun:s}{corr_len:d}km"
+     "_exp14d_exp3h.nc").format(
         interval=FLUX_INTERVAL, corr_fun=CORR_FUN, corr_len=CORR_LEN)))
 FLUX_FILES.sort()
 OBS_FILES.sort()
@@ -74,9 +76,12 @@ INFLUENCE_FILES = glob.glob(os.path.join(
 print("Flux files", FLUX_FILES)
 print("Influence Files", INFLUENCE_FILES)
 
-# tracers are: diurnal bio, fossil, ocean, biomass burn, biofuel, ship, posterior bio, empty, prior bio, empty
-#      CMS posterior mole fractions are added to the first empty tracer,
-#      and note the modified CMS posterior mole fraction file used for the last tracer (prefix 'tsq')
+# tracers are:
+#  diurnal bio, fossil, ocean, biomass burn, biofuel,
+#  ship, posterior bio, empty, prior bio, empty
+#    CMS posterior mole fractions are added to the first empty tracer,
+#    and note the modified CMS posterior mole fraction file used for the
+#     last tracer (prefix 'tsq')
 TRUE_FLUX_NAME = "E_TRA7"
 TRACER_NAME = "tracer_7_LPDM"
 PRIOR_FLUX_NAME = TRUE_FLUX_NAME + "_noisy"
@@ -455,7 +460,7 @@ hour_correlations = (
             HOURLY_FLUX_TIMESCALE / FLUX_INTERVAL),
         (INTERVALS_PER_DAY,)))
 hour_correlations_matrix = hour_correlations.dot(np.eye(
-        hour_correlations.shape[0]))
+    hour_correlations.shape[0]))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have hourly correlations")
 sys.stdout.flush(); sys.stderr.flush()
 DAILY_FLUX_TIMESCALE = 14
@@ -491,21 +496,22 @@ for flux_part in flux_std_pattern.data_vars.values():
             CO2_MOLAR_MASS_UNITS)
     flux_part *= (unit / FLUX_UNITS).convert(1, 1)
     flux_part.attrs["units"] = str(FLUX_UNITS)
-flux_stds = FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern[TRUE_FLUX_NAME].data
+flux_stds = (
+    FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern[TRUE_FLUX_NAME].data)
 
 prior_covariance = kronecker_product(
-        temporal_correlations,
-        inversion.util.CorrelationStandardDeviation(
-            spatial_correlations, flux_stds))
+    temporal_correlations,
+    inversion.util.CorrelationStandardDeviation(
+        spatial_correlations, flux_stds))
 print("Covariance:", type(prior_covariance))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have covariances")
 sys.stdout.flush(); sys.stderr.flush()
 
 # I realize this isn't quite the intended use for OBS_CHUNK
 prior_fluxes = aligned_prior_fluxes.chunk(dict(
-        dim_y=NY, dim_x=NX, flux_time=FLUX_CHUNKS, realization=OBS_CHUNKS_USED
-    )).transpose(
-        "flux_time", "dim_y", "dim_x", "realization")
+    dim_y=NY, dim_x=NX, flux_time=FLUX_CHUNKS, realization=OBS_CHUNKS_USED
+)).transpose(
+    "flux_time", "dim_y", "dim_x", "realization")
 print(datetime.datetime.now(UTC).strftime("%c"), "Have prior noise")
 sys.stdout.flush(); sys.stderr.flush()
 
@@ -586,10 +592,11 @@ encoding = {name: {"_FillValue": -99}
 encoding.update({name: {"_FillValue": False}
                  for name in posterior_ds.coords})
 posterior_ds.to_netcdf(
-    "monthly_inversion_{flux_interval:02d}h_027km_noise{ncorr_fun:s}{ncorr_len:d}_"
-    "icov{icorr_fun:s}{icorr_len:d}_output.nc4"
-    .format(flux_interval=FLUX_INTERVAL, ncorr_fun=CORR_FUN, ncorr_len=CORR_LEN,
-            icorr_len=CORRELATION_LENGTH, icorr_fun="exp"),
+    ("monthly_inversion_{flux_interval:02d}h_027km_"
+     "noise{ncorr_fun:s}{ncorr_len:d}_"
+     "icov{icorr_fun:s}{icorr_len:d}_output.nc4")
+    .format(flux_interval=FLUX_INTERVAL, ncorr_fun=CORR_FUN,
+            ncorr_len=CORR_LEN, icorr_len=CORRELATION_LENGTH, icorr_fun="exp"),
     encoding=encoding)
 print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior")
 sys.stdout.flush(); sys.stderr.flush()
