@@ -20,7 +20,7 @@ import dask.array as da
 import dask.array.linalg as la
 from dask.array import asarray, concatenate, stack, hstack, vstack, zeros
 
-OPTIMAL_ELEMENTS = int(1e4)
+OPTIMAL_ELEMENTS = int(4e4)
 """Optimal elements per chunk in a dask array.
 
 Magic number, arbitrarily chosen.  Dask documentation mentions many
@@ -29,6 +29,23 @@ million elements, recommending 10-100MiB per chunk.  This size matrix
 is fast to allocate and fill, but :math:`10^5` gives a memory error.
 A square matrix of float64 with ten thousand elements on a side is 762
 megabytes.
+
+A single level of our domain is 4.6e4 elements.  The calculation
+proceeds much more naturally when this fits in a chunk, since it needs
+to for the FFTs.  This would be for OPTIMAL_ELEMENTS**2.
+
+Leaving this as 1e4 causes memory errors and deadlocks over an hour
+and a half.  5e4 can do the same program twice in ten minutes.
+I don't entirely understand how this works.
+
+I'm going to say these problems have little use for previous results,
+so this can be larger than the dask advice.  This greatly reduces the
+requirements for setting up the graph.
+
+4e4 works for both, I think.  BE VERY CAREFUL CHANGING THIS!!
+
+At least, it works on compute-0-6.  It may not on compute-0-0, where
+it likes to dump me.
 """
 ARRAY_TYPES = (np.ndarray, da.Array)
 """Array types for determining Kronecker product type.
@@ -260,8 +277,8 @@ def matrix_sqrt(mat):
 
     if isinstance(mat, ARRAY_TYPES):
         return la.cholesky(
-            asarray(mat).rechunk(chunk_sizes(mat.shape[:1],
-                                             matrix_side=True)[0]))
+            asarray(mat).rechunk(
+                chunk_sizes(mat.shape[:1], matrix_side=True)[0]))
 
     # TODO: test this
     if isinstance(mat, (LinearOperator, DaskLinearOperator)):
@@ -275,7 +292,7 @@ def matrix_sqrt(mat):
 
     # TODO: test on xarray datasets or iris cubes
     raise TypeError("Don't know how to find square root of {cls!s}".format(
-            cls=type(mat)))
+        cls=type(mat)))
 
 
 # TODO Test for handling of different chunking schemes
@@ -870,6 +887,7 @@ class ProductLinearOperator(DaskLinearOperator):
         return ProductLinearOperator(*last_operators)
 
 
+# TODO: move to covariances.py and inherit from SelfAdjointOperator
 class CorrelationStandardDeviation(ProductLinearOperator):
     """Represent correlation-std product."""
 
@@ -1093,14 +1111,14 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         # loops_between_save = row_chunk_size // block_size
         loops_between_save = max(
             # How many blocks there are
-            mat.shape[0] // block_size //
+            (mat.shape[0] // block_size) //
             # How many blocks it needs to be
             # OPTIMAL_ELEMENTS is one chunk.
             # Each chunk will be the sum of multiple chunks
             # The three is a magic constant that will depend on machine
             # It is roughly how many chunks fit in memory at once.
             # It varies with the size of mat.
-            max(mat.size // (10 * OPTIMAL_ELEMENTS**2), 1), 1)
+            max(mat.size // (OPTIMAL_ELEMENTS**2), 1), 1)
         row_count = 0
         print("Total loops", mat.shape[0] // block_size)
         print("Number of chunks in mat", mat.size / (OPTIMAL_ELEMENTS**2))

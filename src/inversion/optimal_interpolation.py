@@ -50,7 +50,7 @@ def simple(background, background_covariance,
     covariance_sum = projected_background_covariance + observation_covariance
 
     if isinstance(covariance_sum, ARRAY_TYPES):
-        chunks = chunk_sizes((covariance_sum.shape[0],))
+        chunks = chunk_sizes((covariance_sum.shape[0],), matrix_side=True)
         covariance_sum = covariance_sum.rechunk(chunks[0])
 
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
