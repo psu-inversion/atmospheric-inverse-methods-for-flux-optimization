@@ -428,7 +428,7 @@ posterior_global_atts.update(dict(
 print(datetime.datetime.now(UTC).strftime("%c"), "Getting covariances")
 sys.stdout.flush()
 CORRELATION_LENGTH = 84
-GRID_RESOLUTION = 27
+GRID_RESOLUTION = 81
 spatial_correlations = (
     inversion.correlations.HomogeneousIsotropicCorrelation.
     # First guess at correlation length on the order of previous studies

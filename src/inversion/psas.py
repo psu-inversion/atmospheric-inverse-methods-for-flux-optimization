@@ -2,7 +2,6 @@
 
 Iterative observation-space algorithm.
 """
-import numpy as np
 from dask.array import asarray
 from dask.array.linalg import cholesky
 import scipy.optimize
@@ -10,17 +9,18 @@ from scipy.sparse.linalg import LinearOperator
 # I believe scipy's minimizer requires things that give boolean true
 # or false from the objective, rather than a yet-to-be-realized dask
 # array.
-from inversion.util import atleast_1d, atleast_2d
 
 from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
 from inversion.util import tolinearoperator, ProductLinearOperator
-from inversion.util import validate_args
+from inversion.util import method_common
 
 
-@validate_args
+@method_common
 def simple(background, background_covariance,
            observations, observation_covariance,
-           observation_operator):
+           observation_operator,
+           reduced_background_covariance=None,
+           reduced_observation_operator=None):
     """Solve the inversion problem, using the equations directly.
 
     Assumes all arrays fit in memory with room to spare.
@@ -35,6 +35,8 @@ def simple(background, background_covariance,
     observations: np.ndarray[M]
     observation_covariance: np.ndarray[M,M]
     observation_operator: np.ndarray[M,N]
+    reduced_background_covariance: array_like[Nred, Nred], optional
+    reduced_observation_operator: array_like[M, Nred], optional
 
     Returns
     -------
@@ -110,9 +112,18 @@ def simple(background, background_covariance,
         return (covariance_sum.dot(test_observation_increment) -
                 observation_increment)
 
+    if reduced_background_covariance is None:
+        method = "BFGS"
+    else:
+        # The estimate from the BFGS minimization does terribly in the
+        # tests.  I feel it safer to do it analytically at low
+        # resolution than trying to use the high-resolution iterative
+        # approximation.
+        method = "CG"
+
     result = scipy.optimize.minimize(
         cost_function, observation_increment,
-        method="BFGS",
+        method=method,
         jac=cost_jacobian,
         # hess=covariance_sum,
         options=dict(maxiter=MAX_ITERATIONS,
@@ -124,6 +135,12 @@ def simple(background, background_covariance,
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
     analysis = background + background_covariance.dot(
         observation_operator.T.dot(analysis_increment))
+
+    if reduced_background_covariance is not None:
+        if not result.sucess:
+            raise ConvergenceError("Did not converge: {msg:s}".format(
+                msg=result.message), result, analysis, None)
+        return analysis, None
 
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
     # analysis_covariance = (background_covariance -
@@ -152,9 +169,12 @@ def simple(background, background_covariance,
     return analysis, analysis_covariance
 
 
+@method_common
 def fold_common(background, background_covariance,
                 observations, observation_covariance,
-                observation_operator):
+                observation_operator,
+                reduced_background_covariance=None,
+                reduced_observation_operator=None):
     """Solve the inversion problem, in a slightly optimized manner.
 
     Assumes all arrays fit in memory with room to spare.  Evaluates
@@ -169,6 +189,8 @@ def fold_common(background, background_covariance,
     observations: np.ndarray[M]
     observation_covariance: np.ndarray[M,M]
     observation_operator: np.ndarray[M,N]
+    reduced_background_covariance: array_like[Nred, Nred], optional
+    reduced_observation_operator: array_like[M, Nred], optional
 
     Returns
     -------
@@ -186,26 +208,8 @@ def fold_common(background, background_covariance,
     approximately, with an iterative algorithm.
     There is an approximation to the analysis covariance, but it is very bad.
     """
-    background = atleast_1d(background)
-    if not isinstance(background_covariance, LinearOperator):
-        background_covariance = atleast_2d(background_covariance)
-        bg_is_arry = True
-    else:
-        bg_is_arry = False
-
-    observations = np.atleast_1d(observations)
-    if not isinstance(observation_covariance, LinearOperator):
-        observation_covariance = atleast_2d(observation_covariance)
-        obs_is_arry = True
-    else:
-        obs_is_arry = False
-
-    if not isinstance(observation_operator, LinearOperator):
-        observation_operator = atleast_2d(observation_operator)
-        obs_op_is_arry = True
-    else:
-        obs_op_is_arry = False
-
+    obs_op_is_arry = not isinstance(observation_operator, LinearOperator)
+    obs_is_arry = not isinstance(observation_covariance, LinearOperator)
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
     # \Delta\vec{y} = \vec{y} - \vec{y}_b
@@ -263,9 +267,14 @@ def fold_common(background, background_covariance,
         return (covariance_sum.dot(test_observation_increment) -
                 observation_increment)
 
+    if reduced_background_covariance is None:
+        method = "BFGS"
+    else:
+        method = "CG"
+
     result = scipy.optimize.minimize(
         cost_function, observation_increment,
-        method="BFGS",
+        method=method,
         jac=cost_jacobian,
         # hess=covariance_sum,
         options=dict(maxiter=MAX_ITERATIONS,
@@ -276,6 +285,12 @@ def fold_common(background, background_covariance,
 
     # \vec{x}_a = \vec{x}_b + \Delta\vec{x}
     analysis = background + B_HT.dot(analysis_increment)
+
+    if reduced_background_covariance is not None:
+        if not result.success:
+            raise ConvergenceError("Did not converge: {msg:s}".format(
+                msg=result.message), result, analysis, None)
+        return analysis, None
 
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
     # analysis_covariance = (background_covariance -
@@ -290,11 +305,12 @@ def fold_common(background, background_covariance,
     # this will be positive
     decrease = lower_decrease.dot(lower_decrease.T)
     # this may not
-    if not bg_is_arry:
+    if isinstance(background_covariance, LinearOperator):
         decrease = tolinearoperator(decrease)
     analysis_covariance = background_covariance - decrease
 
     if not result.success:
         raise ConvergenceError("Did not converge: {msg:s}".format(
             msg=result.message), result, analysis, analysis_covariance)
+
     return analysis, analysis_covariance

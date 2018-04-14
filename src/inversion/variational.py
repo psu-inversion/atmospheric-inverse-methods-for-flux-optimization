@@ -18,13 +18,15 @@ from dask.array import asarray
 from numpy import zeros_like
 
 from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
-from inversion.util import solve, validate_args
+from inversion.util import solve, method_common
 
 
-@validate_args
+@method_common
 def simple(background, background_covariance,
            observations, observation_covariance,
-           observation_operator):
+           observation_operator,
+           reduced_background_covariance=None,
+           reduced_observation_operator=None):
     """Feed everything to scipy's minimizer.
 
     Parameters
@@ -34,6 +36,8 @@ def simple(background, background_covariance,
     observations: np.ndarray[M]
     observation_covariance: np.ndarray[M,M]
     observation_operator: np.ndarray[M,N]
+    reduced_background_covariance: array_like[Nred, Nred], optional
+    reduced_observation_operator: array_like[M, Nred], optional
 
     Returns
     -------
@@ -117,9 +121,14 @@ def simple(background, background_covariance,
     #                  observation_operator.dot(test_step)))
     #     return bg_prod + obs_prod
 
+    if reduced_background_covariance is None:
+        method = "BFGS"
+    else:
+        method = "CG"
+
     result = scipy.optimize.minimize(
         cost_function, background,
-        method="BFGS",
+        method=method,
         jac=cost_jacobian,
         # hessp=cost_hessian_product,
         options=dict(maxiter=MAX_ITERATIONS,
@@ -130,13 +139,17 @@ def simple(background, background_covariance,
         raise ConvergenceError("Did not converge: {msg:s}".format(
             msg=result.message), result)
 
+    if reduced_background_covariance is not None:
+        result.hess_inv = None
     return result.x, result.hess_inv
 
 
-@validate_args
+@method_common
 def incremental(background, background_covariance,
                 observations, observation_covariance,
-                observation_operator):
+                observation_operator,
+                reduced_background_covariance=None,
+                reduced_observation_operator=None):
     """Feed everything to scipy's minimizer.
 
     Use the change from the background to try to avoid precision loss.
@@ -148,6 +161,8 @@ def incremental(background, background_covariance,
     observations: np.ndarray[M]
     observation_covariance: np.ndarray[M,M]
     observation_operator: np.ndarray[M,N]
+    reduced_background_covariance: array_like[Nred, Nred], optional
+    reduced_observation_operator: array_like[M, Nred], optional
 
     Returns
     -------
@@ -235,9 +250,14 @@ def incremental(background, background_covariance,
     #                  observation_operator.dot(test_step)))
     #     return bg_prod + obs_prod
 
+    if reduced_background_covariance is None:
+        method = "BFGS"
+    else:
+        method = "CG"
+
     result = scipy.optimize.minimize(
         cost_function, asarray(zeros_like(background)),
-        method="BFGS",
+        method=method,
         jac=cost_jacobian,
         # hessp=cost_hessian_product,
         options=dict(maxiter=MAX_ITERATIONS,
@@ -250,13 +270,17 @@ def incremental(background, background_covariance,
         raise ConvergenceError("Did not converge: {msg:s}".format(
             msg=result.message), result, analysis)
 
+    if reduced_background_covariance is not None:
+        result.hess_inv = None
     return analysis, result.hess_inv
 
 
-@validate_args
+@method_common
 def incr_chol(background, background_covariance,
               observations, observation_covariance,
-              observation_operator):
+              observation_operator,
+              reduced_background_covariance=None,
+              reduced_observation_operator=None):
     """Feed everything to scipy's minimizer.
 
     Use the change from the background to try to avoid precision loss.
@@ -270,6 +294,8 @@ def incr_chol(background, background_covariance,
     observations: np.ndarray[M]
     observation_covariance: np.ndarray[M,M]
     observation_operator: np.ndarray[M,N]
+    reduced_background_covariance: array_like[Nred, Nred], optional
+    reduced_observation_operator: array_like[M, Nred], optional
 
     Returns
     -------
@@ -362,9 +388,14 @@ def incr_chol(background, background_covariance,
     #                  observation_operator.dot(test_step)))
     #     return bg_prod + obs_prod
 
+    if reduced_background_covariance is None:
+        method = "BFGS"
+    else:
+        method = "CG"
+
     result = scipy.optimize.minimize(
         cost_function, asarray(zeros_like(background)),
-        method="BFGS",
+        method=method,
         jac=cost_jacobian,
         # hessp=cost_hessian_product,
         options=dict(maxiter=MAX_ITERATIONS,
@@ -377,4 +408,6 @@ def incr_chol(background, background_covariance,
         raise ConvergenceError("Did not converge: {msg:s}".format(
             msg=result.message), result, analysis)
 
+    if reduced_background_covariance is not None:
+        result.hess_inv = None
     return analysis, result.hess_inv
