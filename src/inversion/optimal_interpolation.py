@@ -166,7 +166,7 @@ def fold_common(background, background_covariance,
         analysis_covariance = background_covariance - decrease
     else:
         B_HT_red = reduced_background_covariance.dot(
-            reduced_observation_operator)
+            reduced_observation_operator.T)
         decrease = B_HT_red.dot(solve(
             covariance_sum,
             B_HT_red.T))
@@ -254,7 +254,7 @@ def save_sum(background, background_covariance,
         analysis_covariance = background_covariance - decrease
     else:
         B_HT_red = reduced_background_covariance.dot(
-            reduced_observation_operator)
+            reduced_observation_operator.T)
         decrease = B_HT_red.dot(solve(
             covariance_sum,
             B_HT_red.T))
@@ -331,7 +331,7 @@ def scipy_chol(background, background_covariance,
         analysis_covariance = background_covariance - decrease
     else:
         B_HT_red = reduced_background_covariance.dot(
-            reduced_observation_operator)
+            reduced_observation_operator.T)
         decrease = B_HT_red.dot(
             scipy.linalg.cho_solve(
                 cov_sum_chol_up,

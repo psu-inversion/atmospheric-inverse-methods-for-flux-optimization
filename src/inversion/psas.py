@@ -137,7 +137,7 @@ def simple(background, background_covariance,
         observation_operator.T.dot(analysis_increment))
 
     if reduced_background_covariance is not None:
-        if not result.sucess:
+        if not result.success:
             raise ConvergenceError("Did not converge: {msg:s}".format(
                 msg=result.message), result, analysis, None)
         return analysis, None
