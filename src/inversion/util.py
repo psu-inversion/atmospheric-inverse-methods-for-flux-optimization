@@ -21,7 +21,7 @@ import dask.array as da
 import dask.array.linalg as la
 from dask.array import asarray, concatenate, stack, hstack, vstack, zeros
 
-OPTIMAL_ELEMENTS = int(4e4)
+OPTIMAL_ELEMENTS = int(5e4)
 """Optimal elements per chunk in a dask array.
 
 Magic number, arbitrarily chosen.  Dask documentation mentions many
@@ -44,9 +44,6 @@ so this can be larger than the dask advice.  This greatly reduces the
 requirements for setting up the graph.
 
 4e4 works for both, I think.  BE VERY CAREFUL CHANGING THIS!!
-
-At least, it works on compute-0-6.  It may not on compute-0-0, where
-it likes to dump me.
 """
 ARRAY_TYPES = (np.ndarray, da.Array)
 """Array types for determining Kronecker product type.
