@@ -270,7 +270,7 @@ FLUX_DATASET = xarray.open_mfdataset(
     chunks=dict(dim_x=NX, dim_y=NY,
                 flux_time=FLUX_CHUNKS,
                 realization=REALIZATION_CHUNK),
-    concat_dim="Time",
+    concat_dim="flux_time",
 ).isel(realization=slice(0, 20))
 OBS_DATASET = xarray.open_mfdataset(
     OBS_FILES,
@@ -582,7 +582,9 @@ posterior_ds = xarray.Dataset(
                     increment_var_atts),
          ),
     TRUE_FLUXES_MATCHED.coords,
-    posterior_global_atts)
+    posterior_global_atts).chunk(dict(
+        dim_x=249, dim_y=184, flux_time=FLUX_CHUNKS,
+        realization=REALIZATION_CHUNK))
 posterior_ds["pseudo_observations"] = used_observations
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior structure, evaluating and writing")
