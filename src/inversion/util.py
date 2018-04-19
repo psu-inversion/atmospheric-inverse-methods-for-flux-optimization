@@ -1135,10 +1135,6 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
             # It varies with the size of mat.
             max(mat.size // (OPTIMAL_ELEMENTS**2), 1), 1)
         row_count = 0
-        print("Total loops", mat.shape[0] // block_size)
-        print("Number of chunks in mat", mat.size / (OPTIMAL_ELEMENTS**2))
-        print("Loop chunk:", loops_between_save)
-        import sys; sys.stdout.flush(); sys.stderr.flush()
         in_chunk = (operator1.shape[1], block_size, mat.shape[1])
 
         for row1, row_start in enumerate(range(
@@ -1239,13 +1235,13 @@ def method_common(inversion_method):
             observation_operator = atleast_2d(observation_operator)
 
         if reduced_background_covariance is not None:
-            if not isinstance(reduced_background_covariance, _LinearOperator):
+            if not isinstance(reduced_background_covariance, LinearOperator):
                 reduced_background_covariance = atleast_2d(
                     reduced_background_covariance)
 
             if reduced_observation_operator is None:
                 raise ValueError("Need reduced versions of both B and H")
-            if not isinstance(reduced_observation_operator, _LinearOperator):
+            if not isinstance(reduced_observation_operator, LinearOperator):
                 reduced_observation_operator = atleast_2d(
                     reduced_observation_operator)
         elif reduced_observation_operator is not None:
