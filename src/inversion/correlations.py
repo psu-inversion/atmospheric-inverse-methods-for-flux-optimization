@@ -631,17 +631,25 @@ class ExponentialCorrelation(DistanceCorrelationFunction):
 class BalgovindCorrelation(DistanceCorrelationFunction):
     """A Balgovind correlation structure.
 
-    Follows Balgovind et al. 1983.
+    Follows Balgovind et al. 1983, modified so the correlation length
+    better matches that used by other correlation functions.
 
     Note
     ----
-    Correlation given by :math:`(1 + dist/length) exp(-dist/length)`
+    Correlation given by :math:`(1 + 2*dist/length) exp(-2*dist/length)`
 
     Note
     ----
     This implementation has problems for length == 10.
     I have no idea why.  3 and 30 are fine.
     """
+
+    def __init__(self, length):
+        """Set up instance with proper length.
+
+        This folds a constant into the length.
+        """
+        super(BalgovindCorrelation, self).__init__(.5 * length)
 
     def __call__(self, dist):
         """Get the correlation between the points.
