@@ -124,7 +124,7 @@ def simple(background, background_covariance,
     if reduced_background_covariance is None:
         method = "BFGS"
     else:
-        method = "CG"
+        method = "Newton-CG"
 
     result = scipy.optimize.minimize(
         cost_function, background,
@@ -253,7 +253,7 @@ def incremental(background, background_covariance,
     if reduced_background_covariance is None:
         method = "BFGS"
     else:
-        method = "CG"
+        method = "Newton-CG"
 
     result = scipy.optimize.minimize(
         cost_function, asarray(zeros_like(background)),
@@ -391,7 +391,7 @@ def incr_chol(background, background_covariance,
     if reduced_background_covariance is None:
         method = "BFGS"
     else:
-        method = "CG"
+        method = "Newton-CG"
 
     result = scipy.optimize.minimize(
         cost_function, asarray(zeros_like(background)),
