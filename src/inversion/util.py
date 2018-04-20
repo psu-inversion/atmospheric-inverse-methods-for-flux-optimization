@@ -1222,8 +1222,9 @@ def method_common(inversion_method):
             reduced_background_covariance and
             reduced_observation_operator if possible
         """
+        _LinearOperator = LinearOperator
         background = atleast_1d(background)
-        if not isinstance(background_covariance, LinearOperator):
+        if not isinstance(background_covariance, _LinearOperator):
             background_covariance = atleast_2d(background_covariance)
             chunks = chunk_sizes((background_covariance.shape[0],),
                                  matrix_side=True)
@@ -1231,14 +1232,14 @@ def method_common(inversion_method):
                 chunks[0])
 
         observations = atleast_1d(observations)
-        if not isinstance(observation_covariance, LinearOperator):
+        if not isinstance(observation_covariance, _LinearOperator):
             observation_covariance = atleast_2d(observation_covariance)
             chunks = chunk_sizes((observation_covariance.shape[0],),
                                  matrix_side=True)
             observation_covariance = observation_covariance.rechunk(
                 chunks[0])
 
-        if not isinstance(observation_operator, LinearOperator):
+        if not isinstance(observation_operator, _LinearOperator):
             observation_operator = atleast_2d(observation_operator)
 
         if reduced_background_covariance is not None:
