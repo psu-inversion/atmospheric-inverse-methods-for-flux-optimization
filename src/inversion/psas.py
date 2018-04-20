@@ -96,7 +96,7 @@ def simple(background, background_covariance,
                 test_observation_increment)) -
             observation_increment.dot(
                 test_observation_increment)
-        )
+        ).compute()
 
     def cost_jacobian(test_observation_increment):
         """Gradient of cost function at `test_observation_increment`.
@@ -110,7 +110,7 @@ def simple(background, background_covariance,
         jac: np.ndarray[M]
         """
         return (covariance_sum.dot(test_observation_increment) -
-                observation_increment)
+                observation_increment).compute()
 
     if reduced_background_covariance is None:
         method = "BFGS"
@@ -249,9 +249,9 @@ def fold_common(background, background_covariance,
         -------
         cost: float
         """
-        return .5 * test_observation_increment.dot(covariance_sum.dot(
+        return (.5 * test_observation_increment.dot(covariance_sum.dot(
             test_observation_increment)) - observation_increment.dot(
-                test_observation_increment)
+                test_observation_increment)).compute()
 
     def cost_jacobian(test_observation_increment):
         """Gradient of cost function at `test_observation_increment`.
@@ -265,7 +265,7 @@ def fold_common(background, background_covariance,
         jac: np.ndarray[M]
         """
         return (covariance_sum.dot(test_observation_increment) -
-                observation_increment)
+                observation_increment).compute()
 
     if reduced_background_covariance is None:
         method = "BFGS"
