@@ -216,6 +216,11 @@ def save_sum(background, background_covariance,
                     observation_operator.T))
         else:
             projected_background_covariance = observation_operator.dot(B_HT)
+
+        chunk_size = chunk_sizes(
+            (projected_background_covariance.shape[0],), matrix_side=True)
+        projected_background_covariance = (
+            projected_background_covariance.rechunk(chunk_size[0]))
     else:
         B_HT = tolinearoperator(background_covariance).dot(
             observation_operator.T)
@@ -232,10 +237,15 @@ def save_sum(background, background_covariance,
                           observation_covariance)
 
     if isinstance(covariance_sum, ARRAY_TYPES):
-        covariance_sum, innovation = map(
-            asarray, da.compute(covariance_sum, innovation))
-    else:
-        innovation = innovation.persist()
+        covariance_sum = covariance_sum.persist()
+        innovation = innovation.rechunk(
+            covariance_sum.chunks[0][0], innovation.chunks[1][0])
+
+    # I'd be using this function because H doesn't fit in memory.
+    # Grouping this with covariance_sum may force innovation to stay
+    # in memory.  I already force separate calculation for $HBH^T$.  A
+    # little more won't hurt.
+    innovation = innovation.persist()
 
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
     observation_increment = solve(covariance_sum, innovation)
