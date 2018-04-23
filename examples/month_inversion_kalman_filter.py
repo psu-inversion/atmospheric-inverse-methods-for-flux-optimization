@@ -124,7 +124,9 @@ treat night well)
 I really hope I can assume this doesn't depend on latitude. That would
 make this much more complicated.
 """
-OBS_WINDOW = 4
+OBS_WINDOW = 16
+"""Days of obs to process at once.
+"""
 OBS_PER_DAY = (OBS_HOURS[1].hour - OBS_HOURS[0].hour)
 CO2_MOLAR_MASS = 16 * 2 + 12.01
 """Molar mass of CO2 (g/mol).
@@ -665,7 +667,7 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
             N_REALIZATIONS).compute(),
         prior_covariance,
         used_observations.data.compute(),
-        da.diag(da.full(here_obs.shape, .1, chunks=here_obs.shape)),
+        observation_covariance,
         (aligned_influences.data
          .transpose(transpose_arg)
          .reshape(aligned_influences.shape[0],
@@ -686,9 +688,8 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
              ),
         aligned_fluxes.coords,
         posterior_global_atts
-    ).chunk(dict(
-        dim_x=249, dim_y=184, flux_time=FLUX_CHUNKS,
-        realization=REALIZATION_CHUNK))
+    )
+    print(posterior_ds)
     posterior_ds["pseudo_observations"] = used_observations
     posterior_part = posterior_ds.isel(flux_time=slice(None, OBS_WINDOW * HOURS_PER_DAY//FLUX_INTERVAL))
     posterior_part.to_netcdf("monthly_inversion_{flux_interval:02d}h_output_{step:02d}.nc4".format(
