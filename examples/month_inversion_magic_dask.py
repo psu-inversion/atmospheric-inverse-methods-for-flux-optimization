@@ -112,14 +112,21 @@ CO2_MOLAR_MASS = 16 * 2 + 12.01
 
 Used to convert WRF fluxes to units expected by observation operator.
 """
-OBS_DAYS = 2
+OBS_DAYS = 31
+#  4 6m9
+#  8 15m56
+# 16 44m43
+# 31
 """Number of days of obs to use."""
 OBS_WINDOW = OBS_DAYS * OBS_TIMES_PER_DAY
 """Number of observation times."""
 CO2_MOLAR_MASS_UNITS = cf_units.Unit("g/mol")
 FLUX_UNITS = cf_units.Unit("g/m^2/hr")
 
-FLUX_CHUNKS = HOURS_PER_DAY * 12 // FLUX_INTERVAL
+FLUX_CHUNKS = HOURS_PER_DAY * 8 // FLUX_INTERVAL
+# 48 51s
+#  4 54s
+#  2 4m23
 """How many flux times to treat at once.
 
 Must be a multiple of day length.
