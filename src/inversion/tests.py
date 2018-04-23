@@ -26,9 +26,9 @@ import unittest2
 
 import dask
 import dask.array as da
-import dask.array.linalg as la
+import numpy.linalg as la
 # Import from scipy.linalg if not using dask
-from dask.array.linalg import cholesky
+from scipy.linalg import cholesky
 
 import inversion.covariance_estimation
 import inversion.optimal_interpolation
@@ -42,7 +42,7 @@ import inversion.models
 import inversion.noise
 import inversion.psas
 import inversion.util
-from inversion.util import chunk_sizes, tolinearoperator
+from inversion.util import tolinearoperator
 
 dask.set_options(get=dask.get)
 
@@ -380,8 +380,6 @@ class TestGaussianNoise(unittest2.TestCase):
         cov = np.eye(sample_shape)
         noise = inversion.noise.gaussian_noise(cov, int(1e6))
 
-        noise = noise.persist()
-
         np_tst.assert_allclose(noise.mean(axis=0),
                                np.zeros((sample_shape,)),
                                rtol=1e-2, atol=1e-2)
@@ -418,8 +416,6 @@ class TestGaussianNoise(unittest2.TestCase):
         sample_shape = (len(diagonal),)
         noise = inversion.noise.gaussian_noise(sample_cov, int(1e6))
 
-        noise = noise.persist()
-
         np_tst.assert_allclose(noise.mean(axis=0),
                                np.zeros(sample_shape),
                                rtol=1e-2, atol=1e-2)
@@ -436,9 +432,6 @@ class TestGaussianNoise(unittest2.TestCase):
 
         noise = inversion.noise.gaussian_noise(combined, int(1e6))
 
-        # calculate this only once
-        noise = noise.persist()
-
         np_tst.assert_allclose(noise.mean(axis=0),
                                np.zeros(combined.shape[0]),
                                rtol=1e-2, atol=1e-2)
@@ -452,8 +445,6 @@ class TestGaussianNoise(unittest2.TestCase):
         sample_shape = (4,)
         noise = inversion.noise.gaussian_noise(sample_cov, int(1e6))
 
-        noise = noise.persist()
-
         np_tst.assert_allclose(noise.mean(axis=0),
                                np.zeros(sample_shape),
                                rtol=1e-2, atol=1e-2)
@@ -465,8 +456,6 @@ class TestGaussianNoise(unittest2.TestCase):
         sample_cov = scipy.linalg.toeplitz(.8 ** np.arange(10))
         sample_shape = (10,)
         noise = inversion.noise.gaussian_noise(sample_cov, int(1e6))
-
-        noise = noise.persist()
 
         np_tst.assert_allclose(noise.mean(axis=0),
                                np.zeros(sample_shape),
@@ -519,9 +508,8 @@ class TestCorrelations(unittest2.TestCase):
             with self.subTest(corr_class=getname(corr_class)):
                 corr_fun = corr_class(2.)
 
-                corr = da.fromfunction(corr_fun.correlation_from_index,
-                                       shape=test_size * 2, dtype=float,
-                                       chunks=test_size * 2)
+                corr = np.fromfunction(corr_fun.correlation_from_index,
+                                       shape=test_size * 2, dtype=float)
                 corr_mat = corr.reshape((np.prod(test_size),) * 2)
 
                 # test postitive definite
@@ -584,9 +572,8 @@ class TestCorrelations(unittest2.TestCase):
                 # This fails with a correlation length of 5
                 corr_fun = corr_class(2.)
 
-                corr = da.fromfunction(corr_fun.correlation_from_index,
-                                       shape=test_size * 2, dtype=float,
-                                       chunks=chunk_sizes(test_size) * 2)
+                corr = np.fromfunction(corr_fun.correlation_from_index,
+                                       shape=test_size * 2, dtype=float)
                 corr_mat = corr.reshape((np.prod(test_size),) * 2)
 
                 # test postitive definite
@@ -654,8 +641,7 @@ class TestCorrelations(unittest2.TestCase):
                         from_function(corr_fun, test_shape))
                     # This is the fastest way to get column-major
                     # order from da.eye.
-                    corr_mat = corr_op.dot(da.eye(test_size,
-                                                  chunks=test_size).T)
+                    corr_mat = corr_op.dot(np.eye(test_size).T)
 
                     with self.subTest(corr_class=getname(corr_class),
                                       dist=dist, test_shape=test_shape,
@@ -1139,7 +1125,7 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
 
         combined_op = inversion.util.kronecker_product(mat1, mat2)
 
-        self.assertIsInstance(combined_op, da.Array)
+        self.assertIsInstance(combined_op, np.ndarray)
         self.assertSequenceEqual(combined_op.shape,
                                  tuple(np.multiply(mat1.shape, mat2.shape)))
         np_tst.assert_allclose(combined_op, scipy.linalg.kron(mat1, mat2))
@@ -1405,76 +1391,12 @@ class TestEnsembleBase(unittest2.TestCase):
         np_tst.assert_allclose(mean + perturbations, sample_data)
 
 
-class TestUtilFunctions(unittest2.TestCase):
-    """Test the utility functions in inversion.util."""
-
-    # TODO: fix these to work with current OPTIMAL_ELEMENTS
-    # These were designed for OPT_ELEM == 10**i
-    # They break for 4e4 and 2e4
-
-    def test_chunk_size_single(self):
-        """Test chunk_sizes for a single dimension."""
-        chunk_sizes = inversion.util.chunk_sizes
-        side_max_size = inversion.util.OPTIMAL_ELEMENTS
-
-        for i in range(5):
-            with self.subTest(ten_power=i):
-                side_size = int(10 ** i)
-                proposed_size = chunk_sizes((side_size,))
-                self.assertEqual(
-                    proposed_size,
-                    (min(side_size, side_max_size),))
-
-    def test_chunk_size_state_single(self):
-        """Test chunk_sizes for 1D state vector with no matrix."""
-        chunk_sizes = inversion.util.chunk_sizes
-        state_max_size = inversion.util.OPTIMAL_ELEMENTS ** 2
-
-        for i in range(0, 10, 2):
-            with self.subTest(ten_power=i):
-                state_size = int(10 ** i)
-                proposed_size = chunk_sizes((state_size,), False)
-                self.assertEqual(proposed_size,
-                                 (min(state_size, state_max_size),))
-
-    def test_chunk_sizes_double(self):
-        """Test chunk_sizes for a rank two array."""
-        chunk_sizes = inversion.util.chunk_sizes
-        state_max_size = inversion.util.OPTIMAL_ELEMENTS
-        side_size = state_max_size // 10
-
-        shape = (side_size, side_size)
-        proposed_size = chunk_sizes(shape)
-        self.assertEqual(proposed_size, (10, side_size))
-
-    def test_chunk_sizes_many(self):
-        """Test chunk_sizes for a high rank array."""
-        chunk_sizes = inversion.util.chunk_sizes
-        state_max_size = inversion.util.OPTIMAL_ELEMENTS
-        side_size = 10 ** (math.floor(math.log10(state_max_size) - 1))
-
-        shape = [side_size for _ in range(15)]
-        proposed_size = chunk_sizes(shape)
-        chunk_size = np.prod(proposed_size, dtype=float)
-
-        self.assertLessEqual(chunk_size, state_max_size)
-        self.assertGreaterEqual(chunk_size, state_max_size / 15)
-
-    def test_chunk_sizes_double_exact(self):
-        """Check where a rank two array would exactly fill a chunk."""
-        second_size = inversion.util.OPTIMAL_ELEMENTS // 10
-        shape = (second_size, 10)
-        proposed_chunks = inversion.util.chunk_sizes(shape)
-
-        self.assertEqual(proposed_chunks, shape)
-
-
 class TestUtil_atleast_nd(unittest2.TestCase):
     """Test the atleast_nd functions in inversion.util."""
 
     test_values = (4, (1, 2, 3), ((1, 2), (3, 4)), [1, 2],
                    np.array(1), np.arange(3), np.eye(4),
-                   da.asarray(1),
+                   np.asarray(1),
                    da.arange(5, chunks=5),
                    da.arange(9, chunks=9).reshape(3, 3),
                    da.zeros((3, 3, 3), chunks=(3, 3, 3)))
@@ -1485,7 +1407,7 @@ class TestUtil_atleast_nd(unittest2.TestCase):
             with self.subTest(test_val=test_val):
                 tst_arry = inversion.util.atleast_1d(test_val)
 
-                self.assertIsInstance(tst_arry, da.Array)
+                self.assertIsInstance(tst_arry, np.ndarray)
                 self.assertGreaterEqual(tst_arry.ndim, 1)
                 self.assertEqual(tst_arry.shape, np.atleast_1d(test_val).shape)
 
@@ -1495,7 +1417,7 @@ class TestUtil_atleast_nd(unittest2.TestCase):
             with self.subTest(test_val=test_val):
                 tst_arry = inversion.util.atleast_2d(test_val)
 
-                self.assertIsInstance(tst_arry, da.Array)
+                self.assertIsInstance(tst_arry, np.ndarray)
                 self.assertGreaterEqual(tst_arry.ndim, 2)
                 self.assertEqual(tst_arry.shape, np.atleast_2d(test_val).shape)
 
@@ -1718,30 +1640,6 @@ class TestHomogeneousInversions(unittest2.TestCase):
                         self.bg_vals, bg_corr,
                         self.obs_vals, obs_corr,
                         obs_op)
-
-
-class TestLazyEval(unittest2.TestCase):
-    """Test that evaluation only occurs where expected."""
-
-    def test_methods(self):
-        """Test the inversion schemes."""
-        background = da.Array({("not_an_array", 0): None},
-                              "not_an_array", ((5,),), np.float32)
-        bg_corr = da.Array({("not_a_matrix", 0, 0): None},
-                           "not_a_matrix", ((5,), (5,)), np.float32)
-        obs = da.Array({("still_not_an_array", 0): None},
-                       "still_not_an_array", ((3,),), np.float32)
-        obs_corr = da.eye(3, chunks=3)
-        obs_op = da.Array({("not_an_operator", 0, 0): None},
-                          "not_an_operator", ((3,), (5,)), np.float32)
-
-        # Dask rewrites made this the only entirely lazy method.
-        inversion_method = inversion.optimal_interpolation.simple
-        with self.subTest(method=getname(inversion_method)):
-            post, post_cov = inversion_method(
-                background, bg_corr,
-                obs, obs_corr,
-                obs_op)
 
 
 class TestKroneckerQuadraticForm(unittest2.TestCase):
@@ -2038,9 +1936,9 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
         matrix_sqrt = inversion.util.matrix_sqrt
 
         with self.subTest(trial="identity"):
-            mat = da.eye(3, chunks=2)
+            mat = np.eye(3)
             proposed = matrix_sqrt(mat)
-            expected = la.cholesky(mat.rechunk(3))
+            expected = cholesky(mat)
 
             np_tst.assert_allclose(proposed, expected)
 
@@ -2048,7 +1946,7 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
             mat = scipy.linalg.toeplitz((1, .5, .25, .125))
 
             proposed = matrix_sqrt(mat)
-            expected = la.cholesky(da.asarray(mat))
+            expected = cholesky(da.asarray(mat))
 
             np_tst.assert_allclose(proposed, expected)
 
@@ -2058,7 +1956,7 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
         mat_op = inversion.util.DaskMatrixLinearOperator(mat)
 
         result1 = inversion.util.matrix_sqrt(mat_op)
-        self.assertIsInstance(result1, da.Array)
+        self.assertIsInstance(result1, np.ndarray)
 
         result2 = inversion.util.matrix_sqrt(mat)
         tester = np.eye(*result1.shape)

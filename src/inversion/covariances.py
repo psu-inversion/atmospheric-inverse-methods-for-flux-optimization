@@ -6,7 +6,7 @@ inversion.correlations
 """
 from numpy import newaxis
 
-from dask.array import where, asarray, sqrt
+from numpy import where, asarray, sqrt
 
 from inversion.util import REAL_DTYPE_KINDS
 from inversion.util import DaskLinearOperator

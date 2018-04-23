@@ -3,11 +3,7 @@
 These functions mirror :mod:`numpy` functions but produce dask output.
 """
 import functools
-import itertools
-import operator
 import warnings
-import numbers
-import math
 
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, aslinearoperator, lgmres
@@ -18,8 +14,10 @@ from scipy.sparse.linalg.interface import (
 from scipy.sparse.linalg.eigen import eigsh as linop_eigsh
 
 import dask.array as da
-import dask.array.linalg as la
-from dask.array import asarray, concatenate, stack, hstack, vstack, zeros
+import numpy.linalg as la
+from scipy.linalg import cholesky
+from numpy import asarray, concatenate, stack, hstack, vstack, zeros
+from numpy import atleast_1d, atleast_2d
 
 OPTIMAL_ELEMENTS = int(2e5)
 """Optimal elements per chunk in a dask array.
@@ -66,132 +64,6 @@ Currently completely arbitrary.
 `2 ** 16` works fine in memory, `2**17` gives a MemoryError.
 Hopefully Dask knows not to try this.
 """
-DASK_OPTIMIZATIONS = dict(
-    inline_functions_fast_functions=(
-        # default value
-        da.core.getter_inline,
-        # recommended in dask #3139
-        da.core.getter,
-        operator.getitem,
-        # recommended in dask#874
-        np.ones,
-        # extension of previous
-        np.zeros,
-        np.ones_like,
-        np.zeros_like,
-        np.full,
-        np.full_like,
-    ),
-)
-
-
-def chunk_sizes(shape, matrix_side=True):
-    """Good chunk sizes for the given shape.
-
-    Optimized mostly for matrix operations on covariance matrices on
-    this domain.
-
-    Parameters
-    ----------
-    shape: tuple
-    matrix_side: bool
-        Whether the shape will need to be one side of a matrix or
-        intended to stay a vector.
-
-    Returns
-    -------
-    chunks: tuple
-    """
-    chunk_start = len(shape)
-    nelements = 1
-
-    here_max = OPTIMAL_ELEMENTS
-    if not matrix_side:
-        here_max **= 2
-
-    if np.prod(shape) <= here_max:
-        # The total number of elements is smaller than the recommended
-        # chunksize, so the whole thing is a single chunk
-        return tuple(shape)
-
-    for dim_size in reversed(shape):
-        nelements *= dim_size
-        chunk_start -= 1
-
-        if nelements > here_max:
-            nelements //= dim_size
-            break
-
-    chunks = [1 if i < chunk_start else dim_size
-              for i, dim_size in enumerate(shape)]
-    next_dimsize = shape[chunk_start]
-
-    # I happen to like neatness
-    # And cholesky requires square chunks.
-    if here_max > nelements:
-        max_to_check = int(here_max // nelements)
-        check_step = int(min(10 ** math.floor(math.log10(max_to_check) - .1),
-                             here_max))
-        chunks[chunk_start] = max(
-            i for i in itertools.chain(
-                (1,),
-                range(check_step, max_to_check + 1, check_step))
-            if next_dimsize % i == 0)
-    return tuple(chunks)
-
-
-def atleast_1d(arry):
-    """Ensure `arry` is dask array of rank at least one.
-
-    Parameters
-    ----------
-    arry: array_like
-
-    Returns
-    -------
-    new_arry: dask.array.core.Array
-    """
-    if isinstance(arry, da.Array):
-        if arry.ndim >= 1:
-            return arry
-        return arry[np.newaxis]
-    if isinstance(arry, (list, tuple, np.ndarray)):
-        arry = np.atleast_1d(arry)
-    if isinstance(arry, numbers.Number):
-        arry = np.atleast_1d(arry)
-
-    array_shape = arry.shape
-    return da.from_array(
-        arry, chunks=chunk_sizes(array_shape, matrix_side=False))
-
-
-def atleast_2d(arry):
-    """Ensure arry is a dask array of rank at least two.
-
-    Parameters
-    ----------
-    arry: array_like
-
-    Returns
-    -------
-    new_arry: dask.array.core.Array
-    """
-    if isinstance(arry, da.Array):
-        if arry.ndim >= 2:
-            return arry
-        elif arry.ndim == 1:
-            return arry[np.newaxis, :]
-        return arry[np.newaxis, np.newaxis]
-    if isinstance(arry, (list, tuple, np.ndarray)):
-        arry = np.atleast_2d(arry)
-    if isinstance(arry, numbers.Number):
-        arry = np.atleast_2d(arry)
-
-    array_shape = arry.shape
-    # Either this is a square matrix and this chunking makes products
-    # faster, or it is non-square and I can't optimize.
-    return da.from_array(
-        arry, chunks=chunk_sizes(array_shape, matrix_side=False))
 
 
 # TODO: Test
@@ -291,9 +163,9 @@ def matrix_sqrt(mat):
         mat = mat.A
 
     if isinstance(mat, ARRAY_TYPES):
-        return la.cholesky(
-            asarray(mat).rechunk(
-                chunk_sizes(mat.shape[:1], matrix_side=True)[0]))
+        return cholesky(
+            asarray(mat)
+        )
 
     # TODO: test this
     if isinstance(mat, (LinearOperator, DaskLinearOperator)):
@@ -1063,9 +935,6 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         """
         chunks = []
         block_size = self._block_size
-        chunk_shape = (block_size, mat.shape[1])
-        chunk_chunks = (block_size, mat.chunks[1][0])
-        chunk_dtype = np.result_type(self.dtype, mat.dtype)
         operator1 = self._operator1
         operator2 = self._operator2
         in_chunk = (operator1.shape[1], block_size, mat.shape[1])
@@ -1115,27 +984,13 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         result_shape = (outer_size, outer_size)
         result_dtype = np.result_type(self.dtype, mat.dtype)
         # I load this into memory, so may as well keep as one chunk
-        result = zeros(result_shape, dtype=result_dtype, chunks=result_shape)
+        result = zeros(result_shape, dtype=result_dtype)
 
         block_size = self._block_size
-        chunk_shape = (block_size, mat.shape[1])
-        chunk_chunks = (block_size, mat.chunks[1][0])
         operator1 = self._operator1
         operator2 = self._operator2
-        # row_chunk_size = mat.chunks[0][0]
-        # loops_between_save = row_chunk_size // block_size
-        loops_between_save = max(
-            # How many blocks there are
-            (mat.shape[0] // block_size) //
-            # How many blocks it needs to be
-            # OPTIMAL_ELEMENTS is one chunk.
-            # Each chunk will be the sum of multiple chunks
-            # The three is a magic constant that will depend on machine
-            # It is roughly how many chunks fit in memory at once.
-            # It varies with the size of mat.
-            max(mat.size // (OPTIMAL_ELEMENTS**2), 1), 1)
-        row_count = 0
         in_chunk = (operator1.shape[1], block_size, mat.shape[1])
+        # row_chunk_size = mat.chunks[0][0]
 
         for row1, row_start in enumerate(range(
                 0, mat.shape[0], block_size)):
@@ -1145,15 +1000,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
                      mat.reshape(in_chunk)).sum(axis=0)
             result += mat[row_start:(row_start + block_size)].T.dot(
                 operator2.dot(chunk))
-            # Calculate this bit so we don't run out of memory.
-            # Hopefully this pushes the memory barrier well past the
-            # flux correlation time.
-            # It should at least get closer.
-            row_count += 1
-            if row_count >= loops_between_save:
-                result = result.persist(**DASK_OPTIMIZATIONS)
-                row_count = 0
-        return result.persist(**DASK_OPTIMIZATIONS)
+        return result
 
 
 def method_common(inversion_method):
@@ -1218,18 +1065,10 @@ def method_common(inversion_method):
         background = atleast_1d(background)
         if not isinstance(background_covariance, LinearOperator):
             background_covariance = atleast_2d(background_covariance)
-            chunks = chunk_sizes((background_covariance.shape[0],),
-                                 matrix_side=True)
-            background_covariance = background_covariance.rechunk(
-                chunks[0])
 
         observations = atleast_1d(observations)
         if not isinstance(observation_covariance, LinearOperator):
             observation_covariance = atleast_2d(observation_covariance)
-            chunks = chunk_sizes((observation_covariance.shape[0],),
-                                 matrix_side=True)
-            observation_covariance = observation_covariance.rechunk(
-                chunks[0])
 
         if not isinstance(observation_operator, LinearOperator):
             observation_operator = atleast_2d(observation_operator)

@@ -5,9 +5,9 @@ Generated values have zero mean unless specified.
 Mostly for use in testing.
 """
 import numpy as np
-from dask.array.random import standard_normal as _standard_normal
+from numpy.random import standard_normal as _standard_normal
 
-from inversion.util import chunk_sizes, matrix_sqrt
+from inversion.util import matrix_sqrt
 
 
 def gaussian_noise(cov, size=None):
@@ -43,8 +43,7 @@ def gaussian_noise(cov, size=None):
     transposed_shape = final_shape[::-1]
 
     x = _standard_normal(
-        size=transposed_shape, chunks=chunk_sizes(
-            transposed_shape, matrix_side=False)
+        size=transposed_shape,
     ).reshape(sample_shape, -1)
 
     chol_upper = matrix_sqrt(cov)

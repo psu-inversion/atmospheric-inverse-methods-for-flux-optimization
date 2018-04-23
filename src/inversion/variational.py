@@ -14,7 +14,7 @@ import scipy.linalg
 # I believe scipy's minimizer requires things that give boolean true
 # or false from the objective, rather than a yet-to-be-realized dask
 # array.
-from dask.array import asarray
+from numpy import asarray
 from numpy import zeros_like
 
 from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL

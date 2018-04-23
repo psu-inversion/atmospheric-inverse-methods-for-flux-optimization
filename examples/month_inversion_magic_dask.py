@@ -561,14 +561,16 @@ print(datetime.datetime.now(UTC).strftime("%c"),
       "Got covariance parts, getting posterior")
 sys.stdout.flush(); sys.stderr.flush()
 posterior, correlations = inversion.optimal_interpolation.save_sum(
-    prior_fluxes.data.reshape(N_GRID_POINTS * N_FLUX_TIMES, N_REALIZATIONS),
+    prior_fluxes.data.reshape(N_GRID_POINTS * N_FLUX_TIMES, N_REALIZATIONS).compute(),
     prior_covariance,
-    used_observations.data,
+    used_observations.data.compute(),
     observation_covariance,
     (aligned_influences.data
      .transpose(transpose_arg)
      .reshape(aligned_influences.shape[0],
-              np.prod(aligned_influences.shape[-3:]))))
+              np.prod(aligned_influences.shape[-3:]))).compute(),
+    np.ones((1, 1)),
+    np.ones((used_observations.shape[0], 1)))
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior values, making dataset")
 sys.stdout.flush(); sys.stderr.flush()
