@@ -18,6 +18,7 @@ setup.cfg
 
 # Other backup files
 *.bak
+*.orig
 
 # LaTeX-specific
 auto/
@@ -28,5 +29,21 @@ auto/
 # IPython notebook checkpoints
 .ipynb_checkpoints
 
+# Dask scratch space
+dask-worker-space
+
 # crashes
 *.stackdump
+
+# some temporary outputs
+*_??.nc4
+*.log
+*.lob
+*.patch
+*.pbs
+
+# Graphics are for visualization, not part of code
+*.png
+
+# output
+monthly_inversion*_output.nc4
