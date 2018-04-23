@@ -80,7 +80,7 @@ FLUX_CHUNKS = HOURS_PER_DAY * 30 // FLUX_INTERVAL
 
 Must be a multiple of day length.
 """
-N_REALIZATIONS = 15
+N_REALIZATIONS = 40
 """Number of realizations of the gaussian noise process to include.
 
 This is used for calculating both the prior and observations fed to
@@ -129,9 +129,7 @@ print(datetime.datetime.now(UTC).strftime("%c"),
 # Read prior fluxes
 FLUX_DATASET = xarray.open_mfdataset(
     FLUX_FILES,
-    chunks=dict(projection_x_coordinate=NX, projection_y_coordinate=NY,
-                XTIME=FLUX_CHUNKS),
-    concat_dim="Time",
+    concat_dim="XTIME",
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have fluxes, normalizing")
 sys.stdout.flush(); sys.stderr.flush()
@@ -264,8 +262,7 @@ for flux_name, flux_vals in TRUE_FLUXES_MATCHED.data_vars.items():
         name="prior",
         attrs=prior_var_atts
     ).transpose(
-        "flux_time", "dim_y", "dim_x", "realization").chunk(
-        dict(flux_time=FLUX_CHUNKS, dim_y=NY, dim_x=NX, realization=N_REALIZATIONS))
+        "flux_time", "dim_y", "dim_x", "realization")
     osse_prior_dataset[flux_name + "_stds"] = flux_stds
 
 osse_prior_dataset.coords["realization"] = np.arange(N_REALIZATIONS, dtype=np.uint8)
