@@ -43,7 +43,6 @@ setup(
         "numpy>=1.10",
         "scipy",
         "dask[array]",
-        "h5py",
     ],
     extras_require=dict(
         homework=[
