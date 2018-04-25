@@ -64,6 +64,7 @@ Note
 ----
 Must divide twenty-four.
 """
+FLUX_INTERVAL_DT = datetime.timedelta(hours=FLUX_INTERVAL)
 FLUX_RESOLUTION = 27
 """FLux resolution in km.
 
@@ -106,7 +107,7 @@ PRIOR_FLUX_NAME = TRUE_FLUX_NAME + "_noisy"
 
 HOURS_PER_DAY = 24
 DAYS_PER_WEEK = 7
-FLUX_WINDOW = HOURS_PER_DAY * DAYS_PER_WEEK * 2
+FLUX_WINDOW = HOURS_PER_DAY * DAYS_PER_WEEK * 2 - FLUX_INTERVAL
 """How long fluxes considered to have an influence.
 
 Measured in hours.
@@ -563,32 +564,47 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
     start_date, end_date = [
         dt.replace(hour=0)
         for dt in matched_influences.indexes["flux_time"][[0, -1]]]
-    end_date += datetime.timedelta(days=1)
+    if matched_influences.indexes["flux_time"][-1].hour != 0:
+        end_date += datetime.timedelta(days=1)
+    start_date += FLUX_INTERVAL_DT
+
+    # xarray appears to have changed to include poth endpoints at some
+    # point.  To counter this and get back to proper half-open
+    # indexing, I move the start one flux-interval later, since the
+    # end could be physically relevant
     if not have_posterior_part:
         unaligned_fluxes = PRIOR_FLUXES_MATCHED[PRIOR_FLUX_NAME].sel(
-            flux_time=slice(start_date, end_date)).persist()[:-1]
+            flux_time=slice(start_date, end_date)).persist()
     else:
         print(posterior_ds.coords["flux_time"][OBS_WINDOW * HOURS_PER_DAY // FLUX_INTERVAL:])
         print(PRIOR_FLUXES_MATCHED.coords["flux_time"][
-                (FLUX_WINDOW + (i*OBS_WINDOW) * HOURS_PER_DAY) // FLUX_INTERVAL:])
+            (FLUX_WINDOW + (i*OBS_WINDOW) * HOURS_PER_DAY) // FLUX_INTERVAL:])
+
+        old_posterior_fluxes = posterior_ds["posterior"].isel(
+            flux_time=slice(OBS_WINDOW * HOURS_PER_DAY // FLUX_INTERVAL, None))
         new_fluxes = PRIOR_FLUXES_MATCHED[PRIOR_FLUX_NAME].sel(
-            flux_time=slice(start_date, end_date))
+            flux_time=slice(
+                old_posterior_fluxes.indexes["flux_time"][-1] + FLUX_INTERVAL_DT,
+                end_date))
         unaligned_fluxes = xarray.concat(
-            [posterior_ds["posterior"].isel(
-                    flux_time=slice(OBS_WINDOW * HOURS_PER_DAY // FLUX_INTERVAL, None)),
-             new_fluxes.isel(
-                    flux_time=slice(
-                        (-OBS_WINDOW * HOURS_PER_DAY) //
-                        FLUX_INTERVAL, None)
-                    ).rename("posterior")],
+            [old_posterior_fluxes,
+             # TODO: fix this for the last time window
+             new_fluxes.rename("posterior")],
             dim="flux_time").persist()
         print(unaligned_fluxes)
+    print("Unaligned flux coords")
+    print(unaligned_fluxes.coords)
     aligned_influences, aligned_fluxes = xarray.align(
-        matched_influences, unaligned_fluxes,
+        matched_influences.isel(flux_time=slice(1, None)),
+                                unaligned_fluxes,
         exclude=("dim_x", "dim_y", "observation"),
         join="outer", copy=False)
+    print("Aligned flux coords")
+    print(aligned_fluxes.coords)
 
+    print("Aligned incluences")
     print(aligned_influences)
+    print("Aligned fluxes")
     print(aligned_fluxes)
     print(N_GRID_POINTS * N_FLUX_TIMES)
     # aligned_influences.reindex(flux_time=FLUX_TIMES_INDEX)
@@ -619,6 +635,18 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
         flux_part.attrs["units"] = str(FLUX_UNITS)
     flux_stds = (
         FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern[TRUE_FLUX_NAME].data)
+
+    # Calculate temporal covariances having same number of days as the fluxes
+    day_correlations = (
+        inversion.correlations.make_matrix(
+            inversion.correlations.ExponentialCorrelation(DAILY_FLUX_TIMESCALE),
+            (len(aligned_fluxes.indexes["flux_time"]) // HOURS_PER_DAY,)))
+    print(datetime.datetime.now(UTC).strftime("%c"), "Have daily correlations")
+    sys.stdout.flush()
+    temporal_correlations = kronecker_product(day_correlations, hour_correlations_matrix)
+
+    print(datetime.datetime.now(UTC).strftime("%c"), "Have combined correlations")
+    sys.stdout.flush()
 
     prior_covariance = kronecker_product(
         temporal_correlations,
@@ -690,7 +718,8 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
         posterior_global_atts
     )
     print(posterior_ds)
-    posterior_ds["pseudo_observations"] = used_observations
+    used_observations.to_netcdf("observation_realizations_for_{flux_interval:02d}h_{step:02d}.nc4"
+                                .format(flux_interval=FLUX_INTERVAL, step=i))
     posterior_part = posterior_ds.isel(flux_time=slice(None, OBS_WINDOW * HOURS_PER_DAY//FLUX_INTERVAL))
     posterior_part.to_netcdf("monthly_inversion_{flux_interval:02d}h_output_{step:02d}.nc4".format(
             flux_interval=FLUX_INTERVAL, step=i))
