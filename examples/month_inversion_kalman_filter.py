@@ -70,8 +70,8 @@ FLUX_RESOLUTION = 27
 
 Resolution for the inversion.
 """
-CORR_FUN = "exp"
-CORR_LEN = 84
+CORR_FUN = "balg"
+CORR_LEN = 200
 """Prior noise realization to use."""
 
 # OBS_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrfout_d01_*.nc"))
@@ -468,7 +468,7 @@ posterior_global_atts.update(dict(
 # Covariances have time-varying component
 print(datetime.datetime.now(UTC).strftime("%c"), "Getting correlations")
 sys.stdout.flush()
-CORRELATION_LENGTH = 84
+CORRELATION_LENGTH = 200
 GRID_RESOLUTION = FLUX_RESOLUTION
 spatial_correlations = (
     inversion.correlations.HomogeneousIsotropicCorrelation.
