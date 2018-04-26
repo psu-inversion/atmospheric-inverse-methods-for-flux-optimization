@@ -719,7 +719,7 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
     )
     print(posterior_ds)
     used_observations.to_netcdf("observation_realizations_for_{flux_interval:02d}h_{step:02d}.nc4"
-                                .format(flux_interval=FLUX_INTERVAL, step=i))
+                                .format(flux_interval=FLUX_INTERVAL, step=i), unlimited_dims="points")
     posterior_part = posterior_ds.isel(flux_time=slice(None, OBS_WINDOW * HOURS_PER_DAY//FLUX_INTERVAL))
     posterior_part.to_netcdf("monthly_inversion_{flux_interval:02d}h_output_{step:02d}.nc4".format(
             flux_interval=FLUX_INTERVAL, step=i))
@@ -733,6 +733,6 @@ sys.stdout.flush()
 print("Parts of posterior already written, catenate parts with ncrcat.")
 print("Not all of posterior written; writing rest")
 posterior_ds.to_netcdf("monthly_inversion_{flux_interval:02d}h_output_zz.nc4".format(
-            flux_interval=FLUX_INTERVAL))
+            flux_interval=FLUX_INTERVAL), unlimited_dims="flux_time")
 print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior")
 sys.stdout.flush()
