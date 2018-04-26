@@ -640,7 +640,7 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
     day_correlations = (
         inversion.correlations.make_matrix(
             inversion.correlations.ExponentialCorrelation(DAILY_FLUX_TIMESCALE),
-            (len(aligned_fluxes.indexes["flux_time"]) // HOURS_PER_DAY,)))
+            (len(aligned_fluxes.indexes["flux_time"]) * FLUX_INTERVAL // HOURS_PER_DAY,)))
     print(datetime.datetime.now(UTC).strftime("%c"), "Have daily correlations")
     sys.stdout.flush()
     temporal_correlations = kronecker_product(day_correlations, hour_correlations_matrix)
