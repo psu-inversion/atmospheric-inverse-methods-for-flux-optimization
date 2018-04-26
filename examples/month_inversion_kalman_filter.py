@@ -622,7 +622,7 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
     # I would like to add a fixed minimum at some point.
     # full stds would then be sqrt(fixed^2 + varying^2)
     # average seasonal variation (or some fraction thereof) might work.
-    FLUX_VARIANCE_VARYING_FRACTION = .3
+    FLUX_VARIANCE_VARYING_FRACTION = 30
     # TODO: Check times using numpy for inversion.* and no dask here.
     # Using dask prompts xarray to load the data. I'd like to do that all at once later.
     flux_std_pattern = xarray.open_dataset("../data_files/wrf_flux_rms.nc").get(
