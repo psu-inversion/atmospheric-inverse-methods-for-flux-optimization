@@ -382,7 +382,7 @@ WRF_DX = FLUX_DATASET.attrs["DX"]
 
 TRUE_FLUXES = FLUX_DATASET.get(["E_TRA{:d}".format(i+1)
                                 for i in range(10)])
-TRUE_FLUXES_MATCHED = TRUE_FLUXES * CO2_MOLAR_MASS
+TRUE_FLUXES_MATCHED = TRUE_FLUXES # * CO2_MOLAR_MASS
 # for flux_part, flux_orig in zip(TRUE_FLUXES_MATCHED.data_vars.values(), TRUE_FLUXES.data_vars.values()):
 #     unit = (cf_units.Unit(flux_orig.attrs["units"]) *
 #             CO2_MOLAR_MASS_UNITS)
@@ -393,7 +393,7 @@ TRUE_FLUXES_MATCHED = TRUE_FLUXES * CO2_MOLAR_MASS
 
 PRIOR_FLUXES = FLUX_DATASET.get(["E_TRA{:d}_noisy".format(i + 1)
                                  for i in (6,)])
-PRIOR_FLUXES_MATCHED = PRIOR_FLUXES
+PRIOR_FLUXES_MATCHED = PRIOR_FLUXES # * CO2_MOLAR_MASS
 # for flux_part, flux_orig in zip(PRIOR_FLUXES_MATCHED.data_vars.values(), PRIOR_FLUXES.data_vars.values()):
 #     unit = (cf_units.Unit(flux_orig.attrs["units"]) *
 #             CO2_MOLAR_MASS_UNITS)
@@ -629,10 +629,12 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
         ["E_TRA{:d}".format(i + 1) for i in range(10)]).isel(emissions_zdim=0)
     # Ensure units work out
     for flux_part in flux_std_pattern.data_vars.values():
-        unit = (cf_units.Unit(flux_part.attrs["units"]) *
-                CO2_MOLAR_MASS_UNITS)
-        flux_part *= (unit / FLUX_UNITS).convert(1, 1)
-        flux_part.attrs["units"] = str(FLUX_UNITS)
+        unit = (cf_units.Unit(flux_part.attrs["units"]))
+        if unit is not FLUX_UNITS:
+            flux_part *= (
+                unit * CO2_MOLAR_MASS_UNITS / FLUX_UNITS
+            ).convert(1, 1) * CO2_MOLAR_MASS
+            flux_part.attrs["units"] = str(FLUX_UNITS)
     flux_stds = (
         FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern[TRUE_FLUX_NAME].data)
 

@@ -215,14 +215,15 @@ sys.stdout.flush(); sys.stderr.flush()
 # I would like to add a fixed minimum at some point.
 # full stds would then be sqrt(fixed^2 + varying^2)
 # average seasonal variation (or some fraction thereof) might work.
-FLUX_VARIANCE_VARYING_FRACTION = 30
+FLUX_VARIANCE_VARYING_FRACTION = 30.
 flux_std_pattern = xarray.open_dataset("../data_files/wrf_flux_rms.nc").get(
     ["E_TRA{:d}".format(i + 1) for i in range(10)]).isel(emissions_zdim=0)
 # Ensure units work out
 for flux_part in flux_std_pattern.data_vars.values():
-    unit = (cf_units.Unit(flux_part.attrs["units"]) *
-            CO2_MOLAR_MASS_UNITS)
-    flux_part *= (unit / FLUX_UNITS).convert(1, 1)
+    unit = cf_units.Unit(flux_part.attrs["units"])
+    flux_part *= (
+        unit * CO2_MOLAR_MASS_UNITS / FLUX_UNITS
+    ).convert(1, 1)  * CO2_MOLAR_MASS
     flux_part.attrs["units"] = str(FLUX_UNITS)
 
 osse_prior_dataset = TRUE_FLUXES_MATCHED.copy()
