@@ -230,7 +230,7 @@ osse_prior_dataset = TRUE_FLUXES_MATCHED.copy()
 
 # Save to ensure I have only one realization
 for flux_name, flux_vals in TRUE_FLUXES_MATCHED.data_vars.items():
-    if not any(flux_name.endswith(char) for char in "7"):
+    if not any(flux_name.endswith(char) for char in "267"):
         continue
     flux_stds = FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern[flux_name]
 

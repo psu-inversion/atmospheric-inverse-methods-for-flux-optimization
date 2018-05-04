@@ -70,8 +70,8 @@ FLUX_RESOLUTION = 27
 
 Resolution for the inversion.
 """
-CORR_FUN = "balg"
-CORR_LEN = 200
+CORR_FUN = "exp"
+CORR_LEN = 84
 """Prior noise realization to use."""
 
 # OBS_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrfout_d01_*.nc"))
@@ -325,7 +325,8 @@ def fix_wrf_times(ds):
 FLUX_DATASET = xarray.open_mfdataset(
     FLUX_FILES,
     chunks=dict(dim_x=NX, dim_y=NY,
-                flux_time=FLUX_CHUNKS),
+                flux_time=FLUX_CHUNKS,
+                realization=REALIZATION_CHUNK),
     concat_dim="flux_time",
     # preprocess=fix_wrf_times,
 )
@@ -597,7 +598,7 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
     aligned_influences, aligned_fluxes = xarray.align(
         matched_influences.isel(flux_time=slice(1, None)),
                                 unaligned_fluxes,
-        exclude=("dim_x", "dim_y", "observation"),
+        exclude=("dim_x", "dim_y", "observation", "realization"),
         join="outer", copy=False)
     print("Aligned flux coords")
     print(aligned_fluxes.coords)
