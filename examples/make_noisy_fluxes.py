@@ -250,20 +250,20 @@ for flux_name, flux_vals in TRUE_FLUXES_MATCHED.data_vars.items():
         origin="osse_noisy_fluxes.py"))
 
     prior_flux_vals = (
-        flux_vals.data[:, :, :, np.newaxis] +
-        gaussian_noise(prior_covariance, N_REALIZATIONS).T.reshape(
-            flux_vals.shape + (N_REALIZATIONS,)))
+        flux_vals.data[np.newaxis, :, :, :] +
+        gaussian_noise(prior_covariance, N_REALIZATIONS).reshape(
+            (N_REALIZATIONS,) + flux_vals.shape))
     print(datetime.datetime.now(UTC).strftime("%c"), "Have noisy fluxes; adding to dataset")
     sys.stdout.flush(); sys.stderr.flush()
     osse_prior_dataset[flux_name + "_noisy"] = xarray.DataArray(
         # Hopefully this will let dask finish its job
         data=prior_flux_vals.persist(),
         coords=flux_vals.coords,
-        dims=flux_vals.dims + ("realization",),
+        dims=("realization",) + flux_vals.dims,
         name="prior",
         attrs=prior_var_atts
     ).transpose(
-        "flux_time", "dim_y", "dim_x", "realization")
+        "realization", "flux_time", "dim_y", "dim_x")
     osse_prior_dataset[flux_name + "_stds"] = flux_stds
 
 osse_prior_dataset.coords["realization"] = np.arange(N_REALIZATIONS, dtype=np.uint8)

@@ -613,8 +613,7 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
             dim_y=NY, dim_x=NX, flux_time=FLUX_CHUNKS,
             observation=OBS_CHUNKS_USED)).transpose(
         "observation", "flux_time", "dim_y", "dim_x")
-    aligned_fluxes = aligned_fluxes.chunk(dict(
-            dim_y=NY, dim_x=NX, flux_time=FLUX_CHUNKS))
+    aligned_fluxes = aligned_fluxes.transpose("flux_time", "dim_y", "dim_x", "realization")
     print(datetime.datetime.now(UTC).strftime("%c"), "Influence functions now H")
     transpose_arg = sort_key_to_consecutive([dimension_order.index(dim)
                                              for dim in aligned_influences.dims])
