@@ -718,7 +718,7 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
              ),
         aligned_fluxes.coords,
         posterior_global_atts
-    )
+    ).transpose("flux_time", "realization", "dim_y", "dim_x")
     print(posterior_ds)
     used_observations.to_netcdf("observation_realizations_for_{flux_interval:02d}h_{step:02d}.nc4"
                                 .format(flux_interval=FLUX_INTERVAL, step=i))
