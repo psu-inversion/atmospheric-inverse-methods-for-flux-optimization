@@ -734,7 +734,8 @@ print(datetime.datetime.now(UTC).strftime("%c"), "Have posterior structure, eval
 sys.stdout.flush()
 print("Parts of posterior already written, catenate parts with ncrcat.")
 print("Not all of posterior written; writing rest")
-posterior_ds.to_netcdf("monthly_inversion_{flux_interval:02d}h_output_zz.nc4".format(
+unwritten_post_ds = posterior_ds.isel(flux_time=slice(OBS_WINDOW * HOURS_PER_DAY//FLUX_INTERVAL))
+unwritten_post_ds.to_netcdf("monthly_inversion_{flux_interval:02d}h_output_zz.nc4".format(
             flux_interval=FLUX_INTERVAL))
 print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior")
 sys.stdout.flush()
