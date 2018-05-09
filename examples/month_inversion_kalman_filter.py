@@ -623,8 +623,6 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
         "observation", "flux_time", "dim_y", "dim_x")
     aligned_fluxes = aligned_fluxes.transpose("flux_time", "dim_y", "dim_x", "realization")
     print(datetime.datetime.now(UTC).strftime("%c"), "Influence functions now H")
-    transpose_arg = sort_key_to_consecutive([dimension_order.index(dim)
-                                             for dim in aligned_influences.dims])
 
     # I would like to add a fixed minimum at some point.
     # full stds would then be sqrt(fixed^2 + varying^2)
@@ -709,7 +707,6 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
         used_observations.data.compute(),
         observation_covariance,
         (aligned_influences.data
-         .transpose(transpose_arg)
          .reshape(aligned_influences.shape[0],
                   np.prod(aligned_influences.shape[-3:]))).compute(),
         np.ones((1, 1)),

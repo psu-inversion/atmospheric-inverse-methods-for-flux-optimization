@@ -411,8 +411,6 @@ aligned_influences = aligned_influences.chunk(dict(
     "observation", "flux_time", "dim_y", "dim_x")
 print(datetime.datetime.now(UTC).strftime("%c"), "Rechunked to square")
 aligned_influences = aligned_influences.fillna(0)
-transpose_arg = sort_key_to_consecutive([dimension_order.index(dim)
-                                         for dim in aligned_influences.dims])
 
 posterior_var_atts = aligned_prior_fluxes.attrs.copy()
 posterior_var_atts.update(dict(
@@ -583,7 +581,6 @@ posterior, correlations = inversion.optimal_interpolation.save_sum(
     used_observations.data.compute(),
     observation_covariance,
     (aligned_influences.data
-     .transpose(transpose_arg)
      .reshape(aligned_influences.shape[0],
               np.prod(aligned_influences.shape[-3:]))).compute(),
     np.ones((1, 1)),
