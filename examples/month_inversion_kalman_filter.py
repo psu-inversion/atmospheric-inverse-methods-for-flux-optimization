@@ -502,7 +502,14 @@ temporal_correlations = kronecker_product(day_correlations, hour_correlations_ma
 print(datetime.datetime.now(UTC).strftime("%c"), "Have combined correlations")
 sys.stdout.flush()
 
-OBSERVATION_VARIANCE = .2
+OBSERVATION_STD = 0.2
+"""Standard deviation of observations
+
+This assumes similar deviations can be expected at each site.
+
+Representativeness error from Gerbig et al 2003 for 27 km is .2 ppm
+Ken says transport error is usually given as O(2-3ppmv)
+"""
 OBS_CORR_FUN = inversion.correlations.ExponentialCorrelation(3)
 """Temporal correlations in observation error.
 
@@ -669,6 +676,7 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
     # Assumes no correlations between observations.
     observation_covariance[
         site_index[:, np.newaxis] != site_index[np.newaxis, :]] = 0
+    observation_covariance *= OBSERVATION_STD ** 2
     observation_covariance = asarray(observation_covariance)
 
     used_observation_vals = (
@@ -680,7 +688,9 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
         here_obs.coords,
         here_obs.dims + ("realization",),
         "pseudo_observations",
-        # obs_atts
+        dict(
+            observation_standard_deviation=OBSERVATION_STD,
+            observation_correlation_time=OBS_CORR_FUN._length)
     ).rename(dict(longitude_0="tower_lon", latitude_0="tower_lat")).chunk(
         dict(realization=REALIZATION_CHUNK))
     used_observations.coords["realization"] = range(N_REALIZATIONS)
