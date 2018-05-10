@@ -15,12 +15,12 @@ def gaussian_noise(cov, size=None):
 
     Parameters
     ----------
-    cov: np.ndarray[N,N]
+    cov: LinearOperator[N,N]
     size: int or tuple of int, optional
 
     Returns
     -------
-    noise: np.ndarray[N]
+    noise: array_like[..., N]
 
     Note
     ----
