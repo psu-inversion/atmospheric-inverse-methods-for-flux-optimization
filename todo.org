@@ -4,10 +4,15 @@
   Summing the first axis of B to monthly time scale and reporting that
   should be plenty.  We don't often care about sub-monthly fluxes
   either, but the flexibility can be useful.
-* TODO Compare performance for different input chunk-sizes
+* DONE Compare performance for different input chunk-sizes
   Doing everything in memory is only slightly slower, so there should
   be some optimum where caching is still good but I'm not spending so
-  long building a huge dask graph and iterating through it.
+  long building a huge dask graph and iterating through it.  Around
+  4e3 on a side seems decent.  Smaller chunks run out of memory
+  creating the task graph, while larger chunks do a bunch of work then
+  get stuck in sem_wait and pthread_cond_wait.  Keeping everything in
+  memory is a good way to avoid straying from the narrow range where
+  dask works.  This is now implemented.
 * TODO Investigate nonzero increments for spatial structure
   R packages geostatsp, geoR, fields, and RandomFields would probably
   be useful.  Python package scikit-gstat.  To be clear, this would
