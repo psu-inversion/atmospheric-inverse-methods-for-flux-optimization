@@ -70,8 +70,9 @@ FLUX_RESOLUTION = 27
 
 Resolution for the inversion.
 """
+# Change .pbs concatenation destfile when this is changed.
 CORR_FUN = "exp"
-CORR_LEN = 84
+CORR_LEN = 200
 """Prior noise realization to use."""
 
 # OBS_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrfout_d01_*.nc"))
