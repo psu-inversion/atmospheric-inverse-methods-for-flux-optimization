@@ -665,8 +665,9 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
 
     # TODO: use actual heights
     here_obs = WRF_OBS_SITE[TRACER_NAME].sel_points(
-        observation_time=pd_obs_index, site=site_index
-        )
+        observation_time=pd_obs_index, site=site_index,
+        dim="observation",
+    ).set_index(observation=("observation_time", "site"))
 
     observation_covariance = OBS_CORR_FUN(
         abs(pd_obs_index[:, np.newaxis] - pd_obs_index[np.newaxis, :]) /
@@ -679,8 +680,8 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
 
     used_observation_vals = (
         here_obs.data[:, np.newaxis] +
-        gaussian_noise(observation_covariance, N_REALIZATIONS).T.reshape(
-            here_obs.shape + (N_REALIZATIONS,))).persist()
+        gaussian_noise(observation_covariance, N_REALIZATIONS).T
+    ).persist()
     used_observations = xarray.DataArray(
         used_observation_vals,
         here_obs.coords,
@@ -689,8 +690,7 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
         dict(
             observation_standard_deviation=OBSERVATION_STD,
             observation_correlation_time=OBS_CORR_FUN._length)
-    ).rename(dict(longitude_0="tower_lon", latitude_0="tower_lat")).chunk(
-        dict(realization=REALIZATION_CHUNK))
+    ).rename(dict(longitude_0="tower_lon", latitude_0="tower_lat"))
     used_observations.coords["realization"] = range(N_REALIZATIONS)
     used_observations.coords["realization"].attrs.update(dict(
         standard_name="realization"))
