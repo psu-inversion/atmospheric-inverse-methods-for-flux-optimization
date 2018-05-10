@@ -14,7 +14,6 @@ import os.path
 import glob
 import sys
 
-import dask.array as da
 import pandas as pd
 import dateutil.tz
 import numpy as np
@@ -138,11 +137,6 @@ Used to convert WRF fluxes to units expected by observation operator.
 CO2_MOLAR_MASS_UNITS = cf_units.Unit("g/mol")
 FLUX_UNITS = cf_units.Unit("g/m^2/hr")
 
-FLUX_CHUNKS = 3 * HOURS_PER_DAY // FLUX_INTERVAL
-OBS_CHUNKS_ALL = 24
-OBS_CHUNKS_USED = 96
-REALIZATION_CHUNK = 20
-
 # Inverting a single day of observations
 # Four stations; afternoon is four hours
 # FLUX_WINDOW is one day: 25s, 19s
@@ -238,18 +232,16 @@ OBS_VEC_TOTAL_SIZE = N_SITES * N_OBS_TIMES
 ############################################################
 # Read influence functions
 
-# obs time chunk size works best as one.  Need to iterate over single
-# hyperslabs along this dimension to have single flux time to line up
-# with the time coordinate in the fluxes
+# obs time chunk size theoretically works best as one.  Need to
+# iterate over single hyperslabs along this dimension to have single
+# flux time to line up with the time coordinate in the fluxes
 # seven days: > 288012
 # One day:
 INFLUENCE_DATASET = xarray.open_mfdataset(
     INFLUENCE_FILES,
     # Kind of ad-hoc obs time chunk to match above
     # These may be too slow. I don't know how to check.
-    chunks=dict(observation_time=OBS_CHUNKS_ALL, site=1,
-                time_before_observation=FLUX_CHUNKS,
-                dim_y=NY, dim_x=NX)).isel(
+    ).isel(
     # observation_time=slice(0, 6 * HOURS_PER_DAY),
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
 INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
@@ -325,9 +317,6 @@ def fix_wrf_times(ds):
 
 FLUX_DATASET = xarray.open_mfdataset(
     FLUX_FILES,
-    chunks=dict(dim_x=NX, dim_y=NY,
-                flux_time=FLUX_CHUNKS,
-                realization=REALIZATION_CHUNK),
     concat_dim="flux_time",
     # preprocess=fix_wrf_times,
 )
@@ -335,7 +324,6 @@ print(datetime.datetime.now(UTC).strftime("%c"), "Have fluxes, getting obs")
 sys.stdout.flush()
 OBS_DATASET = xarray.open_mfdataset(
     OBS_FILES,
-    chunks=dict(forecast_reference_time=24),
     concat_dim="forecast_reference_time",
     # preprocess=fix_wrf_times,
     # drop_variables=("HGT", "PH", "PHB", "ZS"),
@@ -583,7 +571,7 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
     # end could be physically relevant
     if not have_posterior_part:
         unaligned_fluxes = PRIOR_FLUXES_MATCHED[PRIOR_FLUX_NAME].sel(
-            flux_time=slice(start_date, end_date)).persist()
+            flux_time=slice(start_date, end_date))
     else:
         print(posterior_ds.coords["flux_time"][OBS_WINDOW * HOURS_PER_DAY // FLUX_INTERVAL:])
         print(PRIOR_FLUXES_MATCHED.coords["flux_time"][
@@ -599,8 +587,9 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
             [old_posterior_fluxes,
              # TODO: fix this for the last time window
              new_fluxes.rename("posterior")],
-            dim="flux_time").persist()
+            dim="flux_time")
         print(unaligned_fluxes)
+    unaligned_fluxes.load()
     print("Unaligned flux coords")
     print(unaligned_fluxes.coords)
     aligned_influences, aligned_fluxes = xarray.align(
@@ -618,9 +607,7 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
     print(N_GRID_POINTS * N_FLUX_TIMES)
     # aligned_influences.reindex(flux_time=FLUX_TIMES_INDEX)
     print(datetime.datetime.now(UTC).strftime("%c"), "Aligned fluxes and influence function")
-    aligned_influences = aligned_influences.fillna(0).chunk(dict(
-            dim_y=NY, dim_x=NX, flux_time=FLUX_CHUNKS,
-            observation=OBS_CHUNKS_USED)).transpose(
+    aligned_influences = aligned_influences.fillna(0).transpose(
         "observation", "flux_time", "dim_y", "dim_x")
     aligned_fluxes = aligned_fluxes.transpose("flux_time", "dim_y", "dim_x", "realization")
     print(datetime.datetime.now(UTC).strftime("%c"), "Influence functions now H")
@@ -682,7 +669,7 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
     used_observation_vals = (
         here_obs.data[:, np.newaxis] +
         gaussian_noise(observation_covariance, N_REALIZATIONS).T
-    ).persist()
+    )
     used_observations = xarray.DataArray(
         used_observation_vals,
         here_obs.coords,
@@ -701,15 +688,15 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
     print(datetime.datetime.now(UTC).strftime("%c"), "Got covariance parts, getting posterior")
     sys.stdout.flush()
     posterior, post_cov = inversion.optimal_interpolation.save_sum(
-        aligned_fluxes.data.reshape(
+        aligned_fluxes.values.reshape(
             N_GRID_POINTS * len(aligned_influences.indexes["flux_time"]),
-            N_REALIZATIONS).compute(),
+            N_REALIZATIONS),
         prior_covariance,
-        used_observations.data.compute(),
+        used_observations.values,
         observation_covariance,
-        (aligned_influences.data
+        (aligned_influences.values
          .reshape(aligned_influences.shape[0],
-                  np.prod(aligned_influences.shape[-3:]))).compute(),
+                  np.prod(aligned_influences.shape[-3:]))),
         np.ones((1, 1)),
         np.ones((used_observations.shape[0], 1)))
 
