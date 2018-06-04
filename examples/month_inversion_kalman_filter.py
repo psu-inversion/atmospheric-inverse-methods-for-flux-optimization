@@ -71,12 +71,14 @@ Resolution for the inversion.
 """
 # Change .pbs concatenation destfile when this is changed.
 CORR_FUN = "exp"
-CORR_LEN = 200
+CORR_LEN = 84
 """Prior noise realization to use."""
 
 # OBS_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrfout_d01_*.nc"))
 OBS_FILES = glob.glob(os.path.join(
-    OBS_PATH, "2010_01_4tower_LPDM_concentrations?.nc"))
+    OBS_PATH,
+    "2010_01_4tower_{inter:02d}hr_{res:03d}km_LPDM_concentrations?.nc".format(
+        inter=FLUX_INTERVAL, res=FLUX_RESOLUTION)))
 FLUX_FILES = glob.glob(os.path.join(
     PRIOR_PATH,
     ("osse_priors_{interval:1d}h_{res:02d}km_noise_{corr_fun:s}{corr_len:d}km"
@@ -87,7 +89,7 @@ FLUX_FILES.sort()
 OBS_FILES.sort()
 INFLUENCE_FILES = glob.glob(os.path.join(
     INFLUENCE_PATH,
-    "LPDM_2010_01*{flux_interval:02d}hrly_{res:03d}km_footprints.nc4".format(
+    "LPDM_2010_01*{flux_interval:02d}hrly_{res:03d}km_molar_footprints.nc4".format(
         flux_interval=FLUX_INTERVAL, res=FLUX_RESOLUTION)))
 
 print(datetime.datetime.now(UTC).strftime("%c"))
@@ -135,7 +137,7 @@ CO2_MOLAR_MASS = 16 * 2 + 12.01
 Used to convert WRF fluxes to units expected by observation operator.
 """
 CO2_MOLAR_MASS_UNITS = cf_units.Unit("g/mol")
-FLUX_UNITS = cf_units.Unit("g/m^2/hr")
+FLUX_UNITS = cf_units.Unit("mol/m^2/s")
 
 # Inverting a single day of observations
 # Four stations; afternoon is four hours
@@ -615,7 +617,7 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
     # I would like to add a fixed minimum at some point.
     # full stds would then be sqrt(fixed^2 + varying^2)
     # average seasonal variation (or some fraction thereof) might work.
-    FLUX_VARIANCE_VARYING_FRACTION = 30.
+    FLUX_VARIANCE_VARYING_FRACTION = 1.
     # TODO: Check times using numpy for inversion.* and no dask here.
     # Using dask prompts xarray to load the data. I'd like to do that all at once later.
     flux_std_pattern = xarray.open_dataset("../data_files/wrf_flux_rms.nc").get(
@@ -625,8 +627,8 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
         unit = (cf_units.Unit(flux_part.attrs["units"]))
         if unit is not FLUX_UNITS:
             flux_part *= (
-                unit * CO2_MOLAR_MASS_UNITS / FLUX_UNITS
-            ).convert(1, 1) * CO2_MOLAR_MASS
+                unit / FLUX_UNITS
+            ).convert(1, 1)
             flux_part.attrs["units"] = str(FLUX_UNITS)
     flux_stds = (
         FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern[TRUE_FLUX_NAME].data)

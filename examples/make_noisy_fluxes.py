@@ -73,9 +73,9 @@ CO2_MOLAR_MASS = 16 * 2 + 12.01
 Used to convert WRF fluxes to units expected by observation operator.
 """
 CO2_MOLAR_MASS_UNITS = cf_units.Unit("g/mol")
-FLUX_UNITS = cf_units.Unit("g/m^2/hr")
+FLUX_UNITS = cf_units.Unit("mol/m^2/s")
 
-FLUX_CHUNKS = HOURS_PER_DAY * 30 // FLUX_INTERVAL
+FLUX_CHUNKS = HOURS_PER_DAY * 31 // FLUX_INTERVAL
 """How many flux times to treat at once.
 
 Must be a multiple of day length.
@@ -162,14 +162,11 @@ assert WRF_DX / 1000 == FLUX_RESOLUTION
 TRUE_FLUXES = FLUX_DATASET.get(["E_TRA{:d}".format(i + 1)
                                 for i in range(10)]).isel(emissions_zdim=0)
 TRUE_FLUXES_MATCHED = TRUE_FLUXES.rename(dict(
-    south_north="dim_y", west_east="dim_x", Time="flux_time")) * CO2_MOLAR_MASS
+    south_north="dim_y", west_east="dim_x", Time="flux_time"))
 for flux_part, flux_orig in zip(TRUE_FLUXES_MATCHED.data_vars.values(),
                                 TRUE_FLUXES.data_vars.values()):
-    unit = (cf_units.Unit(flux_orig.attrs["units"]) *
-            CO2_MOLAR_MASS_UNITS)
-    # For whatever reason this is backwards from the conversion
-    # factors used elsewhere.
-    flux_part *= (unit / FLUX_UNITS).convert(1, 1)
+    unit = (cf_units.Unit(flux_orig.attrs["units"]))
+    flux_part *= unit.convert(1, FLUX_UNITS)
     flux_part.attrs["units"] = str(FLUX_UNITS)
 
 ############################################################
@@ -215,15 +212,15 @@ sys.stdout.flush(); sys.stderr.flush()
 # I would like to add a fixed minimum at some point.
 # full stds would then be sqrt(fixed^2 + varying^2)
 # average seasonal variation (or some fraction thereof) might work.
-FLUX_VARIANCE_VARYING_FRACTION = 30.
+FLUX_VARIANCE_VARYING_FRACTION = 1.
 flux_std_pattern = xarray.open_dataset("../data_files/wrf_flux_rms.nc").get(
     ["E_TRA{:d}".format(i + 1) for i in range(10)]).isel(emissions_zdim=0)
 # Ensure units work out
 for flux_part in flux_std_pattern.data_vars.values():
     unit = cf_units.Unit(flux_part.attrs["units"])
     flux_part *= (
-        unit * CO2_MOLAR_MASS_UNITS / FLUX_UNITS
-    ).convert(1, 1)  * CO2_MOLAR_MASS
+        unit
+    ).convert(1, FLUX_UNITS)
     flux_part.attrs["units"] = str(FLUX_UNITS)
 
 osse_prior_dataset = TRUE_FLUXES_MATCHED.copy()
