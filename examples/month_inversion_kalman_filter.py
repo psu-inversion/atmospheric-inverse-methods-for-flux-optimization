@@ -725,7 +725,7 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
     obs_to_save.to_netcdf(
         "observation_realizations_for_{flux_interval:02d}h_{step:02d}.nc4"
         .format(flux_interval=FLUX_INTERVAL, step=i),
-        unlimited_dims="observation", encoding=obs_enc)
+        unlimited_dims=["observation"], encoding=obs_enc)
 
     post_encoding = {name: {"_FillValue": -99}
                      for name in posterior_ds.data_vars}
@@ -734,7 +734,7 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
     posterior_part = posterior_ds.isel(flux_time=slice(None, OBS_WINDOW * HOURS_PER_DAY//FLUX_INTERVAL))
     posterior_part.to_netcdf(
         "monthly_inversion_{flux_interval:02d}h_output_{step:02d}.nc4".format(
-            flux_interval=FLUX_INTERVAL, step=i), unlimited_dims="flux_time",
+            flux_interval=FLUX_INTERVAL, step=i), unlimited_dims=["flux_time"],
         encoding=post_encoding)
     have_posterior_part = True
     print(datetime.datetime.now(UTC).strftime("%c"), "Have posterior dataset, looping for next obs")
@@ -747,6 +747,6 @@ print("Parts of posterior already written, catenate parts with ncrcat.")
 print("Not all of posterior written; writing rest")
 unwritten_post_ds = posterior_ds.isel(flux_time=slice(OBS_WINDOW * HOURS_PER_DAY//FLUX_INTERVAL, None))
 unwritten_post_ds.to_netcdf("monthly_inversion_{flux_interval:02d}h_output_zz.nc4".format(
-            flux_interval=FLUX_INTERVAL), encoding=post_encoding, unlimited_dims="flux_time")
+            flux_interval=FLUX_INTERVAL), encoding=post_encoding, unlimited_dims=["flux_time"])
 print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior")
 sys.stdout.flush()
