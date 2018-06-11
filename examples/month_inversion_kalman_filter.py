@@ -400,7 +400,7 @@ PRIOR_FLUXES_MATCHED = PRIOR_FLUXES # * CO2_MOLAR_MASS
 
 WRF_OBS = OBS_DATASET.get(
     ["tracer_{:d}_LPDM".format(i+1)
-     for i in (1, 6, 8)])
+     for i in (0, 1, 6, 8)])
 WRF_OBS_MATCHED = WRF_OBS.rename(dict(
     forecast_reference_time="observation_time"))
 WRF_OBS_SITE = WRF_OBS_MATCHED
