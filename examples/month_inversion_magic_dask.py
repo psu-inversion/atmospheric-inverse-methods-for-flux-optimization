@@ -528,7 +528,7 @@ here_obs = WRF_OBS_SITE[TRACER_NAME].sel_points(
               points="observation"))
 print(here_obs)
 
-OBSERVATION_STD = 0.2
+OBSERVATION_STD = 0.4
 """Standard deviation of observations
 
 This assumes similar deviations can be expected at each site.

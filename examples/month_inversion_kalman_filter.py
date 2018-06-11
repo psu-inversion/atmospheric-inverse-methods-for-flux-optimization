@@ -497,7 +497,7 @@ temporal_correlations = kronecker_product(day_correlations, hour_correlations_ma
 print(datetime.datetime.now(UTC).strftime("%c"), "Have combined correlations")
 sys.stdout.flush()
 
-OBSERVATION_STD = 0.2
+OBSERVATION_STD = 0.4
 """Standard deviation of observations
 
 This assumes similar deviations can be expected at each site.
@@ -681,13 +681,15 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
         here_obs.coords,
         here_obs.dims + ("realization",),
         "pseudo_observations",
-        dict(
-            observation_standard_deviation=OBSERVATION_STD,
-            observation_correlation_time=OBS_CORR_FUN._length)
+        here_obs.attrs,
     ).rename(dict(longitude_0="tower_lon", latitude_0="tower_lat"))
-    used_observations.coords["realization"] = range(N_REALIZATIONS)
+    used_observations.coords["realization"] = np.arange(N_REALIZATIONS, dtype=np.uint8)
     used_observations.coords["realization"].attrs.update(dict(
         standard_name="realization"))
+    used_observations.attrs.update(dict(
+        observation_standard_deviation=OBSERVATION_STD,
+        observation_correlation_time=OBS_CORR_FUN._length,
+        long_name="pseudo_observations"))
     print(datetime.datetime.now(UTC).strftime("%c"), "Have observation noise")
     sys.stdout.flush(); sys.stderr.flush()
 
