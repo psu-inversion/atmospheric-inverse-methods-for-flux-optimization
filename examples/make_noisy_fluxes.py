@@ -58,7 +58,7 @@ Must divide twenty-four.
 FLUX_RESOLUTION = 27
 
 FLUX_FILES = glob.glob(os.path.join(
-    TRUE_FLUXES_DIR, "wrf_fluxes_all_{interval:02d}hrly_{res:d}km.nc".format(
+    TRUE_FLUXES_DIR, "2010-07_wrf_fluxes_all_{interval:02d}hrly_{res:d}km.nc".format(
         interval=FLUX_INTERVAL, res=FLUX_RESOLUTION)))
 FLUX_FILES.sort()
 
@@ -153,7 +153,7 @@ FLUX_DATASET = FLUX_DATASET.rename(
 
 # Select out only full days so we have something the covariances can
 # deal with.
-FLUX_DATASET = FLUX_DATASET.sel(Time=slice("2009-12-03", "2010-02-01"))
+FLUX_DATASET = FLUX_DATASET.sel(Time=slice("2010-06-04", "2010-08-01")).isel(Time=slice(None, -1))
 
 WRF_DX = FLUX_DATASET.attrs["DX"]
 
@@ -213,7 +213,7 @@ sys.stdout.flush(); sys.stderr.flush()
 # full stds would then be sqrt(fixed^2 + varying^2)
 # average seasonal variation (or some fraction thereof) might work.
 FLUX_VARIANCE_VARYING_FRACTION = 1.
-flux_std_pattern = xarray.open_dataset("../data_files/wrf_flux_rms.nc").get(
+flux_std_pattern = xarray.open_dataset("../data_files/2010-07_wrf_flux_rms.nc").get(
     ["E_TRA{:d}".format(i + 1) for i in range(10)]).isel(emissions_zdim=0)
 # Ensure units work out
 for flux_part in flux_std_pattern.data_vars.values():
@@ -274,14 +274,18 @@ encoding = {name: {"_FillValue": -1e38}
             for name in osse_prior_dataset.data_vars}
 encoding.update({name: {"_FillValue": False}
                  for name in osse_prior_dataset.coords})
-osse_prior_dataset = osse_prior_dataset.chunk(
-    dict(flux_time=FLUX_CHUNKS, dim_y=NY, dim_x=NX,
-         realization=N_REALIZATIONS))
+# osse_prior_dataset = osse_prior_dataset.chunk(
+#     dict(flux_time=FLUX_CHUNKS, dim_y=NY, dim_x=NX,
+#          realization=N_REALIZATIONS))
+print(datetime.datetime.now(UTC).strftime("%c"), "Noisy fluxes chunked, saving")
+sys.stdout.flush(); sys.stderr.flush()
 osse_prior_dataset.to_netcdf(
-    "../data_files/osse_priors_{interval:d}h_{res:d}km"
+    "../data_files/2010-07_osse_priors_{interval:d}h_{res:d}km"
     "_noise_{sp_fun:s}{length:g}km_exp{day_time:d}d_exp{hour_time:d}h.nc"
     .format(
         interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
         length=CORRELATION_LENGTH, sp_fun=SP_CORR_STR,
         day_time=DAILY_FLUX_TIMESCALE, hour_time=HOURLY_FLUX_TIMESCALE),
     encoding=encoding)
+print(datetime.datetime.now(UTC).strftime("%c"), "Noisy fluxes saved, done")
+sys.stdout.flush(); sys.stderr.flush()

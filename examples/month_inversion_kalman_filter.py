@@ -77,11 +77,11 @@ CORR_LEN = 84
 # OBS_FILES = glob.glob(os.path.join(PRIOR_PATH, "wrfout_d01_*.nc"))
 OBS_FILES = glob.glob(os.path.join(
     OBS_PATH,
-    "2010_01_4tower_{inter:02d}hr_{res:03d}km_LPDM_concentrations?.nc".format(
+    "2010_07_4tower_{inter:02d}hr_{res:03d}km_LPDM_concentrations?.nc".format(
         inter=FLUX_INTERVAL, res=FLUX_RESOLUTION)))
 FLUX_FILES = glob.glob(os.path.join(
     PRIOR_PATH,
-    ("osse_priors_{interval:1d}h_{res:02d}km_noise_{corr_fun:s}{corr_len:d}km"
+    ("2010-07_osse_priors_{interval:1d}h_{res:02d}km_noise_{corr_fun:s}{corr_len:d}km"
      "_exp14d_exp3h.nc").format(
         interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
         corr_fun=CORR_FUN, corr_len=CORR_LEN)))
@@ -246,17 +246,16 @@ INFLUENCE_DATASET = xarray.open_mfdataset(
     ).isel(
     # observation_time=slice(0, 6 * HOURS_PER_DAY),
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
-INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
-# Use site names as index/dim coord for site dim
-INFLUENCE_FUNCTIONS["site"] = np.char.decode(
-    INFLUENCE_FUNCTIONS["site_names"].values, "ascii")
-
 # Not entirely sure why this is one too many
 # N_FLUX_TIMES = INFLUENCE_DATASET.dims["observation_time"] + FLUX_WINDOW - 1
-OBS_TIME_INDEX = INFLUENCE_DATASET.indexes["observation_time"].round("S")
-TIME_BACK_INDEX = INFLUENCE_DATASET.indexes["time_before_observation"].round("S")
 
-INFLUENCE_FUNCTIONS.coords["observation_time"] = OBS_TIME_INDEX
+OBS_TIME_INDEX = INFLUENCE_DATASET.indexes["observation_time"].round("S") + datetime.timedelta(days=181)
+TIME_BACK_INDEX = INFLUENCE_DATASET.indexes["time_before_observation"].round("S")
+FLUX_TIME_INDEX = INFLUENCE_DATASET.indexes["flux_time"] + datetime.timedelta(days=181)
+
+INFLUENCE_DATASET.coords["observation_time"] = OBS_TIME_INDEX
+INFLUENCE_DATASET.coords["flux_time"] = FLUX_TIME_INDEX
+del FLUX_TIME_INDEX
 
 # NB: Remember to change frequency and time zone as necessary.
 FLUX_START = (OBS_TIME_INDEX[-1] - TIME_BACK_INDEX[-1]).replace(hour=0)
@@ -270,6 +269,11 @@ FLUX_TIMES_INDEX = pd.date_range(
     tz="UTC", closed="right",
     name="flux_times")
 N_FLUX_TIMES = len(FLUX_TIMES_INDEX)
+
+INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
+# Use site names as index/dim coord for site dim
+INFLUENCE_FUNCTIONS["site"] = np.char.decode(
+    INFLUENCE_FUNCTIONS["site_names"].values, "ascii")
 
 ############################################################
 # Set some constants based on the WRF file
