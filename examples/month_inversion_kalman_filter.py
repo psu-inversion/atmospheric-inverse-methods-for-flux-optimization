@@ -631,8 +631,8 @@ for i, inversion_period in enumerate(grouper(obs_times, OBS_WINDOW * HOURS_PER_D
         unit = (cf_units.Unit(flux_part.attrs["units"]))
         if unit is not FLUX_UNITS:
             flux_part *= (
-                unit / FLUX_UNITS
-            ).convert(1, 1)
+                unit
+            ).convert(1, FLUX_UNITS)
             flux_part.attrs["units"] = str(FLUX_UNITS)
     flux_stds = (
         FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern[TRUE_FLUX_NAME].data)

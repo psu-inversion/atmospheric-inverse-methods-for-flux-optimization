@@ -309,9 +309,24 @@ WRF_DX = FLUX_DATASET.attrs["DX"]
 TRUE_FLUXES = FLUX_DATASET.get(["E_TRA{:d}".format(i + 1)
                                 for i in range(10)])
 TRUE_FLUXES_MATCHED = TRUE_FLUXES
+# for flux_part, flux_orig in zip(TRUE_FLUXES_MATCHED.data_vars.values(), TRUE_FLUXES.data_vars.values()):
+#     unit = (cf_units.Unit(flux_orig.attrs["units"]) *
+#             CO2_MOLAR_MASS_UNITS)
+#     # For whatever reason this is backwards from the conversion
+#     # factors used elsewhere.
+#     flux_part *= (unit / FLUX_UNITS).convert(1, 1)
+#     flux_part.attrs["units"] = str(FLUX_UNITS)
+
 PRIOR_FLUXES = FLUX_DATASET.get(["E_TRA{:d}_noisy".format(i + 1)
                                  for i in (6,)])
 PRIOR_FLUXES_MATCHED = PRIOR_FLUXES
+# for flux_part, flux_orig in zip(PRIOR_FLUXES_MATCHED.data_vars.values(), PRIOR_FLUXES.data_vars.values()):
+#     unit = (cf_units.Unit(flux_orig.attrs["units"]) *
+#             CO2_MOLAR_MASS_UNITS)
+#     # For whatever reason this is backwards from the conversion
+#     # factors used elsewhere.
+#     flux_part *= (unit / FLUX_UNITS).convert(1, 1)
+#     flux_part.attrs["units"] = str(FLUX_UNITS)
 
 WRF_OBS = OBS_DATASET.get(
     ["tracer_{:d}_LPDM".format(i + 1)
