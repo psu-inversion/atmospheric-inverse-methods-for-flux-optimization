@@ -112,7 +112,7 @@ CO2_MOLAR_MASS = 16 * 2 + 12.01
 
 Used to convert WRF fluxes to units expected by observation operator.
 """
-OBS_DAYS = 31
+OBS_DAYS = 16
 #  4 6m9
 #  8 15m56
 # 16 44m43
@@ -492,7 +492,7 @@ sys.stdout.flush(); sys.stderr.flush()
 # I would like to add a fixed minimum at some point.
 # full stds would then be sqrt(fixed^2 + varying^2)
 # average seasonal variation (or some fraction thereof) might work.
-FLUX_VARIANCE_VARYING_FRACTION = 3
+FLUX_VARIANCE_VARYING_FRACTION = 1
 flux_std_pattern = xarray.open_dataset("../data_files/wrf_flux_rms.nc").get(
     ["E_TRA{:d}".format(i + 1) for i in range(10)]).isel(emissions_zdim=0)
 # Ensure units work out
