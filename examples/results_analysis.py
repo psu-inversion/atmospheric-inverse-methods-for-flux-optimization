@@ -369,9 +369,10 @@ all_differences = xarray.concat(
     dim="type")
 all_differences.coords["type"] = ["prior_error", "posterior_error"]
 
-print(datetime.datetime.now(), "Getting means east of line")
+print(datetime.datetime.now(), "Getting January means east of line")
 sys.stdout.flush()
-time_mean_error = all_differences.mean("time")
+time_mean_error = all_differences.sel(
+    time=slice(datetime.datetime(YEAR, MONTH, 1, 0, 0), None)).mean("time")
 time_mean_error.load()
 all_mean_error = time_mean_error.mean(("projection_x_coordinate", "projection_y_coordinate"))
 all_mean_error.load()
