@@ -499,10 +499,16 @@ def make_matrix(corr_func, shape):
         the shape of that array.
         `N = prod(shape)`
 
+    See Also
+    --------
+    :func:`statsmodels.stats.correlation_tools.corr_clipped`, which
+    does something similar, and refers to other functions that may
+    give more accurate results.
+
     Returns
     -------
     corr: np.ndarray[N, N]
-        Dense array, entirely in memory
+        Positive definite dense array, entirely in memory
     """
     shape = tuple(np.atleast_1d(shape))
     n_points = np.prod(shape)
