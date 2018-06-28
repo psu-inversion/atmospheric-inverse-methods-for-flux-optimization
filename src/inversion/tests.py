@@ -1736,12 +1736,13 @@ class TestLazyEval(unittest2.TestCase):
                           "not_an_operator", ((3,), (5,)), np.float32)
 
         # Dask rewrites made this the only entirely lazy method.
-        inversion_method = inversion.optimal_interpolation.simple
-        with self.subTest(method=getname(inversion_method)):
-            post, post_cov = inversion_method(
-                background, bg_corr,
-                obs, obs_corr,
-                obs_op)
+        for inversion_method in (inversion.optimal_interpolation.simple,
+                                 inversion.optimal_interpolation.fold_common):
+            with self.subTest(method=getname(inversion_method)):
+                post, post_cov = inversion_method(
+                    background, bg_corr,
+                    obs, obs_corr,
+                    obs_op)
 
 
 class TestKroneckerQuadraticForm(unittest2.TestCase):
@@ -2231,6 +2232,103 @@ class TestLorenz96(unittest2.TestCase):
                 analytic[(i + 2) % 40] = -8
 
                 np_tst.assert_allclose(deriv, analytic)
+
+
+class TestReducedUncertainties(unittest2.TestCase):
+    """Test that inversion methods properly treat requested uncertainties."""
+
+    def test_identical_simple(self):
+        """Test that the result is the same when requesting such."""
+        bg = 1.
+        obs = 2.
+        bg_cov = 1.
+        obs_cov = 1.
+        obs_op = 1.
+
+        for method in ALL_METHODS:
+            with self.subTest(method=getname(method)):
+                directval, directcov = method(
+                    bg, bg_cov, obs, obs_cov, obs_op)
+                altval, altcov = method(
+                    bg, bg_cov, obs, obs_cov, obs_op,
+                    bg_cov, obs_op)
+                np_tst.assert_allclose(directval, altval)
+                np_tst.assert_allclose(directcov, altcov)
+
+    def test_identical_complicated(self):
+        """Test that the result remains the same with harder problem."""
+        bg = np.zeros(10)
+        obs = np.ones(5)
+        bg_cov = scipy.linalg.toeplitz(3.**-np.arange(10.))
+        obs_cov = np.eye(5)
+        obs_op = np.eye(5, 10)
+
+        for method in ALL_METHODS:
+            with self.subTest(method=getname(method)):
+                directval, directcov = method(
+                    bg, bg_cov, obs, obs_cov, obs_op)
+                altval, altcov = method(
+                    bg, bg_cov, obs, obs_cov, obs_op,
+                    bg_cov, obs_op)
+                np_tst.assert_allclose(directval, altval,
+                                       rtol=1e-5, atol=1e-5)
+                np_tst.assert_allclose(directcov, altcov,
+                                       rtol=ITERATIVE_COVARIANCE_TOLERANCE,
+                                       atol=ITERATIVE_COVARIANCE_TOLERANCE)
+
+    @unittest2.expectedFailure
+    def test_reduced_uncorrelated(self):
+        """Test reduced uncertainties for uncorrelated background.
+
+        HBHT changes a lot in this case.
+        """
+        bg = (0, 0.)
+        bg_cov = np.eye(2)
+        obs = (1.,)
+        obs_cov = 1.
+        obs_op = (.5, .5)
+
+        # Using mean for bg, not sum
+        bg_cov_red = 2./4
+        obs_op_red = 1.
+
+        for method in ALL_METHODS:
+            with self.subTest(method=getname(method)):
+                value, cov = method(
+                    bg, bg_cov, obs, obs_cov, obs_op,
+                    bg_cov_red, obs_op_red)
+                np_tst.assert_allclose(
+                    value, (1/3., 1/3.))
+                # ((5/6., 1/6.), (1/6., 5/6.))
+                np_tst.assert_allclose(
+                    cov,
+                    2./3)
+
+    def test_reduced_correlated(self):
+        """Test reduced uncertainties for a simple case."""
+        bg = (0, 0.)
+        bg_cov = [[1, .9], [.9, 1]]
+        obs = (1.,)
+        obs_cov = 1.
+        obs_op = (.5, .5)
+
+        # Using mean for bg, not sum
+        bg_cov_red = 3.8/4
+        obs_op_red = 1.
+
+        for method in ALL_METHODS:
+            with self.subTest(method=getname(method)):
+                value, cov = method(
+                    bg, bg_cov, obs, obs_cov, obs_op,
+                    bg_cov_red, obs_op_red)
+                np_tst.assert_allclose(
+                    value, (.48717949, .48717949))
+                # ((.53, .43), (.43, .53))
+                # analytic: 1.9
+                # reduced: .79167
+                np_tst.assert_allclose(
+                    cov,
+                    .48717948717948717)
 
 
 if __name__ == "__main__":
