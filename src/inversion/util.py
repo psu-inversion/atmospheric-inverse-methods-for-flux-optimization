@@ -989,7 +989,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
             operator1 = self._operator1
             operator2 = self._operator2
             if ((operator1.shape[0] == operator1.shape[1] and
-                 da.allclose(operator1, operator1.T).compute())):
+                 np.allclose(operator1, operator1.T))):
                 if operator2.T is operator2:
                     self.__transp = self
                 else:
