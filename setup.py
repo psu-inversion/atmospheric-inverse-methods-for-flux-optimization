@@ -42,8 +42,6 @@ setup(
         "six",
         "numpy>=1.10",
         "scipy",
-        "dask[array]",
-        "h5py",
     ],
     extras_require=dict(
         homework=[
@@ -60,6 +58,7 @@ setup(
     ),
     tests_require=[
         "unittest2",
+        "dask[array]>=0.14.2",
     ],
     test_suite="inversion.tests",
 )

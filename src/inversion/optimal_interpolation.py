@@ -6,10 +6,10 @@ import scipy.linalg
 from scipy.sparse.linalg import LinearOperator
 
 import dask.array as da
-from dask.array import asarray
+from numpy import asarray
 
 from inversion.util import solve, tolinearoperator, method_common
-from inversion.util import ProductLinearOperator, chunk_sizes, ARRAY_TYPES
+from inversion.util import ProductLinearOperator, ARRAY_TYPES
 
 
 @method_common
@@ -52,10 +52,6 @@ def simple(background, background_covariance,
             projected_background_covariance)
 
     covariance_sum = projected_background_covariance + observation_covariance
-
-    if isinstance(covariance_sum, ARRAY_TYPES):
-        chunks = chunk_sizes((covariance_sum.shape[0],), matrix_side=True)
-        covariance_sum = covariance_sum.rechunk(chunks[0])
 
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
     analysis_increment = background_covariance.dot(
@@ -120,7 +116,7 @@ def fold_common(background, background_covariance,
     # \vec{y}_b = H \vec{x}_b
     projected_obs = observation_operator.dot(background)
     # \Delta\vec{y} = \vec{y} - \vec{y}_b
-    innovation = (observations - projected_obs).persist()
+    innovation = (observations - projected_obs)
 
     # B_{proj} = HBH^T
     if isinstance(observation_operator, LinearOperator):
@@ -142,15 +138,11 @@ def fold_common(background, background_covariance,
         covariance_sum = (projected_background_covariance +
                           observation_covariance)
 
-    if isinstance(covariance_sum, ARRAY_TYPES):
-        chunks = chunk_sizes((covariance_sum.shape[0],), matrix_side=True)
-        covariance_sum = covariance_sum.rechunk(chunks[0]).persist()
-
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
     # This does repeat work for in memory data, but is perhaps doable
     # for out-of-core computations
     observation_increment = solve(
-        covariance_sum, innovation).persist()
+        covariance_sum, innovation)
     analysis_increment = background_covariance.dot(
         observation_operator.T.dot(
             observation_increment))
@@ -163,6 +155,9 @@ def fold_common(background, background_covariance,
         decrease = B_HT.dot(solve(
             covariance_sum,
             B_HT.T))
+        if isinstance(decrease, LinearOperator):
+            background_covariance = tolinearoperator(
+                background_covariance)
         analysis_covariance = background_covariance - decrease
     else:
         B_HT_red = reduced_background_covariance.dot(
@@ -231,12 +226,6 @@ def save_sum(background, background_covariance,
         covariance_sum = (projected_background_covariance +
                           observation_covariance)
 
-    if isinstance(covariance_sum, ARRAY_TYPES):
-        covariance_sum, innovation = map(
-            asarray, da.compute(covariance_sum, innovation))
-    else:
-        innovation = innovation.persist()
-
     # \Delta\vec{x} = B H^T (B_{proj} + R)^{-1} \Delta\vec{y}
     observation_increment = solve(covariance_sum, innovation)
     analysis_increment = background_covariance.dot(
@@ -251,6 +240,9 @@ def save_sum(background, background_covariance,
         decrease = B_HT.dot(solve(
             covariance_sum,
             B_HT.T))
+        if isinstance(decrease, LinearOperator):
+            background_covariance = tolinearoperator(
+                background_covariance)
         analysis_covariance = background_covariance - decrease
     else:
         B_HT_red = reduced_background_covariance.dot(

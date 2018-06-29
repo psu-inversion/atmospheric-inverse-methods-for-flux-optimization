@@ -112,14 +112,21 @@ CO2_MOLAR_MASS = 16 * 2 + 12.01
 
 Used to convert WRF fluxes to units expected by observation operator.
 """
-OBS_DAYS = 31
+OBS_DAYS = 16
+#  4 6m9
+#  8 15m56
+# 16 44m43
+# 31
 """Number of days of obs to use."""
 OBS_WINDOW = OBS_DAYS * OBS_TIMES_PER_DAY
 """Number of observation times."""
 CO2_MOLAR_MASS_UNITS = cf_units.Unit("g/mol")
 FLUX_UNITS = cf_units.Unit("g/m^2/hr")
 
-FLUX_CHUNKS = HOURS_PER_DAY * 3 // FLUX_INTERVAL
+FLUX_CHUNKS = HOURS_PER_DAY * 8 // FLUX_INTERVAL
+# 48 51s
+#  4 54s
+#  2 4m23
 """How many flux times to treat at once.
 
 Must be a multiple of day length.
@@ -270,7 +277,7 @@ FLUX_DATASET = xarray.open_mfdataset(
     chunks=dict(dim_x=NX, dim_y=NY,
                 flux_time=FLUX_CHUNKS,
                 realization=REALIZATION_CHUNK),
-    concat_dim="Time",
+    concat_dim="flux_time",
 ).isel(realization=slice(0, 20))
 OBS_DATASET = xarray.open_mfdataset(
     OBS_FILES,
@@ -302,9 +309,24 @@ WRF_DX = FLUX_DATASET.attrs["DX"]
 TRUE_FLUXES = FLUX_DATASET.get(["E_TRA{:d}".format(i + 1)
                                 for i in range(10)])
 TRUE_FLUXES_MATCHED = TRUE_FLUXES
+# for flux_part, flux_orig in zip(TRUE_FLUXES_MATCHED.data_vars.values(), TRUE_FLUXES.data_vars.values()):
+#     unit = (cf_units.Unit(flux_orig.attrs["units"]) *
+#             CO2_MOLAR_MASS_UNITS)
+#     # For whatever reason this is backwards from the conversion
+#     # factors used elsewhere.
+#     flux_part *= (unit / FLUX_UNITS).convert(1, 1)
+#     flux_part.attrs["units"] = str(FLUX_UNITS)
+
 PRIOR_FLUXES = FLUX_DATASET.get(["E_TRA{:d}_noisy".format(i + 1)
                                  for i in (6,)])
 PRIOR_FLUXES_MATCHED = PRIOR_FLUXES
+# for flux_part, flux_orig in zip(PRIOR_FLUXES_MATCHED.data_vars.values(), PRIOR_FLUXES.data_vars.values()):
+#     unit = (cf_units.Unit(flux_orig.attrs["units"]) *
+#             CO2_MOLAR_MASS_UNITS)
+#     # For whatever reason this is backwards from the conversion
+#     # factors used elsewhere.
+#     flux_part *= (unit / FLUX_UNITS).convert(1, 1)
+#     flux_part.attrs["units"] = str(FLUX_UNITS)
 
 WRF_OBS = OBS_DATASET.get(
     ["tracer_{:d}_LPDM".format(i + 1)
@@ -404,8 +426,6 @@ aligned_influences = aligned_influences.chunk(dict(
     "observation", "flux_time", "dim_y", "dim_x")
 print(datetime.datetime.now(UTC).strftime("%c"), "Rechunked to square")
 aligned_influences = aligned_influences.fillna(0)
-transpose_arg = sort_key_to_consecutive([dimension_order.index(dim)
-                                         for dim in aligned_influences.dims])
 
 posterior_var_atts = aligned_prior_fluxes.attrs.copy()
 posterior_var_atts.update(dict(
@@ -487,7 +507,7 @@ sys.stdout.flush(); sys.stderr.flush()
 # I would like to add a fixed minimum at some point.
 # full stds would then be sqrt(fixed^2 + varying^2)
 # average seasonal variation (or some fraction thereof) might work.
-FLUX_VARIANCE_VARYING_FRACTION = 3
+FLUX_VARIANCE_VARYING_FRACTION = 1
 flux_std_pattern = xarray.open_dataset("../data_files/wrf_flux_rms.nc").get(
     ["E_TRA{:d}".format(i + 1) for i in range(10)]).isel(emissions_zdim=0)
 # Ensure units work out
@@ -523,7 +543,14 @@ here_obs = WRF_OBS_SITE[TRACER_NAME].sel_points(
               points="observation"))
 print(here_obs)
 
-OBSERVATION_VARIANCE = .2
+OBSERVATION_STD = 0.4
+"""Standard deviation of observations
+
+This assumes similar deviations can be expected at each site.
+
+Representativeness error from Gerbig et al 2003 for 27 km is .2 ppm
+Ken says transport error is usually given as O(2-3ppmv)
+"""
 OBS_CORR_FUN = inversion.correlations.ExponentialCorrelation(3)
 """Temporal correlations in observation error.
 
@@ -537,6 +564,7 @@ observation_covariance = OBS_CORR_FUN(
 # Assumes no correlations between observations.
 observation_covariance[
     site_index[:, np.newaxis] != site_index[np.newaxis, :]] = 0
+observation_covariance *= OBSERVATION_STD ** 2
 observation_covariance = asarray(observation_covariance)
 
 used_observation_vals = (
@@ -548,7 +576,9 @@ used_observations = xarray.DataArray(
     here_obs.coords,
     here_obs.dims + ("realization",),
     "pseudo_observations",
-    # obs_atts
+    dict(
+        observation_standard_deviation=OBSERVATION_STD,
+        observation_correlation_time=OBS_CORR_FUN._length)
 ).rename(dict(longitude_0="tower_lon", latitude_0="tower_lat")).chunk(
     dict(realization=REALIZATION_CHUNK))
 used_observations.coords["realization"] = range(N_REALIZATIONS)
@@ -561,14 +591,15 @@ print(datetime.datetime.now(UTC).strftime("%c"),
       "Got covariance parts, getting posterior")
 sys.stdout.flush(); sys.stderr.flush()
 posterior, correlations = inversion.optimal_interpolation.save_sum(
-    prior_fluxes.data.reshape(N_GRID_POINTS * N_FLUX_TIMES, N_REALIZATIONS),
+    prior_fluxes.data.reshape(N_GRID_POINTS * N_FLUX_TIMES, N_REALIZATIONS).compute(),
     prior_covariance,
-    used_observations.data,
+    used_observations.data.compute(),
     observation_covariance,
     (aligned_influences.data
-     .transpose(transpose_arg)
      .reshape(aligned_influences.shape[0],
-              np.prod(aligned_influences.shape[-3:]))))
+              np.prod(aligned_influences.shape[-3:]))).compute(),
+    np.ones((1, 1)),
+    np.ones((used_observations.shape[0], 1)))
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior values, making dataset")
 sys.stdout.flush(); sys.stderr.flush()
@@ -582,7 +613,9 @@ posterior_ds = xarray.Dataset(
                     increment_var_atts),
          ),
     TRUE_FLUXES_MATCHED.coords,
-    posterior_global_atts)
+    posterior_global_atts).chunk(dict(
+        dim_x=249, dim_y=184, flux_time=FLUX_CHUNKS,
+        realization=REALIZATION_CHUNK))
 posterior_ds["pseudo_observations"] = used_observations
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior structure, evaluating and writing")

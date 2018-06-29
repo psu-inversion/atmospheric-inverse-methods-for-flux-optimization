@@ -58,7 +58,7 @@ Must divide twenty-four.
 FLUX_RESOLUTION = 27
 
 FLUX_FILES = glob.glob(os.path.join(
-    TRUE_FLUXES_DIR, "wrf_fluxes_all_{interval:02d}hrly_{res:d}km.nc".format(
+    TRUE_FLUXES_DIR, "2010-07_wrf_fluxes_all_{interval:02d}hrly_{res:d}km.nc".format(
         interval=FLUX_INTERVAL, res=FLUX_RESOLUTION)))
 FLUX_FILES.sort()
 
@@ -73,14 +73,14 @@ CO2_MOLAR_MASS = 16 * 2 + 12.01
 Used to convert WRF fluxes to units expected by observation operator.
 """
 CO2_MOLAR_MASS_UNITS = cf_units.Unit("g/mol")
-FLUX_UNITS = cf_units.Unit("g/m^2/hr")
+FLUX_UNITS = cf_units.Unit("mol/m^2/s")
 
-FLUX_CHUNKS = HOURS_PER_DAY * 30 // FLUX_INTERVAL
+FLUX_CHUNKS = HOURS_PER_DAY * 31 // FLUX_INTERVAL
 """How many flux times to treat at once.
 
 Must be a multiple of day length.
 """
-N_REALIZATIONS = 15
+N_REALIZATIONS = 40
 """Number of realizations of the gaussian noise process to include.
 
 This is used for calculating both the prior and observations fed to
@@ -129,9 +129,7 @@ print(datetime.datetime.now(UTC).strftime("%c"),
 # Read prior fluxes
 FLUX_DATASET = xarray.open_mfdataset(
     FLUX_FILES,
-    chunks=dict(projection_x_coordinate=NX, projection_y_coordinate=NY,
-                XTIME=FLUX_CHUNKS),
-    concat_dim="Time",
+    concat_dim="XTIME",
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have fluxes, normalizing")
 sys.stdout.flush(); sys.stderr.flush()
@@ -155,7 +153,7 @@ FLUX_DATASET = FLUX_DATASET.rename(
 
 # Select out only full days so we have something the covariances can
 # deal with.
-FLUX_DATASET = FLUX_DATASET.sel(Time=slice("2009-12-03", "2010-02-01"))
+FLUX_DATASET = FLUX_DATASET.sel(Time=slice("2010-06-04", "2010-08-01")).isel(Time=slice(None, -1))
 
 WRF_DX = FLUX_DATASET.attrs["DX"]
 
@@ -164,14 +162,11 @@ assert WRF_DX / 1000 == FLUX_RESOLUTION
 TRUE_FLUXES = FLUX_DATASET.get(["E_TRA{:d}".format(i + 1)
                                 for i in range(10)]).isel(emissions_zdim=0)
 TRUE_FLUXES_MATCHED = TRUE_FLUXES.rename(dict(
-    south_north="dim_y", west_east="dim_x", Time="flux_time")) * CO2_MOLAR_MASS
+    south_north="dim_y", west_east="dim_x", Time="flux_time"))
 for flux_part, flux_orig in zip(TRUE_FLUXES_MATCHED.data_vars.values(),
                                 TRUE_FLUXES.data_vars.values()):
-    unit = (cf_units.Unit(flux_orig.attrs["units"]) *
-            CO2_MOLAR_MASS_UNITS)
-    # For whatever reason this is backwards from the conversion
-    # factors used elsewhere.
-    flux_part *= (unit / FLUX_UNITS).convert(1, 1)
+    unit = (cf_units.Unit(flux_orig.attrs["units"]))
+    flux_part *= unit.convert(1, FLUX_UNITS)
     flux_part.attrs["units"] = str(FLUX_UNITS)
 
 ############################################################
@@ -217,21 +212,22 @@ sys.stdout.flush(); sys.stderr.flush()
 # I would like to add a fixed minimum at some point.
 # full stds would then be sqrt(fixed^2 + varying^2)
 # average seasonal variation (or some fraction thereof) might work.
-FLUX_VARIANCE_VARYING_FRACTION = 30
-flux_std_pattern = xarray.open_dataset("../data_files/wrf_flux_rms.nc").get(
+FLUX_VARIANCE_VARYING_FRACTION = 1.
+flux_std_pattern = xarray.open_dataset("../data_files/2010-07_wrf_flux_rms.nc").get(
     ["E_TRA{:d}".format(i + 1) for i in range(10)]).isel(emissions_zdim=0)
 # Ensure units work out
 for flux_part in flux_std_pattern.data_vars.values():
-    unit = (cf_units.Unit(flux_part.attrs["units"]) *
-            CO2_MOLAR_MASS_UNITS)
-    flux_part *= (unit / FLUX_UNITS).convert(1, 1)
+    unit = cf_units.Unit(flux_part.attrs["units"])
+    flux_part *= (
+        unit
+    ).convert(1, FLUX_UNITS)
     flux_part.attrs["units"] = str(FLUX_UNITS)
 
 osse_prior_dataset = TRUE_FLUXES_MATCHED.copy()
 
 # Save to ensure I have only one realization
 for flux_name, flux_vals in TRUE_FLUXES_MATCHED.data_vars.items():
-    if not any(flux_name.endswith(char) for char in "7"):
+    if not any(flux_name.endswith(char) for char in "1267"):
         continue
     flux_stds = FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern[flux_name]
 
@@ -251,21 +247,20 @@ for flux_name, flux_vals in TRUE_FLUXES_MATCHED.data_vars.items():
         origin="osse_noisy_fluxes.py"))
 
     prior_flux_vals = (
-        flux_vals.data[:, :, :, np.newaxis] +
-        gaussian_noise(prior_covariance, N_REALIZATIONS).T.reshape(
-            flux_vals.shape + (N_REALIZATIONS,)))
+        flux_vals.data[np.newaxis, :, :, :] +
+        gaussian_noise(prior_covariance, N_REALIZATIONS).reshape(
+            (N_REALIZATIONS,) + flux_vals.shape))
     print(datetime.datetime.now(UTC).strftime("%c"), "Have noisy fluxes; adding to dataset")
     sys.stdout.flush(); sys.stderr.flush()
     osse_prior_dataset[flux_name + "_noisy"] = xarray.DataArray(
         # Hopefully this will let dask finish its job
         data=prior_flux_vals.persist(),
         coords=flux_vals.coords,
-        dims=flux_vals.dims + ("realization",),
+        dims=("realization",) + flux_vals.dims,
         name="prior",
         attrs=prior_var_atts
     ).transpose(
-        "flux_time", "dim_y", "dim_x", "realization").chunk(
-        dict(flux_time=FLUX_CHUNKS, dim_y=NY, dim_x=NX, realization=N_REALIZATIONS))
+        "realization", "flux_time", "dim_y", "dim_x")
     osse_prior_dataset[flux_name + "_stds"] = flux_stds
 
 osse_prior_dataset.coords["realization"] = np.arange(N_REALIZATIONS, dtype=np.uint8)
@@ -279,14 +274,18 @@ encoding = {name: {"_FillValue": -1e38}
             for name in osse_prior_dataset.data_vars}
 encoding.update({name: {"_FillValue": False}
                  for name in osse_prior_dataset.coords})
-osse_prior_dataset = osse_prior_dataset.chunk(
-    dict(flux_time=FLUX_CHUNKS, dim_y=NY, dim_x=NX,
-         realization=N_REALIZATIONS))
+# osse_prior_dataset = osse_prior_dataset.chunk(
+#     dict(flux_time=FLUX_CHUNKS, dim_y=NY, dim_x=NX,
+#          realization=N_REALIZATIONS))
+print(datetime.datetime.now(UTC).strftime("%c"), "Noisy fluxes chunked, saving")
+sys.stdout.flush(); sys.stderr.flush()
 osse_prior_dataset.to_netcdf(
-    "../data_files/osse_priors_{interval:d}h_{res:d}km"
+    "../data_files/2010-07_osse_priors_{interval:d}h_{res:d}km"
     "_noise_{sp_fun:s}{length:g}km_exp{day_time:d}d_exp{hour_time:d}h.nc"
     .format(
         interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
         length=CORRELATION_LENGTH, sp_fun=SP_CORR_STR,
         day_time=DAILY_FLUX_TIMESCALE, hour_time=HOURLY_FLUX_TIMESCALE),
     encoding=encoding)
+print(datetime.datetime.now(UTC).strftime("%c"), "Noisy fluxes saved, done")
+sys.stdout.flush(); sys.stderr.flush()
