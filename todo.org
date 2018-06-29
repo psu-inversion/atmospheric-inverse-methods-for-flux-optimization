@@ -60,3 +60,5 @@
   Python Arch package might allow GARCH on top of that.
   Arch also has a few cross-validators built-in.
 * TODO Learn about cross-validation and implement it.
+* TODO Rewrite integrators using wrapper and generators
+* TODO Get a toepelitz matrix implementation using np.as_strided working
