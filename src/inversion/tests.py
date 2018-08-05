@@ -1391,37 +1391,6 @@ class TestEnsembleBase(unittest2.TestCase):
         np_tst.assert_allclose(mean + perturbations, sample_data)
 
 
-class TestUtil_atleast_nd(unittest2.TestCase):
-    """Test the atleast_nd functions in inversion.util."""
-
-    test_values = (4, (1, 2, 3), ((1, 2), (3, 4)), [1, 2],
-                   np.array(1), np.arange(3), np.eye(4),
-                   np.asarray(1),
-                   da.arange(5, chunks=5),
-                   da.arange(9, chunks=9).reshape(3, 3),
-                   da.zeros((3, 3, 3), chunks=(3, 3, 3)))
-
-    def test_atleast_1d(self):
-        """Ensure atleast_1d works."""
-        for test_val in self.test_values:
-            with self.subTest(test_val=test_val):
-                tst_arry = inversion.util.atleast_1d(test_val)
-
-                self.assertIsInstance(tst_arry, np.ndarray)
-                self.assertGreaterEqual(tst_arry.ndim, 1)
-                self.assertEqual(tst_arry.shape, np.atleast_1d(test_val).shape)
-
-    def test_atleast_2d(self):
-        """Ensure atleast_1d works."""
-        for test_val in self.test_values:
-            with self.subTest(test_val=test_val):
-                tst_arry = inversion.util.atleast_2d(test_val)
-
-                self.assertIsInstance(tst_arry, np.ndarray)
-                self.assertGreaterEqual(tst_arry.ndim, 2)
-                self.assertEqual(tst_arry.shape, np.atleast_2d(test_val).shape)
-
-
 class TestUtilSchmidtDecomposition(unittest2.TestCase):
     """Test the Schimdt decomposition code in inversion.util."""
 
