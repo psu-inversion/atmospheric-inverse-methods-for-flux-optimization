@@ -77,7 +77,7 @@ def simple(background, background_covariance,
             background_covariance, prior_mismatch))
         obs_fit = obs_mismatch.dot(solve(
             observation_covariance, obs_mismatch))
-        return (prior_fit + obs_fit).compute()
+        return (prior_fit + obs_fit)
 
     def cost_jacobian(test_state):
         """Gradiant of cost_function at `test_state`.
@@ -100,7 +100,7 @@ def simple(background, background_covariance,
             solve(observation_covariance,
                   obs_mismatch))
 
-        return (prior_gradient + obs_gradient).compute()
+        return (prior_gradient + obs_gradient)
 
     # def cost_hessian_product(test_state, test_step):
     #     """Hessian of cost_function at `test_state` times `test_step`.
@@ -207,7 +207,7 @@ def incremental(background, background_covariance,
             background_covariance, test_change)))
         obs_fit = obs_mismatch.dot(asarray(solve(
             observation_covariance, obs_mismatch)))
-        return (prior_fit + obs_fit).compute()
+        return (prior_fit + obs_fit)
 
     def cost_jacobian(test_change):
         """Gradiant of cost_function at `test_change`.
@@ -229,7 +229,7 @@ def incremental(background, background_covariance,
             solve(observation_covariance,
                   obs_mismatch))
 
-        return (prior_gradient - obs_gradient).compute()
+        return (prior_gradient - obs_gradient)
 
     # def cost_hessian_product(test_state, test_step):
     #     """Hessian of cost_function at `test_state` times `test_step`.
@@ -345,7 +345,7 @@ def incr_chol(background, background_covariance,
             bg_cov_chol_u, test_change))
         obs_fit = obs_mismatch.dot(cho_solve(
             obs_cov_chol_u, obs_mismatch))
-        return (prior_fit + obs_fit).compute()
+        return (prior_fit + obs_fit)
 
     def cost_jacobian(test_change):
         """Gradiant of cost_function at `test_change`.
@@ -367,7 +367,7 @@ def incr_chol(background, background_covariance,
             cho_solve(obs_cov_chol_u,
                       obs_mismatch))
 
-        return (prior_gradient - obs_gradient).compute()
+        return (prior_gradient - obs_gradient)
 
     # def cost_hessian_product(test_state, test_step):
     #     """Hessian of cost_function at `test_state` times `test_step`.
