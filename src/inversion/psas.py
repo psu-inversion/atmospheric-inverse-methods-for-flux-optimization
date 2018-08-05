@@ -11,7 +11,7 @@ from scipy.sparse.linalg import LinearOperator
 # array.
 
 from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
-from inversion.util import tolinearoperator, ProductLinearOperator
+from inversion.linalg import tolinearoperator, ProductLinearOperator
 from inversion.util import method_common
 
 

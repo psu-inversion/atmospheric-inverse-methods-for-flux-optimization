@@ -24,9 +24,9 @@ from numpy import where
 from numpy.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
 import six
 
-from inversion.util import schmidt_decomposition, is_odd
-from inversion.util import tolinearoperator, kron
-from inversion.util import DaskLinearOperator
+from inversion.linalg import schmidt_decomposition, is_odd
+from inversion.linalg import tolinearoperator, kron
+from inversion.linalg import DaskLinearOperator
 
 ROUNDOFF = 1e-13
 """Approximate size of roundoff error for correlation matrices.

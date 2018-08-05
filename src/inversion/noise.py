@@ -7,7 +7,7 @@ Mostly for use in testing.
 import numpy as np
 from numpy.random import standard_normal as _standard_normal
 
-from inversion.util import matrix_sqrt
+from inversion.linalg import matrix_sqrt
 
 
 def gaussian_noise(cov, size=None):
