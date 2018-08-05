@@ -1739,6 +1739,32 @@ class TestUtilProduct(unittest2.TestCase):
 
             np_tst.assert_allclose(test.dot(tester), product.dot(tester))
 
+    def test_transpose(self):
+        """Test that transpose works."""
+        mat1 = np.eye(3)
+        mat1[1, 0] = 1
+        op1 = tolinearoperator(mat1)
+        op2 = inversion.linalg.DiagonalOperator((1, .25, .0625))
+        ProductLinearOperator = inversion.linalg.ProductLinearOperator
+
+        product = ProductLinearOperator(op1, op2)
+        result = product.T
+        self.assertEqual(result.shape, (3, 3))
+        self.assertEqual(result._operators, (op2.T, op1.T))
+
+    def test_adjoinst(self):
+        """Test that adjoint works."""
+        mat1 = np.eye(3)
+        mat1[1, 0] = 1
+        op1 = tolinearoperator(mat1)
+        op2 = inversion.linalg.DiagonalOperator((1, .25, .0625))
+        ProductLinearOperator = inversion.linalg.ProductLinearOperator
+
+        product = ProductLinearOperator(op1, op2)
+        result = product.H
+        self.assertEqual(result.shape, (3, 3))
+        self.assertEqual(result._operators, (op2.H, op1.H))
+
 
 class TestCorrelationStandardDeviation(unittest2.TestCase):
     """Test that this sub-class works as intended."""
