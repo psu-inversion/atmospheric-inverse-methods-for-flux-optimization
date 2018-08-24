@@ -309,7 +309,9 @@ WRF_DX = FLUX_DATASET.attrs["DX"]
 TRUE_FLUXES = FLUX_DATASET.get(["E_TRA{:d}".format(i + 1)
                                 for i in range(10)])
 TRUE_FLUXES_MATCHED = TRUE_FLUXES
-# for flux_part, flux_orig in zip(TRUE_FLUXES_MATCHED.data_vars.values(), TRUE_FLUXES.data_vars.values()):
+# for flux_part, flux_orig in zip(
+#         TRUE_FLUXES_MATCHED.data_vars.values(),
+#         TRUE_FLUXES.data_vars.values()):
 #     unit = (cf_units.Unit(flux_orig.attrs["units"]) *
 #             CO2_MOLAR_MASS_UNITS)
 #     # For whatever reason this is backwards from the conversion
@@ -320,7 +322,9 @@ TRUE_FLUXES_MATCHED = TRUE_FLUXES
 PRIOR_FLUXES = FLUX_DATASET.get(["E_TRA{:d}_noisy".format(i + 1)
                                  for i in (6,)])
 PRIOR_FLUXES_MATCHED = PRIOR_FLUXES
-# for flux_part, flux_orig in zip(PRIOR_FLUXES_MATCHED.data_vars.values(), PRIOR_FLUXES.data_vars.values()):
+# for flux_part, flux_orig in zip(
+#         PRIOR_FLUXES_MATCHED.data_vars.values(),
+#         PRIOR_FLUXES.data_vars.values()):
 #     unit = (cf_units.Unit(flux_orig.attrs["units"]) *
 #             CO2_MOLAR_MASS_UNITS)
 #     # For whatever reason this is backwards from the conversion
@@ -591,7 +595,8 @@ print(datetime.datetime.now(UTC).strftime("%c"),
       "Got covariance parts, getting posterior")
 sys.stdout.flush(); sys.stderr.flush()
 posterior, correlations = inversion.optimal_interpolation.save_sum(
-    prior_fluxes.data.reshape(N_GRID_POINTS * N_FLUX_TIMES, N_REALIZATIONS).compute(),
+    prior_fluxes.data.reshape(
+        N_GRID_POINTS * N_FLUX_TIMES, N_REALIZATIONS).compute(),
     prior_covariance,
     used_observations.data.compute(),
     observation_covariance,

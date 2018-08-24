@@ -58,7 +58,8 @@ Must divide twenty-four.
 FLUX_RESOLUTION = 27
 
 FLUX_FILES = glob.glob(os.path.join(
-    TRUE_FLUXES_DIR, "2010-07_wrf_fluxes_all_{interval:02d}hrly_{res:d}km.nc".format(
+    TRUE_FLUXES_DIR,
+    "2010-07_wrf_fluxes_all_{interval:02d}hrly_{res:d}km.nc".format(
         interval=FLUX_INTERVAL, res=FLUX_RESOLUTION)))
 FLUX_FILES.sort()
 
@@ -153,7 +154,8 @@ FLUX_DATASET = FLUX_DATASET.rename(
 
 # Select out only full days so we have something the covariances can
 # deal with.
-FLUX_DATASET = FLUX_DATASET.sel(Time=slice("2010-06-04", "2010-08-01")).isel(Time=slice(None, -1))
+FLUX_DATASET = FLUX_DATASET.sel(
+    Time=slice("2010-06-04", "2010-08-01")).isel(Time=slice(None, -1))
 
 WRF_DX = FLUX_DATASET.attrs["DX"]
 
@@ -213,7 +215,8 @@ sys.stdout.flush(); sys.stderr.flush()
 # full stds would then be sqrt(fixed^2 + varying^2)
 # average seasonal variation (or some fraction thereof) might work.
 FLUX_VARIANCE_VARYING_FRACTION = 1.
-flux_std_pattern = xarray.open_dataset("../data_files/2010-07_wrf_flux_rms.nc").get(
+flux_std_pattern = xarray.open_dataset(
+    "../data_files/2010-07_wrf_flux_rms.nc").get(
     ["E_TRA{:d}".format(i + 1) for i in range(10)]).isel(emissions_zdim=0)
 # Ensure units work out
 for flux_part in flux_std_pattern.data_vars.values():
@@ -243,14 +246,16 @@ for flux_name, flux_vals in TRUE_FLUXES_MATCHED.data_vars.items():
     prior_var_atts.update(dict(
         long_name="{name:s}_prior_fluxes".format(name=flux_name),
         units=flux_vals.attrs["units"],
-        description="prior fluxes for a monthlong identical-twin OSSE inversion study",
+        description=("prior fluxes for a monthlong "
+                     "identical-twin OSSE inversion study"),
         origin="osse_noisy_fluxes.py"))
 
     prior_flux_vals = (
         flux_vals.data[np.newaxis, :, :, :] +
         gaussian_noise(prior_covariance, N_REALIZATIONS).reshape(
             (N_REALIZATIONS,) + flux_vals.shape))
-    print(datetime.datetime.now(UTC).strftime("%c"), "Have noisy fluxes; adding to dataset")
+    print(datetime.datetime.now(UTC).strftime("%c"),
+          "Have noisy fluxes; adding to dataset")
     sys.stdout.flush(); sys.stderr.flush()
     osse_prior_dataset[flux_name + "_noisy"] = xarray.DataArray(
         # Hopefully this will let dask finish its job
@@ -263,11 +268,13 @@ for flux_name, flux_vals in TRUE_FLUXES_MATCHED.data_vars.items():
         "realization", "flux_time", "dim_y", "dim_x")
     osse_prior_dataset[flux_name + "_stds"] = flux_stds
 
-osse_prior_dataset.coords["realization"] = np.arange(N_REALIZATIONS, dtype=np.uint8)
+osse_prior_dataset.coords["realization"] = np.arange(
+    N_REALIZATIONS, dtype=np.uint8)
 osse_prior_dataset.coords["realization"].attrs.update(dict(
     standard_name="realization",
     long_name="realization_of_the_noise_process"))
-print(datetime.datetime.now(UTC).strftime("%c"), "Have all prior noise, chunking")
+print(datetime.datetime.now(UTC).strftime("%c"),
+      "Have all prior noise, chunking")
 sys.stdout.flush(); sys.stderr.flush()
 
 encoding = {name: {"_FillValue": -1e38}
@@ -277,7 +284,8 @@ encoding.update({name: {"_FillValue": False}
 # osse_prior_dataset = osse_prior_dataset.chunk(
 #     dict(flux_time=FLUX_CHUNKS, dim_y=NY, dim_x=NX,
 #          realization=N_REALIZATIONS))
-print(datetime.datetime.now(UTC).strftime("%c"), "Noisy fluxes chunked, saving")
+print(datetime.datetime.now(UTC).strftime("%c"),
+      "Noisy fluxes chunked, saving")
 sys.stdout.flush(); sys.stderr.flush()
 osse_prior_dataset.to_netcdf(
     "../data_files/2010-07_osse_priors_{interval:d}h_{res:d}km"

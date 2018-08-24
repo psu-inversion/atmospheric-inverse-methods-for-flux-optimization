@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
-import functools
 import datetime
 import sys
 
-import numpy as np
 import scipy.stats
 import scipy.special
 import matplotlib as mpl
@@ -14,8 +12,6 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeat
 import iris
-import iris.quickplot as qplt
-import iris.experimental.animate as ianim
 import dask.array as da
 import xarray.plot
 print(datetime.datetime.now(), "Imports")
@@ -39,7 +35,8 @@ PRIOR_PATH = ("../data_files/"
     fun=NOISE_FUNCTION, len=NOISE_LENGTH)
 POSTERIOR_PATH = (
     "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
-    "noise{noisefun:s}{noiselen:d}_icov{invfun:s}{invlen:d}_lagged16_output_cf.nc4"
+    "noise{noisefun:s}{noiselen:d}_icov{invfun:s}{invlen:d}"
+    "_lagged16_output_cf.nc4"
 ).format(year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
          noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
          invfun=INV_FUNCTION, invlen=INV_LENGTH)
@@ -52,14 +49,15 @@ WRF_CRS = ccrs.LambertConformal(
 LPDM_PROJ = ccrs.LambertConformal(
     central_longitude=-96, central_latitude=40, standard_parallels=[30, 60],
     false_easting=3347998.5116325677, false_northing=2470499.376688077,
-    globe=ccrs.Globe(semimajor_axis=6370e3, semiminor_axis=6370e3, ellipse=None))
+    globe=ccrs.Globe(semimajor_axis=6370e3, semiminor_axis=6370e3,
+                     ellipse=None))
 
-BIG_LAKES = cfeat.NaturalEarthFeature("physical", "lakes", "110m",
-                                      edgecolor="gray", facecolor="none",
-                                      linewidth=.5)
-STATES = cfeat.NaturalEarthFeature("cultural", "admin_1_states_provinces_lines", "110m",
-                                   edgecolor="gray", facecolor="none",
-                                   linewidth=.5)
+BIG_LAKES = cfeat.NaturalEarthFeature(
+    "physical", "lakes", "110m",
+    edgecolor="gray", facecolor="none", linewidth=.5)
+STATES = cfeat.NaturalEarthFeature(
+    "cultural", "admin_1_states_provinces_lines", "110m",
+    edgecolor="gray", facecolor="none", linewidth=.5)
 
 TRACER_NAMES = [
     "diurnal_bio",
@@ -75,7 +73,8 @@ TRACER_NAMES = [
 ]
 
 WEST_BOUNDARY_LPDM = 2.7e6
-WEST_BOUNDARY_WRF = WRF_CRS.transform_point(WEST_BOUNDARY_LPDM, 0, LPDM_PROJ)[0]
+WEST_BOUNDARY_WRF = WRF_CRS.transform_point(
+    WEST_BOUNDARY_LPDM, 0, LPDM_PROJ)[0]
 
 print(datetime.datetime.now(), "Constants")
 sys.stdout.flush()
@@ -98,7 +97,8 @@ def plot_realizations(data_array):
     post_fig = plt.gcf()
     axes = post_fig.axes
     try:
-        axes[-1].set_ylabel("{long_name:s}  (${units:s}$)".format(**data_array.attrs))
+        axes[-1].set_ylabel(
+            "{long_name:s}  (${units:s}$)".format(**data_array.attrs))
     except KeyError:
         pass
     xlim = data_array[x_dim][[0, -1]]
@@ -129,7 +129,8 @@ def plot_fluxes(data_array):
     post_fig = plt.gcf()
     axes = post_fig.axes
     try:
-        axes[-1].set_ylabel("{long_name:s} (${units:s}$)".format(**data_array.attrs))
+        axes[-1].set_ylabel(
+            "{long_name:s} (${units:s}$)".format(**data_array.attrs))
     except KeyError:
         pass
     xlim = data_array[x_dim][[0, -1]]
@@ -209,21 +210,24 @@ for var in POSTERIOR_DS.data_vars.values():
     var *= 1e6
     var.attrs["units"] = "μ" + var.attrs["units"]
 
-SMALL_POSTERIOR_DS = POSTERIOR_DS.sel(projection_x_coordinate=slice(WEST_BOUNDARY_WRF, None))
+SMALL_POSTERIOR_DS = POSTERIOR_DS.sel(
+    projection_x_coordinate=slice(WEST_BOUNDARY_WRF, None))
 SMALL_PRIOR_DS = PRIOR_DS.sel(dim_x=slice(WEST_BOUNDARY_WRF, None))
 
 PSEUDO_OBS_DS = xarray.open_mfdataset(
-    "observation_realizations_for_06h_0?.nc4", concat_dim="observation").set_index(
+    "observation_realizations_for_06h_0?.nc4",
+    concat_dim="observation").set_index(
     observation=("observation_time", "site")).transpose(
     "realization", "observation")
 
 COLLAPSED_INFLUENCE_DS = xarray.open_dataset(
-    "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/ACT-America_trial5/2010/01/GROUP1/"
-    "LPDM_2010_01_31day_027km_molar_footprints.nc4").set_coords(
-    ["observation_time", "time_before_observation", "lpdm_configuration", "wrf_configuration"])
+    "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/ACT-America_trial5/2010/01/"
+    "GROUP1/LPDM_2010_01_31day_027km_molar_footprints.nc4").set_coords(
+    ["observation_time", "time_before_observation",
+     "lpdm_configuration", "wrf_configuration"])
 FULL_INFLUENCE_DS = xarray.open_dataset(
-    "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/ACT-America_trial5/2010/01/GROUP1/"
-    "LPDM_2010_01_06hrly_027km_molar_footprints.nc4").set_coords(
+    "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/ACT-America_trial5/2010/01/"
+    "GROUP1/LPDM_2010_01_06hrly_027km_molar_footprints.nc4").set_coords(
     ["lpdm_configuration", "wrf_configuration"])
 
 print(datetime.datetime.now(), "Files")
@@ -231,9 +235,10 @@ sys.stdout.flush()
 
 ############################################################
 # Plot standard deviations
-fig, axes = plt.subplots(1, 1, figsize=(5.5, 3.3), subplot_kw=dict(projection=WRF_CRS))
+fig, axes = plt.subplots(
+    1, 1, figsize=(5.5, 3.3), subplot_kw=dict(projection=WRF_CRS))
 NOISE_STD_DS.E_TRA7.plot.pcolormesh()
-axes=fig.axes
+axes = fig.axes
 axes[0].coastlines()
 axes[1].set_ylabel("standard deviation of noise (μmol/m$^2$/s)")
 fig.suptitle("Standard deviation of added noise")
@@ -244,7 +249,7 @@ axes[0].add_feature(STATES)
 axes[0].add_feature(BIG_LAKES)
 
 fig.savefig("{year:04d}-{month:02d}_noise_standard_deviation.png".format(
-        year=YEAR, month=MONTH))
+    year=YEAR, month=MONTH))
 plt.close(fig)
 
 ############################################################
@@ -260,9 +265,9 @@ for i, site in enumerate(set(PSEUDO_OBS_DS.site.values)):
 
 fig.suptitle("Pseudo-observations used in inversion")
 fig.savefig("{year:04d}-{month:02d}_pseudo_obs_afternoon.png".format(
-        year=YEAR, month=MONTH))
+    year=YEAR, month=MONTH))
 fig.savefig("{year:04d}-{month:02d}_pseudo_obs_afternoon.pdf".format(
-        year=YEAR, month=MONTH))
+    year=YEAR, month=MONTH))
 plt.close(fig)
 
 ############################################################
@@ -273,8 +278,8 @@ for_plotting = xarray.concat((POSTERIOR_DS.prior.isel(realization=0),
 del for_plotting.coords["realization"]
 
 e_tra7_for_plot = PRIOR_DS["E_TRA7"].rename(
-    dict(dim_x="projection_x_coordinate", dim_y="projection_y_coordinate", flux_time="time",
-))
+    dict(dim_x="projection_x_coordinate", dim_y="projection_y_coordinate",
+         flux_time="time"))
 for_plotting = xarray.concat((e_tra7_for_plot, for_plotting), dim="type")
 for_plotting.coords["type"] = ['"Truth"', 'Prior', 'Posterior']
 
@@ -299,19 +304,21 @@ plots.axes[0, 1].set_title("Prior")
 plots.axes[0, 2].set_title("Posterior")
 
 plots.fig.savefig("{year:04d}-{month:02d}_osse_realization.png".format(
-        year=YEAR, month=MONTH))
+    year=YEAR, month=MONTH))
 plt.close(plots.fig)
 
 ############################################################
 # Plot tower locations
-fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=WRF_CRS), figsize=(4, 3))
+fig, ax = plt.subplots(
+    1, 1, subplot_kw=dict(projection=WRF_CRS), figsize=(4, 3))
 ax.set_xlim(xlim)
 ax.set_ylim(ylim)
 ax.coastlines()
 ax.add_feature(BIG_LAKES)
 ax.add_feature(cfeat.BORDERS)
 ax.add_feature(STATES)
-ax.scatter(pseudo_obs.tower_lon, pseudo_obs.tower_lat, transform=WRF_CRS.as_geodetic())
+ax.scatter(pseudo_obs.tower_lon, pseudo_obs.tower_lat,
+           transform=WRF_CRS.as_geodetic())
 fig.suptitle("WRF domain and tower locations")
 fig.savefig("tower_locations.pdf")
 fig.savefig("tower_locations.png")
@@ -319,8 +326,9 @@ plt.close(fig)
 
 ############################################################
 # Plot differences
-differences = for_plotting.isel(type=slice(1, None)) - for_plotting.isel(type=0)
-plots = differences.isel(time = slice(68, None, 40)).plot.pcolormesh(
+differences = (for_plotting.isel(type=slice(1, None)) -
+               for_plotting.isel(type=0))
+plots = differences.isel(time=slice(68, None, 40)).plot.pcolormesh(
     "projection_x_coordinate", "projection_y_coordinate",
     col="type", row="time", subplot_kws=dict(projection=WRF_CRS),
     aspect=1.3, size=1.8,
@@ -337,12 +345,13 @@ plots.axes[0, 0].set_title("Prior $-$ \"Truth\"")
 plots.axes[0, 1].set_title("Posterior $-$ \"Truth\"")
 
 plots.fig.savefig("{year:04d}-{month:02d}_osse_errors.png".format(
-        year=YEAR, month=MONTH))
+    year=YEAR, month=MONTH))
 plt.close(plots.fig)
 
 ############################################################
 # Plot gain over time
-gain = 1 - da.fabs(differences.sel(type="Posterior")) / da.fabs(differences.sel(type="Prior"))
+gain = 1 - (da.fabs(differences.sel(type="Posterior")) /
+            da.fabs(differences.sel(type="Prior")))
 gain.attrs["long_name"] = "inversion_gain"
 gain.attrs["units"] = "1"
 
@@ -357,7 +366,8 @@ for ax in plots.axes.flat:
     ax.set_ylim(ylim)
     ax.coastlines()
 
-plots.fig.savefig("{year:04d}-{month:02d}_realization_pointwise_gain.png".format(
+plots.fig.savefig(
+    "{year:04d}-{month:02d}_realization_pointwise_gain.png".format(
         year=YEAR, month=MONTH))
 plt.close(plots.fig)
 
@@ -374,7 +384,8 @@ sys.stdout.flush()
 time_mean_error = all_differences.sel(
     time=slice(datetime.datetime(YEAR, MONTH, 1, 0, 0), None)).mean("time")
 time_mean_error.load()
-all_mean_error = time_mean_error.mean(("projection_x_coordinate", "projection_y_coordinate"))
+all_mean_error = time_mean_error.mean(
+    ("projection_x_coordinate", "projection_y_coordinate"))
 all_mean_error.load()
 small_mean_error = time_mean_error.sel(
     projection_x_coordinate=slice(WEST_BOUNDARY_WRF, None)).mean(
@@ -383,26 +394,32 @@ small_mean_error.load()
 print(datetime.datetime.now(), "Have means")
 sys.stdout.flush()
 
-total_gain = 1 - da.fabs(all_mean_error.sel(type="posterior_error")) / da.fabs(all_mean_error.sel(type="prior_error"))
+total_gain = 1 - (da.fabs(all_mean_error.sel(type="posterior_error")) /
+                  da.fabs(all_mean_error.sel(type="prior_error")))
 total_gain.load()
 
 fig = plt.figure()
 total_gain.plot.hist(range=(-2, 1), bins=15)
 fig.suptitle("Total gain")
 
-fig.savefig("{year:04d}-{month:02d}_total_gain_hist.png".format(year=YEAR, month=MONTH))
-fig.savefig("{year:04d}-{month:02d}_total_gain_hist.pdf".format(year=YEAR, month=MONTH))
+fig.savefig("{year:04d}-{month:02d}_total_gain_hist.png".format(
+    year=YEAR, month=MONTH))
+fig.savefig("{year:04d}-{month:02d}_total_gain_hist.pdf".format(
+    year=YEAR, month=MONTH))
 plt.close(fig)
 
-small_gain = 1 - da.fabs(small_mean_error.sel(type="posterior_error")) / da.fabs(small_mean_error.sel(type="prior_error"))
+small_gain = 1 - (da.fabs(small_mean_error.sel(type="posterior_error")) /
+                  da.fabs(small_mean_error.sel(type="prior_error")))
 small_gain.load()
 
 fig = plt.figure()
 small_gain.plot.hist(range=(-2, 1), bins=15)
 fig.suptitle("Total gain on small domain")
 
-fig.savefig("{year:04d}-{month:02d}_small_gain_hist.png".format(year=YEAR, month=MONTH))
-fig.savefig("{year:04d}-{month:02d}_small_gain_hist.pdf".format(year=YEAR, month=MONTH))
+fig.savefig("{year:04d}-{month:02d}_small_gain_hist.png".format(
+    year=YEAR, month=MONTH))
+fig.savefig("{year:04d}-{month:02d}_small_gain_hist.pdf".format(
+    year=YEAR, month=MONTH))
 plt.close(fig)
 
 ############################################################
@@ -425,54 +442,73 @@ with open("{year:04d}-{month:02d}_small_gain_dist.txt".format(
 
 ############################################################
 # Plot timeseries of mean flux
-spatial_avg_differences = all_differences.sel(projection_x_coordinate=slice(WEST_BOUNDARY_WRF, None)).mean(["projection_x_coordinate", "projection_y_coordinate"])
+spatial_avg_differences = all_differences.sel(
+    projection_x_coordinate=slice(WEST_BOUNDARY_WRF, None)).mean(
+    ["projection_x_coordinate", "projection_y_coordinate"])
 
 fig = plt.figure(figsize=(5, 3.4))
 fig.autofmt_xdate()
 plt.subplots_adjust(left=.18)
 ax = plt.gca()
-ax.set_xlim(mpl.dates.datestr2num(["2010-06-18T00:00:00Z", "2010-08-01T00:00:00Z"]))
+ax.set_xlim(mpl.dates.datestr2num(
+    ["2010-06-18T00:00:00Z", "2010-08-01T00:00:00Z"]))
 for xval, color in (zip(
-        mpl.dates.datestr2num(["2010-07-01T00:00:00Z", "2010-07-03T00:00:00Z", "2010-07-17T00:00:00Z"]),
+        mpl.dates.datestr2num(
+            ["2010-07-01T00:00:00Z", "2010-07-03T00:00:00Z",
+             "2010-07-17T00:00:00Z"]),
         ["red", "gray", "red"])):
     ax.axvline(xval, color=color)
 
 ax.axhline(0, color="black", linewidth=.75)
 
-spatial_avg_differences.sel(type="prior_error", realization=0).plot.line("--", label="prior")
-spatial_avg_differences.sel(type="posterior_error", realization=0).plot.line("-.", label="posterior")
+spatial_avg_differences.sel(
+    type="prior_error", realization=0).plot.line("--", label="prior")
+spatial_avg_differences.sel(
+    type="posterior_error", realization=0).plot.line("-.", label="posterior")
 
 plt.legend()
 ax.set_ylabel("Average flux error of eastern domain\n(μmol/m$^2$/s)")
 ax.set_xlabel("")
 plt.title("Spatial average flux error")
 
-fig.savefig("{year:04d}-{month:02d}_realization_spatial_avg_timeseries.pdf".format(year=YEAR, month=MONTH))
-fig.savefig("{year:04d}-{month:02d}_realization_spatial_avg_timeseries.png".format(year=YEAR, month=MONTH))
+fig.savefig(
+    "{year:04d}-{month:02d}_realization_spatial_avg_timeseries.pdf".format(
+        year=YEAR, month=MONTH))
+fig.savefig(
+    "{year:04d}-{month:02d}_realization_spatial_avg_timeseries.png".format(
+        year=YEAR, month=MONTH))
 
 plt.close(fig)
 
 ############################################################
 # Plot histogram of average flux errors
-error_range = da.asarray([all_mean_error.min(), all_mean_error.max()]).compute()
+error_range = da.asarray(
+    [all_mean_error.min(), all_mean_error.max()]).compute()
 fig, ax = plt.subplots(1, 1)
-ax.hist([all_mean_error.sel(type="prior_error"), all_mean_error.sel(type="posterior_error")],
+ax.hist([all_mean_error.sel(type="prior_error"),
+         all_mean_error.sel(type="posterior_error")],
         label=["Prior", "Posterior"])
 
 plt.legend()
-fig.savefig("{year:04d}-{month:02d}_flux_error_hist.png".format(year=YEAR, month=MONTH))
-fig.savefig("{year:04d}-{month:02d}_flux_error_hist.pdf".format(year=YEAR, month=MONTH))
+fig.savefig("{year:04d}-{month:02d}_flux_error_hist.png".format(
+    year=YEAR, month=MONTH))
+fig.savefig("{year:04d}-{month:02d}_flux_error_hist.pdf".format(
+    year=YEAR, month=MONTH))
 
 plt.close(fig)
 
-small_error_range = da.asarray([small_mean_error.min(), small_mean_error.max()]).compute()
+small_error_range = da.asarray(
+    [small_mean_error.min(), small_mean_error.max()]).compute()
 fig, ax = plt.subplots(1, 1)
-ax.hist([small_mean_error.sel(type="prior_error"), small_mean_error.sel(type="posterior_error")],
+ax.hist([small_mean_error.sel(type="prior_error"),
+         small_mean_error.sel(type="posterior_error")],
         label=["Prior", "Posterior"])
 
 plt.legend()
-fig.savefig("{year:04d}-{month:02d}_small_flux_error_hist.png".format(year=YEAR, month=MONTH))
-fig.savefig("{year:04d}-{month:02d}_small_flux_error_hist.pdf".format(year=YEAR, month=MONTH))
+fig.savefig("{year:04d}-{month:02d}_small_flux_error_hist.png".format(
+    year=YEAR, month=MONTH))
+fig.savefig("{year:04d}-{month:02d}_small_flux_error_hist.pdf".format(
+    year=YEAR, month=MONTH))
 plt.close(fig)
 
 ############################################################
@@ -484,8 +520,10 @@ plt.xlabel("Gain")
 plt.ylabel("Prior error (μmol/m$^2$/s)")
 plt.xlim(-1, 1)
 
-fig.savefig("{year:04d}-{month:02d}_gain_prior_mag.png".format(year=YEAR, month=MONTH))
-fig.savefig("{year:04d}-{month:02d}_gain_prior_mag.pdf".format(year=YEAR, month=MONTH))
+fig.savefig("{year:04d}-{month:02d}_gain_prior_mag.png".format(
+    year=YEAR, month=MONTH))
+fig.savefig("{year:04d}-{month:02d}_gain_prior_mag.pdf".format(
+    year=YEAR, month=MONTH))
 plt.close(fig)
 
 fig = plt.figure(figsize=(4, 2.5))
@@ -495,36 +533,44 @@ plt.xlabel("Gain")
 plt.ylabel("Prior error (μmol/m$^2$/s)")
 plt.xlim(-1, 1)
 
-fig.savefig("{year:04d}-{month:02d}_gain_prior_mag.png".format(year=YEAR, month=MONTH))
-fig.savefig("{year:04d}-{month:02d}_gain_prior_mag.pdf".format(year=YEAR, month=MONTH))
+fig.savefig("{year:04d}-{month:02d}_gain_prior_mag.png".format(
+    year=YEAR, month=MONTH))
+fig.savefig("{year:04d}-{month:02d}_gain_prior_mag.pdf".format(
+    year=YEAR, month=MONTH))
 plt.close(fig)
 
 ############################################################
 # Error reduction
 time_mean_error_var = time_mean_error.var("realization")
 
-time_mean_error_reduction = 1 - da.sqrt(time_mean_error_var.sel(type="posterior_error") /
-                                        time_mean_error_var.sel(type="prior_error"))
+time_mean_error_reduction = 1 - da.sqrt(
+    time_mean_error_var.sel(type="posterior_error") /
+    time_mean_error_var.sel(type="prior_error"))
 
-fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=WRF_CRS), figsize=(4, 2.4))
-time_mean_error_reduction.plot.pcolormesh(vmin=-.5, vmax=.5, center=0, cmap="RdBu_r")
+fig, ax = plt.subplots(
+    1, 1, subplot_kw=dict(projection=WRF_CRS), figsize=(4, 2.4))
+time_mean_error_reduction.plot.pcolormesh(
+    vmin=-.5, vmax=.5, center=0, cmap="RdBu_r")
 
 ax.set_title("Error reduction")
 ax.coastlines()
 ax.set_xlim(xlim)
 ax.set_ylim(ylim)
 
-fig.savefig("{year:04d}-{month:02d}_error_reduction.png".format(year=YEAR, month=MONTH))
+fig.savefig("{year:04d}-{month:02d}_error_reduction.png".format(
+    year=YEAR, month=MONTH))
 plt.close(fig)
 
 
 ############################################################
 # Plot tower locations and influence functions
 
-fig, axes = plt.subplots(1, 1, figsize=(5, 3), subplot_kw=dict(projection=LPDM_PROJ))
+fig, axes = plt.subplots(
+    1, 1, figsize=(5, 3), subplot_kw=dict(projection=LPDM_PROJ))
 
 COLLAPSED_INFLUENCE_DS.H.plot()
-plt.scatter(FULL_INFLUENCE_DS.coords["site_lons"], FULL_INFLUENCE_DS.coords["site_lats"],
+plt.scatter(FULL_INFLUENCE_DS.coords["site_lons"],
+            FULL_INFLUENCE_DS.coords["site_lats"],
             transform=LPDM_PROJ.as_geodetic(), color="red")
 
 plt.title("Integrated influence functions")
