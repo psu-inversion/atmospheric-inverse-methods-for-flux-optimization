@@ -408,7 +408,6 @@ class SchmidtKroneckerProduct(DaskLinearOperator):
         -------
         array_like[M]
         """
-
         if vector.ndim == 1:
             result_shape = self.shape[0]
         else:

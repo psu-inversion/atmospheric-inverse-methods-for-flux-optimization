@@ -1070,7 +1070,8 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         matrix2 = inversion.covariances.DiagonalOperator((1, 2, 3))
         tester = np.eye(6)
 
-        product = inversion.linalg.DaskKroneckerProductOperator(matrix1, matrix2)
+        product = inversion.linalg.DaskKroneckerProductOperator(
+            matrix1, matrix2)
         sqrt = product.sqrt()
         proposed = sqrt.T.dot(sqrt)
 
@@ -1079,7 +1080,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
 
     def test_quadratic_form(self):
         """Test whether quadratic_form returns the intended result."""
-        matrix1 = scipy.linalg.toeplitz((1., 1/3., 1/9., 1/27., 1/81.))
+        matrix1 = scipy.linalg.toeplitz((1., 1/3., 1/9., 1/27., 1/81.))  # noqa
         matrix2 = scipy.linalg.toeplitz((1., .5, .25, .125, .0625, .03125))
 
         product = inversion.linalg.DaskKroneckerProductOperator(
@@ -1429,8 +1430,9 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
             with self.subTest(vec1=vec1[:, 0], vec2=vec2[:, 0]):
                 composite_state = scipy.linalg.kron(vec1, vec2)
 
-                reported_decomposition = inversion.linalg.schmidt_decomposition(
-                    composite_state, vec1.shape[0], vec2.shape[0])
+                reported_decomposition = (
+                    inversion.linalg.schmidt_decomposition(
+                        composite_state, vec1.shape[0], vec2.shape[0]))
                 lambdas, vecs1, vecs2 = da.compute(*reported_decomposition)
 
                 np_tst.assert_allclose(np.nonzero(lambdas),
@@ -1457,8 +1459,9 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
         composite_state = (
             scipy.linalg.kron(self.k0, self.k00) +
             scipy.linalg.kron(self.k1, self.k01)) / sqrt2
-        res_lambda, res_vec1, res_vec2 = inversion.linalg.schmidt_decomposition(
-            composite_state, 2, 4)
+        res_lambda, res_vec1, res_vec2 = (
+            inversion.linalg.schmidt_decomposition(
+                composite_state, 2, 4))
 
         self.assertEqual(res_vec1.shape, (2, 2))
         self.assertEqual(res_vec2.shape, (2, 4))

@@ -1,3 +1,7 @@
+"""All the linear algebra details for the package.
+
+I figured it would be more useful to have it separate
+"""
 import warnings
 
 import numpy as np

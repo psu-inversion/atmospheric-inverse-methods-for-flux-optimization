@@ -16,6 +16,15 @@ class CorrelationStandardDeviation(ProductLinearOperator,
     """Represent correlation-std product."""
 
     def __init__(self, correlation, std):
+        """Set up instance to use given parameters.
+
+        Parameters
+        ----------
+        correlation: LinearOperator[N, N]
+            Correlations
+        std: array_like[N]
+            Standard deviations
+        """
         std_matrix = DiagonalOperator(std)
         super(CorrelationStandardDeviation, self).__init__(
             std_matrix, correlation, std_matrix)
