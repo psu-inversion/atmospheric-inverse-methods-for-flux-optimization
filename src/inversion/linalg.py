@@ -45,6 +45,7 @@ inversion.correlations.NEAR_ZERO
 
 
 # TODO: Test
+# TODO: Get preconditioner working
 def linop_solve(operator, arr):
     """Solve `operator @ x = arr`.
 
@@ -85,7 +86,6 @@ def solve(arr1, arr2):
     elif isinstance(arr1, LinearOperator):
         # Linear operators with neither an underlying matrix nor a
         # provided solver. Use iterative sparse solvers.
-        # TODO: Get preconditioner working
         # TODO: Test Ax = b for b not column vector
         if isinstance(arr2, ARRAY_TYPES):
             return linop_solve(arr1, arr2)
@@ -653,7 +653,6 @@ class ProductLinearOperator(DaskLinearOperator):
 
     def _adjoint(self):
         """The Hermitian adjoint of the operator."""
-        # TODO: test this
         return ProductLinearOperator(
             *[op.H for op in reversed(self._operators)])
 
