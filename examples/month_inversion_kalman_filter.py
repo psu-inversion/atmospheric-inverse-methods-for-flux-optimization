@@ -244,18 +244,20 @@ INFLUENCE_DATASET = xarray.open_mfdataset(
     # Kind of ad-hoc obs time chunk to match above
     # These may be too slow. I don't know how to check.
     ).isel(
-    # observation_time=slice(0, 6 * HOURS_PER_DAY),
+    observation_time=slice(1 * HOURS_PER_DAY, None),
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
 # Not entirely sure why this is one too many
 # N_FLUX_TIMES = INFLUENCE_DATASET.dims["observation_time"] + FLUX_WINDOW - 1
 
 OBS_TIME_INDEX = INFLUENCE_DATASET.indexes["observation_time"].round("S") + datetime.timedelta(days=181)
 TIME_BACK_INDEX = INFLUENCE_DATASET.indexes["time_before_observation"].round("S")
-FLUX_TIME_INDEX = INFLUENCE_DATASET.indexes["flux_time"] + datetime.timedelta(days=181)
-
 INFLUENCE_DATASET.coords["observation_time"] = OBS_TIME_INDEX
-INFLUENCE_DATASET.coords["flux_time"] = FLUX_TIME_INDEX
-del FLUX_TIME_INDEX
+
+FLUX_TIMES = INFLUENCE_DATASET.coords["flux_time"] + np.array(datetime.timedelta(days=181),
+                                                              dtype='m8[ns]')
+INFLUENCE_DATASET.coords["flux_time"] = FLUX_TIMES
+print(INFLUENCE_DATASET.coords["flux_time"].values)
+print(FLUX_TIMES)
 
 # NB: Remember to change frequency and time zone as necessary.
 FLUX_START = (OBS_TIME_INDEX[-1] - TIME_BACK_INDEX[-1]).replace(hour=0)
@@ -356,8 +358,8 @@ print(OBS_DATASET.dims, OBS_DATASET.coords)
 
 wrf_times = FLUX_DATASET["flux_time"].to_index().round("S")
 timestamps = list(wrf_times)
-timestamps[-1] += datetime.timedelta(hours=FLUX_INTERVAL/2-1)
-timestamps[0] -= datetime.timedelta(hours=1)
+# timestamps[-1] += datetime.timedelta(hours=FLUX_INTERVAL/2-1)
+# timestamps[0] -= datetime.timedelta(hours=1)
 wrf_new_times = pd.DatetimeIndex(timestamps,
                                  name="flux_time")
 FLUX_DATASET["flux_time"] = wrf_new_times
