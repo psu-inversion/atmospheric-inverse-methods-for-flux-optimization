@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# ~*~ utf8 ~*~
 from __future__ import print_function, division
 import functools
 import datetime
@@ -276,7 +277,7 @@ e_tra7_for_plot = PRIOR_DS["E_TRA7"].rename(
     dict(dim_x="projection_x_coordinate", dim_y="projection_y_coordinate", flux_time="time",
 ))
 for_plotting = xarray.concat((e_tra7_for_plot, for_plotting), dim="type")
-for_plotting.coords["type"] = ['"Truth"', 'Prior', 'Posterior']
+for_plotting.coords["type"] = ['"Truth"', "First estimate", "Final estimate"]
 
 xlim = for_plotting.coords["projection_x_coordinate"][[0, -1]]
 ylim = for_plotting.coords["projection_y_coordinate"][[0, -1]]
@@ -295,10 +296,12 @@ for ax in plots.axes.flat:
 
 plots.cbar.ax.set_ylabel("CO$_2$ Flux (μmol/m$^2$/s)")
 plots.axes[0, 0].set_title('"Truth"')
-plots.axes[0, 1].set_title("Prior")
-plots.axes[0, 2].set_title("Posterior")
+plots.axes[0, 1].set_title("First estimate")
+plots.axes[0, 2].set_title("Final estimate")
 
 plots.fig.savefig("{year:04d}-{month:02d}_osse_realization.png".format(
+        year=YEAR, month=MONTH), dpi=400)
+plots.fig.savefig("{year:04d}-{month:02d}_osse_realization.pdf".format(
         year=YEAR, month=MONTH))
 plt.close(plots.fig)
 
@@ -342,7 +345,7 @@ plt.close(plots.fig)
 
 ############################################################
 # Plot gain over time
-gain = 1 - da.fabs(differences.sel(type="Posterior")) / da.fabs(differences.sel(type="Prior"))
+gain = 1 - da.fabs(differences.sel(type="Final estimate")) / da.fabs(differences.sel(type="First estimate"))
 gain.attrs["long_name"] = "inversion_gain"
 gain.attrs["units"] = "1"
 
@@ -389,6 +392,7 @@ total_gain.load()
 fig = plt.figure()
 total_gain.plot.hist(range=(-2, 1), bins=15)
 fig.suptitle("Total gain")
+plt.xlabel("Gain in total flux")
 
 fig.savefig("{year:04d}-{month:02d}_total_gain_hist.png".format(year=YEAR, month=MONTH))
 fig.savefig("{year:04d}-{month:02d}_total_gain_hist.pdf".format(year=YEAR, month=MONTH))
@@ -400,6 +404,7 @@ small_gain.load()
 fig = plt.figure()
 small_gain.plot.hist(range=(-2, 1), bins=15)
 fig.suptitle("Total gain on small domain")
+plt.xlabel("Gain in flux in small domain")
 
 fig.savefig("{year:04d}-{month:02d}_small_gain_hist.png".format(year=YEAR, month=MONTH))
 fig.savefig("{year:04d}-{month:02d}_small_gain_hist.pdf".format(year=YEAR, month=MONTH))
@@ -439,8 +444,8 @@ for xval, color in (zip(
 
 ax.axhline(0, color="black", linewidth=.75)
 
-spatial_avg_differences.sel(type="prior_error", realization=0).plot.line("--", label="prior")
-spatial_avg_differences.sel(type="posterior_error", realization=0).plot.line("-.", label="posterior")
+spatial_avg_differences.sel(type="prior_error", realization=0).plot.line("--", label="First estimate")
+spatial_avg_differences.sel(type="posterior_error", realization=0).plot.line("-.", label="Final estimate")
 
 plt.legend()
 ax.set_ylabel("Average flux error of eastern domain\n(μmol/m$^2$/s)")
@@ -457,7 +462,11 @@ plt.close(fig)
 error_range = da.asarray([all_mean_error.min(), all_mean_error.max()]).compute()
 fig, ax = plt.subplots(1, 1)
 ax.hist([all_mean_error.sel(type="prior_error"), all_mean_error.sel(type="posterior_error")],
-        label=["Prior", "Posterior"])
+        range=[-.1, .1],
+        label=["First estimate", "Final estimate"])
+ax.set_ylabel("Count")
+ax.set_xlabel("Error in estimate (μmol/m$^2$/s)")
+
 
 plt.legend()
 fig.savefig("{year:04d}-{month:02d}_flux_error_hist.png".format(year=YEAR, month=MONTH))
@@ -468,7 +477,10 @@ plt.close(fig)
 small_error_range = da.asarray([small_mean_error.min(), small_mean_error.max()]).compute()
 fig, ax = plt.subplots(1, 1)
 ax.hist([small_mean_error.sel(type="prior_error"), small_mean_error.sel(type="posterior_error")],
-        label=["Prior", "Posterior"])
+        range=[-.15, .15],
+        label=["First estimate", "Final estimate"])
+ax.set_xlabel("Whole-domain flux error (μmol/m$^2$/s)")
+ax.set_ylabel("Count")
 
 plt.legend()
 fig.savefig("{year:04d}-{month:02d}_small_flux_error_hist.png".format(year=YEAR, month=MONTH))
@@ -539,5 +551,7 @@ axes.add_feature(STATES)
 axes.axvline(WEST_BOUNDARY_LPDM, color="white")
 
 fig.savefig("{year:04d}-{month:02d}_integrated_influence_functions.png".format(
+    year=YEAR, month=MONTH), dpi=400)
+fig.savefig("{year:04d}-{month:02d}_integrated_influence_functions.pdf".format(
     year=YEAR, month=MONTH))
 plt.close(fig)
