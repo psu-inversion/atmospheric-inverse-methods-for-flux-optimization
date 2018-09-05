@@ -41,9 +41,13 @@ dask-worker-space
 *.lob
 *.patch
 *.pbs
+*.tmp
 
 # Graphics are for visualization, not part of code
 *.png
 
 # output
 monthly_inversion*_output.nc4
+
+# Filesystem artifacts?
+.nfs*
