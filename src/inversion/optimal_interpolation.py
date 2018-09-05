@@ -5,7 +5,6 @@ Also known as Kalman Matrix Inversion or batch inversion.
 import scipy.linalg
 from scipy.sparse.linalg import LinearOperator
 
-import dask.array as da
 from numpy import asarray
 
 from inversion.util import solve, tolinearoperator, method_common

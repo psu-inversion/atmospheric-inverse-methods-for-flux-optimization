@@ -48,5 +48,6 @@ def gaussian_noise(cov, size=None):
 
     chol_upper = matrix_sqrt(cov)
 
+    # x = x @ chol_upper
     x = chol_upper.T.dot(x).T
     return x.reshape(final_shape)

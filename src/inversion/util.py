@@ -933,6 +933,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         :math:`B`.
 
         """
+        assert self.shape[1] == mat.shape[0]
         chunks = []
         block_size = self._block_size
         operator1 = self._operator1
