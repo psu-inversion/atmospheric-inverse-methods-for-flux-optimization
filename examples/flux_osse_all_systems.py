@@ -51,11 +51,11 @@ import inversion.tests
 isqrt = iris.analysis.maths.IFunc(
     np.sqrt, lambda cube: cube.units.root(2))
 
-NX = 60
-NY = 40
-N_FLUX_TIMES = 24 * 7
+NX = 249
+NY = 184
+N_FLUX_TIMES = 24 * 7 * 2
 
-N_TIMES_BACK = 24 * 5
+N_TIMES_BACK = 24 * 7
 N_SITES = 4
 
 N_GRID_POINTS = NX * NY
