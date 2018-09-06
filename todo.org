@@ -73,3 +73,5 @@
 ** python3.6.6 inversion_environment default numpy
    Was taking way too long
    1.3h cpu, 74GiB mem, 4.5 wall
+* TODO Rewrite integrators using wrapper and generators
+* TODO Get a toepelitz matrix implementation using np.as_strided working

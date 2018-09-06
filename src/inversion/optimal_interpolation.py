@@ -5,10 +5,9 @@ Also known as Kalman Matrix Inversion or batch inversion.
 import scipy.linalg
 from scipy.sparse.linalg import LinearOperator
 
-from numpy import asarray
-
-from inversion.util import solve, tolinearoperator, method_common
-from inversion.util import ProductLinearOperator, ARRAY_TYPES
+from inversion.util import method_common
+from inversion.linalg import (ProductLinearOperator, ARRAY_TYPES,
+                              solve, tolinearoperator)
 
 
 @method_common

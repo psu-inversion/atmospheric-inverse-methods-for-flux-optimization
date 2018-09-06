@@ -11,7 +11,7 @@ from scipy.sparse.linalg import LinearOperator
 # array.
 
 from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
-from inversion.util import tolinearoperator, ProductLinearOperator
+from inversion.linalg import tolinearoperator, ProductLinearOperator
 from inversion.util import method_common
 
 
@@ -119,7 +119,7 @@ def simple(background, background_covariance,
         # tests.  I feel it safer to do it analytically at low
         # resolution than trying to use the high-resolution iterative
         # approximation.
-        method = "CG"
+        method = "Newton-CG"
 
     result = scipy.optimize.minimize(
         cost_function, observation_increment,
@@ -249,9 +249,9 @@ def fold_common(background, background_covariance,
         -------
         cost: float
         """
-        return .5 * test_observation_increment.dot(covariance_sum.dot(
+        return (.5 * test_observation_increment.dot(covariance_sum.dot(
             test_observation_increment)) - observation_increment.dot(
-                test_observation_increment)
+                test_observation_increment))
 
     def cost_jacobian(test_observation_increment):
         """Gradient of cost function at `test_observation_increment`.
@@ -270,7 +270,7 @@ def fold_common(background, background_covariance,
     if reduced_background_covariance is None:
         method = "BFGS"
     else:
-        method = "CG"
+        method = "Newton-CG"
 
     result = scipy.optimize.minimize(
         cost_function, observation_increment,

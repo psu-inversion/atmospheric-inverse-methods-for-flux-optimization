@@ -38,11 +38,12 @@ import inversion.covariances
 import inversion.integrators
 import inversion.variational
 import inversion.ensemble
+import inversion.linalg
 import inversion.models
 import inversion.noise
 import inversion.psas
 import inversion.util
-from inversion.util import tolinearoperator
+from inversion.linalg import tolinearoperator
 
 dask.set_options(get=dask.get)
 
@@ -968,7 +969,7 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
 class TestYMKroneckerProduct(unittest2.TestCase):
     """Test the YM13 Kronecker product implementation for LinearOperators.
 
-    This tests the :class:`~inversion.util.DaskKroneckerProduct`
+    This tests the :class:`~inversion.linalg.DaskKroneckerProduct`
     implementation based on the algorithm in Yadav and Michalak (2013)
     """
 
@@ -976,7 +977,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         """Test that the implementation works with identity matrices."""
         test_sizes = (4, 5)
         DaskKroneckerProductOperator = (
-            inversion.util.DaskKroneckerProductOperator)
+            inversion.linalg.DaskKroneckerProductOperator)
 
         # I want to be sure either being smaller works.
         # Even versus odd also causes problems occasionally
@@ -999,7 +1000,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         mat2 = ((1, .5, .25), (.5, 1, .5), (.25, .5, 1))
 
         np_tst.assert_allclose(
-            inversion.util.DaskKroneckerProductOperator(
+            inversion.linalg.DaskKroneckerProductOperator(
                 mat1, mat2).dot(np.eye(9)),
             np.tile(mat2, (3, 3)))
 
@@ -1009,7 +1010,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         mat2 = np.ones((3, 3))
 
         np_tst.assert_allclose(
-            inversion.util.DaskKroneckerProductOperator(
+            inversion.linalg.DaskKroneckerProductOperator(
                 mat1, mat2).dot(np.eye(9)),
             np.repeat(np.repeat(mat1, 3, 0), 3, 1))
 
@@ -1018,7 +1019,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         sigmax = np.array(((0, 1), (1, 0)))
         sigmaz = np.array(((1, 0), (0, -1)))
 
-        operator = inversion.util.DaskKroneckerProductOperator(
+        operator = inversion.linalg.DaskKroneckerProductOperator(
             sigmax, sigmaz)
         matrix = scipy.linalg.kron(sigmax, sigmaz)
 
@@ -1035,7 +1036,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         mat2 = inversion.covariances.DiagonalOperator((1, 1))
         mat3 = np.eye(4)
         DaskKroneckerProductOperator = (
-            inversion.util.DaskKroneckerProductOperator)
+            inversion.linalg.DaskKroneckerProductOperator)
 
         with self.subTest(check="symmetric"):
             product = DaskKroneckerProductOperator(
@@ -1069,7 +1070,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         matrix2 = inversion.covariances.DiagonalOperator((1, 2, 3))
         tester = np.eye(6)
 
-        product = inversion.util.DaskKroneckerProductOperator(matrix1, matrix2)
+        product = inversion.linalg.DaskKroneckerProductOperator(matrix1, matrix2)
         sqrt = product.sqrt()
         proposed = sqrt.T.dot(sqrt)
 
@@ -1081,7 +1082,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         matrix1 = scipy.linalg.toeplitz((1., 1/3., 1/9., 1/27., 1/81.))
         matrix2 = scipy.linalg.toeplitz((1., .5, .25, .125, .0625, .03125))
 
-        product = inversion.util.DaskKroneckerProductOperator(
+        product = inversion.linalg.DaskKroneckerProductOperator(
             matrix1, matrix2)
 
         tester = np.eye(product.shape[0])
@@ -1139,7 +1140,7 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
         big_ident = np.eye(30)
 
         self.assertIsInstance(
-            combined_op, inversion.util.DaskKroneckerProductOperator)
+            combined_op, inversion.linalg.DaskKroneckerProductOperator)
         self.assertSequenceEqual(combined_op.shape,
                                  tuple(np.multiply(mat1.shape, mat2.shape)))
         np_tst.assert_allclose(combined_op.dot(big_ident),
@@ -1391,39 +1392,8 @@ class TestEnsembleBase(unittest2.TestCase):
         np_tst.assert_allclose(mean + perturbations, sample_data)
 
 
-class TestUtil_atleast_nd(unittest2.TestCase):
-    """Test the atleast_nd functions in inversion.util."""
-
-    test_values = (4, (1, 2, 3), ((1, 2), (3, 4)), [1, 2],
-                   np.array(1), np.arange(3), np.eye(4),
-                   np.asarray(1),
-                   da.arange(5, chunks=5),
-                   da.arange(9, chunks=9).reshape(3, 3),
-                   da.zeros((3, 3, 3), chunks=(3, 3, 3)))
-
-    def test_atleast_1d(self):
-        """Ensure atleast_1d works."""
-        for test_val in self.test_values:
-            with self.subTest(test_val=test_val):
-                tst_arry = inversion.util.atleast_1d(test_val)
-
-                self.assertIsInstance(tst_arry, np.ndarray)
-                self.assertGreaterEqual(tst_arry.ndim, 1)
-                self.assertEqual(tst_arry.shape, np.atleast_1d(test_val).shape)
-
-    def test_atleast_2d(self):
-        """Ensure atleast_1d works."""
-        for test_val in self.test_values:
-            with self.subTest(test_val=test_val):
-                tst_arry = inversion.util.atleast_2d(test_val)
-
-                self.assertIsInstance(tst_arry, np.ndarray)
-                self.assertGreaterEqual(tst_arry.ndim, 2)
-                self.assertEqual(tst_arry.shape, np.atleast_2d(test_val).shape)
-
-
 class TestUtilSchmidtDecomposition(unittest2.TestCase):
-    """Test the Schimdt decomposition code in inversion.util."""
+    """Test the Schimdt decomposition code in inversion.linalg."""
 
     def setUp(self):
         """Set up the test vectors."""
@@ -1459,7 +1429,7 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
             with self.subTest(vec1=vec1[:, 0], vec2=vec2[:, 0]):
                 composite_state = scipy.linalg.kron(vec1, vec2)
 
-                reported_decomposition = inversion.util.schmidt_decomposition(
+                reported_decomposition = inversion.linalg.schmidt_decomposition(
                     composite_state, vec1.shape[0], vec2.shape[0])
                 lambdas, vecs1, vecs2 = da.compute(*reported_decomposition)
 
@@ -1487,7 +1457,7 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
         composite_state = (
             scipy.linalg.kron(self.k0, self.k00) +
             scipy.linalg.kron(self.k1, self.k01)) / sqrt2
-        res_lambda, res_vec1, res_vec2 = inversion.util.schmidt_decomposition(
+        res_lambda, res_vec1, res_vec2 = inversion.linalg.schmidt_decomposition(
             composite_state, 2, 4)
 
         self.assertEqual(res_vec1.shape, (2, 2))
@@ -1505,7 +1475,7 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
         sqrt2o2 = math.sqrt(2) / 2
         epr_state = (self.k01 - self.k10) * sqrt2o2
 
-        lambdas, vecs1, vecs2 = inversion.util.schmidt_decomposition(
+        lambdas, vecs1, vecs2 = inversion.linalg.schmidt_decomposition(
             epr_state, 2, 2)
 
         lambdas = np.asarray(lambdas)
@@ -1532,13 +1502,13 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
 
 
 class TestUtilIsOdd(unittest2.TestCase):
-    """Test inversion.util.is_odd."""
+    """Test inversion.linalg.is_odd."""
 
     MAX_TO_TEST = 100
 
     def test_known_odd(self):
         """Test known odd numbers."""
-        is_odd = inversion.util.is_odd
+        is_odd = inversion.linalg.is_odd
 
         for i in range(1, self.MAX_TO_TEST, 2):
             with self.subTest(i=i):
@@ -1546,7 +1516,7 @@ class TestUtilIsOdd(unittest2.TestCase):
 
     def test_known_even(self):
         """Test known even numbers."""
-        is_odd = inversion.util.is_odd
+        is_odd = inversion.linalg.is_odd
 
         for i in range(0, self.MAX_TO_TEST, 2):
             with self.subTest(i=i):
@@ -1554,12 +1524,12 @@ class TestUtilIsOdd(unittest2.TestCase):
 
 
 class TestUtilToLinearOperator(unittest2.TestCase):
-    """Test inversion.util.tolinearoperator."""
+    """Test inversion.linalg.tolinearoperator."""
 
     def test_tolinearoperator(self):
         """Test that tolinearoperator returns LinearOperators."""
-        tolinearoperator = inversion.util.tolinearoperator
-        LinearOperator = inversion.util.DaskLinearOperator
+        tolinearoperator = inversion.linalg.tolinearoperator
+        LinearOperator = inversion.linalg.DaskLinearOperator
 
         for trial in (0, 1., (0, 1), [0, 1], ((1, 0), (0, 1)),
                       [[0, 1.], [1., 0]], np.arange(5),
@@ -1570,13 +1540,13 @@ class TestUtilToLinearOperator(unittest2.TestCase):
 
 
 class TestUtilKron(unittest2.TestCase):
-    """Test inversion.util.kron against scipy.linalg.kron."""
+    """Test inversion.linalg.kron against scipy.linalg.kron."""
 
     def test_util_kron(self):
         """Test my kronecker implementation against scipy's."""
         trial_inputs = (1, (1,), [0], np.arange(10), np.eye(5),
                         da.arange(10, chunks=10), da.eye(5, chunks=5))
-        my_kron = inversion.util.kron
+        my_kron = inversion.linalg.kron
         scipy_kron = scipy.linalg.kron
 
         for input1, input2 in itertools.product(trial_inputs, repeat=2):
@@ -1619,7 +1589,7 @@ class TestHomogeneousInversions(unittest2.TestCase):
 
         self.bg_corr = (bg_corr, bg_corr.dot(np.eye(*bg_corr.shape)))
         self.obs_corr = (obs_corr, obs_corr.dot(np.eye(*obs_corr.shape)))
-        self.obs_op = (inversion.util.tolinearoperator(obs_op.toarray()),
+        self.obs_op = (inversion.linalg.tolinearoperator(obs_op.toarray()),
                        # Dask requires subscripting; diagonal sparse
                        # matrices don't do this.
                        obs_op.toarray())
@@ -1650,7 +1620,7 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
         mat1 = da.eye(2, chunks=2)
         vectors = da.eye(4, chunks=4)
 
-        product = inversion.util.DaskKroneckerProductOperator(mat1, mat1)
+        product = inversion.linalg.DaskKroneckerProductOperator(mat1, mat1)
 
         for i, vec in enumerate(vectors):
             with self.subTest(i=i):
@@ -1663,7 +1633,7 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
         mat1 = np.eye(2)
         vectors = np.eye(4)
 
-        product = inversion.util.DaskKroneckerProductOperator(mat1, mat1)
+        product = inversion.linalg.DaskKroneckerProductOperator(mat1, mat1)
 
         for i in range(4):
             stop = i + 1
@@ -1678,7 +1648,7 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
         mat2 = scipy.linalg.toeplitz(2.**-np.arange(10))
 
         scipy_kron = scipy.linalg.kron(mat1, mat2)
-        linop_kron = inversion.util.DaskKroneckerProductOperator(mat1, mat2)
+        linop_kron = inversion.linalg.DaskKroneckerProductOperator(mat1, mat2)
 
         test_arry = np.eye(50, 20)
 
@@ -1693,8 +1663,8 @@ class TestUtilProduct(unittest2.TestCase):
     def test_symmetric_methods_added(self):
         """Test that the method is added or not as appropriate."""
         op1 = tolinearoperator(np.eye(2))
-        op2 = inversion.covariances.DiagonalOperator(np.ones(2))
-        ProductLinearOperator = inversion.util.ProductLinearOperator
+        op2 = inversion.linalg.DiagonalOperator(np.ones(2))
+        ProductLinearOperator = inversion.linalg.ProductLinearOperator
 
         with self.subTest(num=2, same=True):
             product = ProductLinearOperator(op1.T, op1)
@@ -1719,8 +1689,8 @@ class TestUtilProduct(unittest2.TestCase):
     def test_returned_shape(self):
         """Test that the shape of the result is correct."""
         op1 = tolinearoperator(np.eye(3))
-        op2 = inversion.covariances.DiagonalOperator(np.ones(3))
-        ProductLinearOperator = inversion.util.ProductLinearOperator
+        op2 = inversion.linalg.DiagonalOperator(np.ones(3))
+        ProductLinearOperator = inversion.linalg.ProductLinearOperator
 
         vectors = np.eye(3)
 
@@ -1750,8 +1720,8 @@ class TestUtilProduct(unittest2.TestCase):
         mat1 = np.eye(3)
         mat1[1, 0] = 1
         op1 = tolinearoperator(mat1)
-        op2 = inversion.covariances.DiagonalOperator((1, .25, .0625))
-        ProductLinearOperator = inversion.util.ProductLinearOperator
+        op2 = inversion.linalg.DiagonalOperator((1, .25, .0625))
+        ProductLinearOperator = inversion.linalg.ProductLinearOperator
 
         tester = np.eye(3)
 
@@ -1769,6 +1739,32 @@ class TestUtilProduct(unittest2.TestCase):
 
             np_tst.assert_allclose(test.dot(tester), product.dot(tester))
 
+    def test_transpose(self):
+        """Test that transpose works."""
+        mat1 = np.eye(3)
+        mat1[1, 0] = 1
+        op1 = tolinearoperator(mat1)
+        op2 = inversion.linalg.DiagonalOperator((1, .25, .0625))
+        ProductLinearOperator = inversion.linalg.ProductLinearOperator
+
+        product = ProductLinearOperator(op1, op2)
+        result = product.T
+        self.assertEqual(result.shape, (3, 3))
+        self.assertEqual(result._operators, (op2.T, op1.T))
+
+    def test_adjoinst(self):
+        """Test that adjoint works."""
+        mat1 = np.eye(3)
+        mat1[1, 0] = 1
+        op1 = tolinearoperator(mat1)
+        op2 = inversion.linalg.DiagonalOperator((1, .25, .0625))
+        ProductLinearOperator = inversion.linalg.ProductLinearOperator
+
+        product = ProductLinearOperator(op1, op2)
+        result = product.H
+        self.assertEqual(result.shape, (3, 3))
+        self.assertEqual(result._operators, (op2.H, op1.H))
+
 
 class TestCorrelationStandardDeviation(unittest2.TestCase):
     """Test that this sub-class works as intended."""
@@ -1778,7 +1774,7 @@ class TestCorrelationStandardDeviation(unittest2.TestCase):
         correlations = np.eye(2)
         stds = np.ones(2)
 
-        covariances = inversion.util.CorrelationStandardDeviation(
+        covariances = inversion.covariances.CorrelationStandardDeviation(
             correlations, stds)
 
         self.assertIs(covariances, covariances.T)
@@ -1788,7 +1784,7 @@ class TestCorrelationStandardDeviation(unittest2.TestCase):
         correlations = np.array(((1, .5), (.5, 1)))
         stds = (2, 1)
 
-        linop_cov = inversion.util.CorrelationStandardDeviation(
+        linop_cov = inversion.covariances.CorrelationStandardDeviation(
             correlations, stds)
         np_cov = np.diag(stds).dot(correlations.dot(np.diag(stds)))
 
@@ -1799,7 +1795,7 @@ class TestCorrelationStandardDeviation(unittest2.TestCase):
         correlations = np.eye(2)
         stds = np.ones(2)
 
-        covariances = inversion.util.CorrelationStandardDeviation(
+        covariances = inversion.covariances.CorrelationStandardDeviation(
             correlations, stds)
 
         self.assertIs(covariances, covariances.H)
@@ -1909,7 +1905,7 @@ class TestCovariances(unittest2.TestCase):
         operator_list = (np.arange(25.).reshape(5, 5) + np.diag((2.,) * 5),
                          np.eye(5, dtype=DTYPE),
                          np.ones((5, 5), dtype=DTYPE) + np.diag((1.,) * 5))
-        operator = inversion.util.ProductLinearOperator(*operator_list)
+        operator = inversion.linalg.ProductLinearOperator(*operator_list)
 
         arry = reduce(lambda x, y: x.dot(y), operator_list)
 
@@ -1929,11 +1925,11 @@ class TestCovariances(unittest2.TestCase):
 
 
 class TestUtilMatrixSqrt(unittest2.TestCase):
-    """Test that inversion.util.sqrt works as planned."""
+    """Test that inversion.linalg.sqrt works as planned."""
 
     def test_array(self):
         """Test that matrix_sqrt works with arrays."""
-        matrix_sqrt = inversion.util.matrix_sqrt
+        matrix_sqrt = inversion.linalg.matrix_sqrt
 
         with self.subTest(trial="identity"):
             mat = np.eye(3)
@@ -1953,12 +1949,12 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
     def test_matrix_op(self):
         """Test that matrix_sqrt recognizes MatrixLinearOperator."""
         mat = np.eye(10)
-        mat_op = inversion.util.DaskMatrixLinearOperator(mat)
+        mat_op = inversion.linalg.DaskMatrixLinearOperator(mat)
 
-        result1 = inversion.util.matrix_sqrt(mat_op)
+        result1 = inversion.linalg.matrix_sqrt(mat_op)
         self.assertIsInstance(result1, np.ndarray)
 
-        result2 = inversion.util.matrix_sqrt(mat)
+        result2 = inversion.linalg.matrix_sqrt(mat)
         tester = np.eye(*result1.shape)
         np_tst.assert_allclose(result1.dot(tester), result2.dot(tester))
 
@@ -1971,7 +1967,7 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
         mat = np.eye(2)
         mat[1, 1] = 0
 
-        proposed = inversion.util.matrix_sqrt(mat)
+        proposed = inversion.linalg.matrix_sqrt(mat)
         # Fun with one and zero
         np_tst.assert_allclose(proposed, mat)
 
@@ -1980,7 +1976,7 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
         operator = (inversion.correlations.HomogeneousIsotropicCorrelation.
                     from_array((1, .5, .25, .125, .25, .5, 1)))
 
-        proposed = inversion.util.matrix_sqrt(operator)
+        proposed = inversion.linalg.matrix_sqrt(operator)
 
         self.assertIsInstance(
             proposed, inversion.correlations.HomogeneousIsotropicCorrelation)
@@ -1988,7 +1984,7 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
     def test_nonsquare(self):
         """Test matrix_sqrt raises for non-square input."""
         with self.assertRaises(ValueError):
-            inversion.util.matrix_sqrt(np.eye(4, 3))
+            inversion.linalg.matrix_sqrt(np.eye(4, 3))
 
     # TODO: test arbitrary linear operators
     # TODO: Test odd chunking
@@ -2129,6 +2125,103 @@ class TestLorenz96(unittest2.TestCase):
                 analytic[(i + 2) % 40] = -8
 
                 np_tst.assert_allclose(deriv, analytic)
+
+
+class TestReducedUncertainties(unittest2.TestCase):
+    """Test that inversion methods properly treat requested uncertainties."""
+
+    def test_identical_simple(self):
+        """Test that the result is the same when requesting such."""
+        bg = 1.
+        obs = 2.
+        bg_cov = 1.
+        obs_cov = 1.
+        obs_op = 1.
+
+        for method in ALL_METHODS:
+            with self.subTest(method=getname(method)):
+                directval, directcov = method(
+                    bg, bg_cov, obs, obs_cov, obs_op)
+                altval, altcov = method(
+                    bg, bg_cov, obs, obs_cov, obs_op,
+                    bg_cov, obs_op)
+                np_tst.assert_allclose(directval, altval)
+                np_tst.assert_allclose(directcov, altcov)
+
+    def test_identical_complicated(self):
+        """Test that the result remains the same with harder problem."""
+        bg = np.zeros(10)
+        obs = np.ones(5)
+        bg_cov = scipy.linalg.toeplitz(3.**-np.arange(10.))
+        obs_cov = np.eye(5)
+        obs_op = np.eye(5, 10)
+
+        for method in ALL_METHODS:
+            with self.subTest(method=getname(method)):
+                directval, directcov = method(
+                    bg, bg_cov, obs, obs_cov, obs_op)
+                altval, altcov = method(
+                    bg, bg_cov, obs, obs_cov, obs_op,
+                    bg_cov, obs_op)
+                np_tst.assert_allclose(directval, altval,
+                                       rtol=1e-5, atol=1e-5)
+                np_tst.assert_allclose(directcov, altcov,
+                                       rtol=ITERATIVE_COVARIANCE_TOLERANCE,
+                                       atol=ITERATIVE_COVARIANCE_TOLERANCE)
+
+    @unittest2.expectedFailure
+    def test_reduced_uncorrelated(self):
+        """Test reduced uncertainties for uncorrelated background.
+
+        HBHT changes a lot in this case.
+        """
+        bg = (0, 0.)
+        bg_cov = np.eye(2)
+        obs = (1.,)
+        obs_cov = 1.
+        obs_op = (.5, .5)
+
+        # Using mean for bg, not sum
+        bg_cov_red = 2./4
+        obs_op_red = 1.
+
+        for method in ALL_METHODS:
+            with self.subTest(method=getname(method)):
+                value, cov = method(
+                    bg, bg_cov, obs, obs_cov, obs_op,
+                    bg_cov_red, obs_op_red)
+                np_tst.assert_allclose(
+                    value, (1/3., 1/3.))
+                # ((5/6., 1/6.), (1/6., 5/6.))
+                np_tst.assert_allclose(
+                    cov,
+                    2./3)
+
+    def test_reduced_correlated(self):
+        """Test reduced uncertainties for a simple case."""
+        bg = (0, 0.)
+        bg_cov = [[1, .9], [.9, 1]]
+        obs = (1.,)
+        obs_cov = 1.
+        obs_op = (.5, .5)
+
+        # Using mean for bg, not sum
+        bg_cov_red = 3.8/4
+        obs_op_red = 1.
+
+        for method in ALL_METHODS:
+            with self.subTest(method=getname(method)):
+                value, cov = method(
+                    bg, bg_cov, obs, obs_cov, obs_op,
+                    bg_cov_red, obs_op_red)
+                np_tst.assert_allclose(
+                    value, (.48717949, .48717949))
+                # ((.53, .43), (.43, .53))
+                # analytic: 1.9
+                # reduced: .79167
+                np_tst.assert_allclose(
+                    cov,
+                    .48717948717948717)
 
 
 if __name__ == "__main__":

@@ -24,9 +24,9 @@ from numpy import where
 from numpy.fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
 import six
 
-from inversion.util import schmidt_decomposition, is_odd
-from inversion.util import tolinearoperator, kron
-from inversion.util import DaskLinearOperator
+from inversion.linalg import schmidt_decomposition, is_odd
+from inversion.linalg import tolinearoperator, kron
+from inversion.linalg import DaskLinearOperator
 
 ROUNDOFF = 1e-13
 """Approximate size of roundoff error for correlation matrices.
@@ -481,10 +481,16 @@ def make_matrix(corr_func, shape):
         the shape of that array.
         `N = prod(shape)`
 
+    See Also
+    --------
+    :func:`statsmodels.stats.correlation_tools.corr_clipped`, which
+    does something similar, and refers to other functions that may
+    give more accurate results.
+
     Returns
     -------
     corr: np.ndarray[N, N]
-        Dense array, entirely in memory
+        Positive definite dense array, entirely in memory
     """
     shape = tuple(np.atleast_1d(shape))
     n_points = np.prod(shape)
