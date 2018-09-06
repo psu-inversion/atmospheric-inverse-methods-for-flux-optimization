@@ -444,8 +444,8 @@ posterior_var_atts = PRIOR_FLUXES_MATCHED[PRIOR_FLUX_NAME].attrs.copy()
 posterior_var_atts.update(dict(
     long_name="posterior_fluxes",
     # units=TRUE_FLUXES_MATCHED[FLUX_NAME].attrs["units"],
-    description=("posterior fluxes using dask for a week at a time,"
-                 " overlapped for a month",
+    description=("posterior fluxes using dask for 16 days at a time,"
+                 " overlapped for a month"),
     origin="OI using dask for a month",
     prior_flux_name=PRIOR_FLUX_NAME,
     flux_window=FLUX_WINDOW,
@@ -466,7 +466,7 @@ posterior_global_atts.update(dict(
     product_version="v0.0.0.dev0",
     cdm_data_type="grid",
     institution="PSU Department of Meteorology",
-    source=("Test inversion using OI for a 16-day "
+    source=("Test inversion using OI for 16-day "
             "windows strung together for a month"),
 ))
 
@@ -776,7 +776,7 @@ for i, inversion_period in enumerate(grouper(
     post_encoding.update({name: {"_FillValue": False}
                           for name in posterior_ds.coords})
     posterior_part = posterior_ds.isel(
-        flux_time=slice(None, OBS_WINDOW * HOURS_PER_DAY//FLUX_INTERVAL))
+        flux_time=slice(None, OBS_WINDOW * HOURS_PER_DAY // FLUX_INTERVAL))
     posterior_part.to_netcdf(
         "monthly_inversion_{flux_interval:02d}h_output_{step:02d}.nc4".format(
             flux_interval=FLUX_INTERVAL, step=i), unlimited_dims=["flux_time"],
@@ -793,7 +793,7 @@ sys.stdout.flush()
 print("Parts of posterior already written, catenate parts with ncrcat.")
 print("Not all of posterior written; writing rest")
 unwritten_post_ds = posterior_ds.isel(
-    flux_time=slice(OBS_WINDOW * HOURS_PER_DAY//FLUX_INTERVAL, None))
+    flux_time=slice(OBS_WINDOW * HOURS_PER_DAY // FLUX_INTERVAL, None))
 unwritten_post_ds.to_netcdf(
     "monthly_inversion_{flux_interval:02d}h_output_zz.nc4".format(
         flux_interval=FLUX_INTERVAL),
