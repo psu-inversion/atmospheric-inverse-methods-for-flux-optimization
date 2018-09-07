@@ -70,8 +70,10 @@
    2.75h cpu
    ~82GiB mem
    4.75 wall
-** python3.6.6 inversion_environment default numpy
-   Was taking way too long
-   1.3h cpu, 74GiB mem, 4.5 wall
+** python3.6.6 inversion_environment default numpy 1.14.5
+   2.75h cpu
+   ~80GiB mem
+   115GiB vmem
+   3.2h wall
 * TODO Rewrite integrators using wrapper and generators
 * TODO Get a toepelitz matrix implementation using np.as_strided working
