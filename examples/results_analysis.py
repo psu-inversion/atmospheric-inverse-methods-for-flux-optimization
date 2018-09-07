@@ -2,7 +2,9 @@
 # ~*~ utf8 ~*~
 from __future__ import print_function, division
 import datetime
+import glob
 import sys
+import os
 
 import scipy.stats
 import scipy.special
@@ -37,7 +39,7 @@ PRIOR_PATH = ("../data_files/"
 POSTERIOR_PATH = (
     "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
     "noise{noisefun:s}{noiselen:d}_icov{invfun:s}{invlen:d}"
-    "_lagged16_output_cf.nc4"
+    "_lagged16_output_cf_conda.nc4"
 ).format(year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
          noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
          invfun=INV_FUNCTION, invlen=INV_LENGTH)
@@ -221,15 +223,30 @@ PSEUDO_OBS_DS = xarray.open_mfdataset(
     observation=("observation_time", "site")).transpose(
     "realization", "observation")
 
-COLLAPSED_INFLUENCE_DS = xarray.open_dataset(
-    "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/ACT-America_trial5/2010/01/"
-    "GROUP1/LPDM_2010_01_31day_027km_molar_footprints.nc4").set_coords(
+INFLUENCE_PATHS = ["/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
+                   "ACT-America_trial5/2010/01/GROUP1",
+                   "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
+                   "candidacy_more_towers/2010/01/GROUP1"]
+
+COLLAPSED_INFLUENCE_DS = xarray.open_mfdataset(
+    [name
+     for path in INFLUENCE_PATHS
+     for name in glob.iglob(os.path.join(
+         path,
+         "LPDM_2010_01_31day_027km_molar_footprints.nc4"))],
+    concat_dim="computational_group").sum("computational_group").set_coords(
     ["observation_time", "time_before_observation",
      "lpdm_configuration", "wrf_configuration"])
-FULL_INFLUENCE_DS = xarray.open_dataset(
-    "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/ACT-America_trial5/2010/01/"
-    "GROUP1/LPDM_2010_01_06hrly_027km_molar_footprints.nc4").set_coords(
-    ["lpdm_configuration", "wrf_configuration"])
+FULL_INFLUENCE_DS = xarray.open_mfdataset(
+    [name
+     for path in INFLUENCE_PATHS
+     for name in glob.iglob(os.path.join(
+         path,
+         ("LPDM_2010_01*{flux_interval:02d}hrly_{res:03d}km_"
+          "molar_footprints.nc4").format(
+             flux_interval=FLUX_INTERVAL, res=FLUX_RESOLUTION)))],
+    concat_dim="site",
+).set_coords(["lpdm_configuration", "wrf_configuration"])
 
 print(datetime.datetime.now(), "Files")
 sys.stdout.flush()
