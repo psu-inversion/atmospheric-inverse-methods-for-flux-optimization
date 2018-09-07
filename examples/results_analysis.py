@@ -299,7 +299,7 @@ e_tra7_for_plot = PRIOR_DS["E_TRA7"].rename(
     dict(dim_x="projection_x_coordinate", dim_y="projection_y_coordinate",
          flux_time="time"))
 for_plotting = xarray.concat((e_tra7_for_plot, for_plotting), dim="type")
-for_plotting.coords["type"] = ['"Truth"', "First estimate", "Final estimate"]
+for_plotting.coords["type"] = ['"Truth"', "Initial estimate", "Final estimate"]
 
 xlim = for_plotting.coords["projection_x_coordinate"][[0, -1]]
 ylim = for_plotting.coords["projection_y_coordinate"][[0, -1]]
@@ -318,7 +318,7 @@ for ax in plots.axes.flat:
 
 plots.cbar.ax.set_ylabel("CO$_2$ Flux (μmol/m$^2$/s)")
 plots.axes[0, 0].set_title('"Truth"')
-plots.axes[0, 1].set_title("First estimate")
+plots.axes[0, 1].set_title("Initial estimate")
 plots.axes[0, 2].set_title("Final estimate")
 
 plots.fig.savefig("{year:04d}-{month:02d}_osse_realization.png".format(
@@ -371,7 +371,7 @@ plt.close(plots.fig)
 ############################################################
 # Plot gain over time
 gain = 1 - (da.fabs(differences.sel(type="Final estimate")) /
-            da.fabs(differences.sel(type="First estimate")))
+            da.fabs(differences.sel(type="Initial estimate")))
 gain.attrs["long_name"] = "inversion_gain"
 gain.attrs["units"] = "1"
 
@@ -484,9 +484,11 @@ for xval, color in (zip(
 ax.axhline(0, color="black", linewidth=.75)
 
 spatial_avg_differences.sel(
-    type="prior_error", realization=0).plot.line("--", label="First estimate")
+    type="prior_error", realization=0).plot.line(
+    "--", label="Initial estimate")
 spatial_avg_differences.sel(
-    type="posterior_error", realization=0).plot.line("-.", label="Final estimate")
+    type="posterior_error", realization=0).plot.line(
+    "-.", label="Final estimate")
 
 plt.legend()
 ax.set_ylabel("Average flux error of eastern domain\n(μmol/m$^2$/s)")
@@ -510,7 +512,7 @@ fig, ax = plt.subplots(1, 1)
 ax.hist([all_mean_error.sel(type="prior_error"),
          all_mean_error.sel(type="posterior_error")],
         range=[-.1, .1],
-        label=["First estimate", "Final estimate"])
+        label=["Initial estimate", "Final estimate"])
 ax.set_ylabel("Count")
 ax.set_xlabel("Error in estimate (μmol/m$^2$/s)")
 
@@ -529,7 +531,7 @@ fig, ax = plt.subplots(1, 1)
 ax.hist([small_mean_error.sel(type="prior_error"),
          small_mean_error.sel(type="posterior_error")],
         range=[-.15, .15],
-        label=["First estimate", "Final estimate"])
+        label=["Initial estimate", "Final estimate"])
 ax.set_xlabel("Whole-domain flux error (μmol/m$^2$/s)")
 ax.set_ylabel("Count")
 
