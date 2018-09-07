@@ -488,6 +488,7 @@ posterior_global_atts.update(dict(
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Getting correlations")
 sys.stdout.flush()
+
 CORRELATION_LENGTH = 200
 GRID_RESOLUTION = FLUX_RESOLUTION
 spatial_correlations = (
