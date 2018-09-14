@@ -154,9 +154,10 @@ print(datetime.datetime.now(), "Functions")
 sys.stdout.flush()
 
 PRIOR_CUBES = iris.load(PRIOR_PATH)
-PRIOR_DS = xarray.open_dataset(PRIOR_PATH,
-                               chunks=dict(realization=1)).rename(
-    dict(south_north="dim_y", west_east="dim_x"))
+PRIOR_DS = xarray.open_dataset(
+    PRIOR_PATH, chunks=dict(realization=1)).rename(
+    dict(south_north="dim_y", west_east="dim_x")).set_coords(
+        "lambert_conformal_conic")
 
 PRIOR_CUBES.sort(key=lambda cube: cube.name())
 PRIOR_CUBES.sort(key=lambda cube: len(cube.name()))
@@ -228,13 +229,10 @@ INFLUENCE_PATHS = ["/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
                    "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
                    "candidacy_more_towers/2010/01/GROUP1"]
 
-COLLAPSED_INFLUENCE_DS = xarray.open_mfdataset(
-    [name
-     for path in INFLUENCE_PATHS
-     for name in glob.iglob(os.path.join(
-         path,
-         "LPDM_2010_01_31day_027km_molar_footprints.nc4"))],
-    concat_dim="computational_group").sum("computational_group").set_coords(
+
+COLLAPSED_INFLUENCE_DS = xarray.open_dataset(
+    "../data_files/LPDM_2010_01_31day_027km_molar_footprints.nc4",
+).set_coords(
     ["observation_time", "time_before_observation",
      "lpdm_configuration", "wrf_configuration"])
 FULL_INFLUENCE_DS = xarray.open_mfdataset(
@@ -272,7 +270,9 @@ plt.close(fig)
 
 ############################################################
 # Plot pseudo-observations
-fig, axes = plt.subplots(4, sharex=True, figsize=(8, 6))
+fig, axes = plt.subplots(len(PSEUDO_OBS_DS.site),
+                         sharex=True,
+                         figsize=(8, 1.5 * len(PSEUDO_OBS_DS.site)))
 fig.autofmt_xdate()
 pseudo_obs = PSEUDO_OBS_DS.pseudo_observations
 for i, site in enumerate(set(PSEUDO_OBS_DS.site.values)):
@@ -282,8 +282,8 @@ for i, site in enumerate(set(PSEUDO_OBS_DS.site.values)):
                  horizontalalignment="left", verticalalignment="top")
 
 fig.suptitle("Pseudo-observations used in inversion")
-fig.savefig("{year:04d}-{month:02d}_pseudo_obs_afternoon.png".format(
-    year=YEAR, month=MONTH))
+# fig.savefig("{year:04d}-{month:02d}_pseudo_obs_afternoon.png".format(
+#     year=YEAR, month=MONTH))
 fig.savefig("{year:04d}-{month:02d}_pseudo_obs_afternoon.pdf".format(
     year=YEAR, month=MONTH))
 plt.close(fig)
