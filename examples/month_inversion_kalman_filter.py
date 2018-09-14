@@ -258,6 +258,8 @@ INFLUENCE_DATASET = xarray.open_mfdataset(
 # Not entirely sure why this is one too many
 # N_FLUX_TIMES = INFLUENCE_DATASET.dims["observation_time"] + FLUX_WINDOW - 1
 
+OUTPUT_TIME_UNITS = INFLUENCE_DATASET.coords["observation_time"].encoding["units"]
+
 OBS_TIME_INDEX = (INFLUENCE_DATASET.indexes["observation_time"].round("S") +
                   datetime.timedelta(days=181))
 TIME_BACK_INDEX = INFLUENCE_DATASET.indexes[
@@ -778,7 +780,13 @@ for i, inversion_period in enumerate(grouper(
     obs_to_save = used_observations.reset_index("observation")
     obs_enc = {name: {"_FillValue": False}
                for name in obs_to_save.coords}
+    for var_name, var_enc in obs_to_save.coords.items():
+        if "time" in var_name:
+            obs_enc[var_name]["units"] = OUTPUT_TIME_UNITS
     obs_enc[obs_to_save.name] = {"_FillValue": -99}
+    import pprint
+    print("Encoding")
+    pprint.pprint(obs_enc)
     obs_to_save.to_netcdf(
         "observation_realizations_for_{flux_interval:02d}h_{step:02d}.nc4"
         .format(flux_interval=FLUX_INTERVAL, step=i),
@@ -788,6 +796,11 @@ for i, inversion_period in enumerate(grouper(
                      for name in posterior_ds.data_vars}
     post_encoding.update({name: {"_FillValue": False}
                           for name in posterior_ds.coords})
+    for var_name, var_enc in posterior_ds.coords.items():
+        if "time" in var_name:
+            post_encoding[var_name]["units"] = OUTPUT_TIME_UNITS
+    print("Encoding")
+    pprint.pprint(post_encoding)
     posterior_part = posterior_ds.isel(
         flux_time=slice(None, OBS_WINDOW * HOURS_PER_DAY // FLUX_INTERVAL))
     posterior_part.to_netcdf(
