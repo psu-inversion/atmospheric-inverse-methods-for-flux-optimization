@@ -36,7 +36,8 @@ import inversion.optimal_interpolation
 import inversion.variational
 import inversion.correlations
 import inversion.covariances
-from inversion.util import kronecker_product, tolinearoperator, asarray
+from inversion.util import kronecker_product
+from inversion.linalg import tolinearoperator, asarray
 from inversion.noise import gaussian_noise
 import cf_acdd
 
@@ -697,7 +698,7 @@ for i, inversion_period in enumerate(grouper(
 
     prior_covariance = kronecker_product(
         temporal_correlations,
-        inversion.util.CorrelationStandardDeviation(
+        inversion.covariances.CorrelationStandardDeviation(
             spatial_correlations, flux_stds))
 
     print(datetime.datetime.now(UTC).strftime("%c"), "Have covariances")
