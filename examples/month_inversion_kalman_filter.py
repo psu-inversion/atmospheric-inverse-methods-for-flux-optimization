@@ -604,14 +604,15 @@ for i, inversion_period in enumerate(grouper(
         end_date += datetime.timedelta(days=1)
     start_date += FLUX_INTERVAL_DT
 
+    unaligned_file_prior = PRIOR_FLUXES_MATCHED[PRIOR_FLUX_NAME].sel(
+        flux_time=slice(start_date, end_date))
     # xarray appears to have changed to include poth endpoints at some
     # point.  To counter this and get back to proper half-open
     # indexing, I move the start one flux-interval later, since the
     # end could be physically relevant
     ## This was probably the shift from three-hour to six-hour fluxes
     if not have_posterior_part:
-        unaligned_fluxes = PRIOR_FLUXES_MATCHED[PRIOR_FLUX_NAME].sel(
-            flux_time=slice(start_date, end_date))
+        unaligned_fluxes = unaligned_file_prior
     else:
         print(posterior_ds.coords["flux_time"][
             OBS_WINDOW * HOURS_PER_DAY // FLUX_INTERVAL:])
@@ -637,9 +638,10 @@ for i, inversion_period in enumerate(grouper(
     unaligned_fluxes.load()
     print("Unaligned flux coords")
     print(unaligned_fluxes.coords)
-    aligned_influences, aligned_fluxes = xarray.align(
+    aligned_influences, aligned_fluxes, aligned_file_prior = xarray.align(
         matched_influences.isel(flux_time=slice(1, None)),
         unaligned_fluxes,
+        unaligned_file_prior,
         exclude=("dim_x", "dim_y", "observation", "realization"),
         join="outer", copy=False)
     print("Aligned flux coords")
@@ -767,8 +769,10 @@ for i, inversion_period in enumerate(grouper(
     posterior_ds = xarray.Dataset(
         dict(posterior=(aligned_fluxes.dims, posterior,
                         posterior_var_atts),
-             prior=(aligned_fluxes.dims, aligned_fluxes,
+             this_stage_prior=(aligned_fluxes.dims, aligned_fluxes,
                     aligned_fluxes.attrs),
+             overall_prior=(aligned_fluxes.dims, aligned_file_prior,
+                            aligned_file_prior.attrs),
              increment=(aligned_fluxes.dims, posterior - aligned_fluxes,
                         increment_var_atts),
              ),

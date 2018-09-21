@@ -290,7 +290,7 @@ plt.close(fig)
 
 ############################################################
 # Plot "truth", prior, and posterior side-by-side
-for_plotting = xarray.concat((POSTERIOR_DS.prior.isel(realization=0),
+for_plotting = xarray.concat((POSTERIOR_DS.overall_prior.isel(realization=0),
                               POSTERIOR_DS.posterior.isel(realization=0)),
                              dim="type")
 del for_plotting.coords["realization"]
@@ -394,7 +394,7 @@ plt.close(plots.fig)
 ############################################################
 # Find and plot gains for all realizations
 all_differences = xarray.concat(
-    (POSTERIOR_DS.prior - for_plotting.sel(type='"Truth"'),
+    (POSTERIOR_DS.overall_prior - for_plotting.sel(type='"Truth"'),
      POSTERIOR_DS.posterior - for_plotting.sel(type='"Truth"')),
     dim="type")
 all_differences.coords["type"] = ["prior_error", "posterior_error"]
