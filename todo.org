@@ -95,10 +95,11 @@
   numexpr: 669 ms/loop
   preallocate: 609 ms/loop
   reshape and transpose: 536 ms/loop
+  np.einsum: 255 ms/loop
 ** DONE optimize YMKronecker quadratic form
   100x100 and 1000x1000 matrices, 100000x10 test vec
-  vec.T @ (op @ vec): 540 ms/loop
-  op.quadratic_form(vec): 467 ms/loop
+  vec.T @ (op @ vec): 263 ms/loop
+  op.quadratic_form(vec): 273 ms/loop
 * TODO Rewrite integrators using wrapper and generators
 * TODO Get a toepelitz matrix implementation using np.as_strided working
 * TODO Implement Multivariate Laplace noise

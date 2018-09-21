@@ -16,7 +16,7 @@ from scipy.sparse.linalg.interface import (
 from scipy.sparse.linalg.eigen import eigsh as linop_eigsh
 from numpy import newaxis
 
-from numpy import concatenate, hstack, vstack, zeros
+from numpy import concatenate, hstack, zeros
 from numpy import asarray, atleast_2d, stack, where, sqrt
 from scipy.linalg import cholesky
 import numpy.linalg as la
@@ -856,34 +856,13 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         block_size = self._block_size
         operator1 = self._operator1
         operator2 = self._operator2
-        in_chunk = (1, operator1.shape[1], block_size, mat.shape[1])
-        # chunks = np.empty((operator1.shape[0], operator2.shape[0],
-        #                    mat.shape[1]),
-        #                   dtype=mat.dtype)
-
-        # # each row in the outer operator will produce a chunk of rows
-        # # in the result
-        # for row1 in range(self._n_chunks):
-        #     # Each section of block_size rows in mat is multiplied by
-        #     # the same element of operator1, then we move onto the
-        #     # next.  These are then summed over the elements of
-        #     # operator1.  This way is about twice as fast as a python
-        #     # loop with indexing.
-        #     chunk = (operator1[row1, :, newaxis, newaxis] *
-        #              mat.reshape(in_chunk)).sum(axis=0)
-        #     chunks[row1, :, :] = operator2.dot(chunk)
+        in_chunk = (operator1.shape[1], block_size, mat.shape[1])
 
         chunks = (
             operator2.dot(
-                # Inner loop
-                # Reshape `operator1` and `mat` to allow broadcasting
-                # Perform the needed products
-                (operator1.reshape(self._n_chunks, operator1.shape[1], 1, 1) *
-                 mat.reshape(in_chunk))
-                # Perform the sum
-                .sum(axis=1)
-                # Transpose and reshape to be 2d for operator2
-                .transpose((1, 0, 2)).reshape(block_size, -1)
+                np.einsum(
+                    "ij,jkl->kil", operator1, mat.reshape(in_chunk)
+                ).reshape(block_size, -1)
             )
             # Reshape to separate out the block dimension from the
             # original second dim of mat
@@ -938,8 +917,8 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
                 0, mat.shape[0], block_size)):
             # Two function calls and a C loop, instead of python loop
             # with lots of indexing.
-            chunk = (operator1[row1, :, np.newaxis, np.newaxis] *
-                     mat.reshape(in_chunk)).sum(axis=0)
+            chunk = np.einsum("j,jkl->kl", operator1[row1, :],
+                              mat.reshape(in_chunk))
             result += mat[row_start:(row_start + block_size)].T.dot(
                 operator2.dot(chunk))
         return result
