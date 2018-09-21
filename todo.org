@@ -65,7 +65,7 @@
   Python Arch package might allow GARCH on top of that.
   Arch also has a few cross-validators built-in.
 * TODO Learn about cross-validation and implement it.
-* TODO Check improvements from conda packages
+* TODO Check whether optimization ideas help
 ** python3.4.4 cluster_python
    2.75h cpu
    ~82GiB mem
@@ -75,5 +75,21 @@
    ~80GiB mem
    115GiB vmem
    3.2h wall
+   Second run, with non-nan July observations:
+   4.1h cpu
+   90GiB mem
+   111GiB vmem
+   4.25h wall
+** DONE optimize YMKronecker product sums
+  100x100 and 1000x1000 matrices, 100000x10 test vec
+  bn.nansum: 662 ms/loop
+  ndarray.sum: 628 ms/loop
+  numexpr: 669 ms/loop
+  preallocate: 609 ms/loop
+  reshape and transpose: 536 ms/loop
+** DONE optimize YMKronecker quadratic form
+  100x100 and 1000x1000 matrices, 100000x10 test vec
+  vec.T @ (op @ vec): 540 ms/loop
+  op.quadratic_form(vec): 467 ms/loop
 * TODO Rewrite integrators using wrapper and generators
 * TODO Get a toepelitz matrix implementation using np.as_strided working

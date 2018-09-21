@@ -431,7 +431,7 @@ class TestGaussianNoise(unittest2.TestCase):
 
         combined = inversion.util.kronecker_product(op1, op2)
 
-        noise = inversion.noise.gaussian_noise(combined, int(1e6))
+        noise = inversion.noise.gaussian_noise(combined, int(1e5))
 
         np_tst.assert_allclose(noise.mean(axis=0),
                                np.zeros(combined.shape[0]),

@@ -853,24 +853,46 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         :math:`B`.
 
         """
-        chunks = []
         block_size = self._block_size
         operator1 = self._operator1
         operator2 = self._operator2
-        in_chunk = (operator1.shape[1], block_size, mat.shape[1])
+        in_chunk = (1, operator1.shape[1], block_size, mat.shape[1])
+        # chunks = np.empty((operator1.shape[0], operator2.shape[0],
+        #                    mat.shape[1]),
+        #                   dtype=mat.dtype)
 
-        # each row in the outer operator will produce a chunk of rows
-        # in the result
-        for row1 in range(self._n_chunks):
-            # Each section of block_size rows in mat is multiplied by
-            # the same element of operator1, then we move onto the
-            # next.  These are then summed over the elements of
-            # operator1.  This way is about twice as fast as a python
-            # loop with indexing.
-            chunk = (operator1[row1, :, np.newaxis, np.newaxis] *
-                     mat.reshape(in_chunk)).sum(axis=0)
-            chunks.append(operator2.dot(chunk))
-        return vstack(tuple(chunks))
+        # # each row in the outer operator will produce a chunk of rows
+        # # in the result
+        # for row1 in range(self._n_chunks):
+        #     # Each section of block_size rows in mat is multiplied by
+        #     # the same element of operator1, then we move onto the
+        #     # next.  These are then summed over the elements of
+        #     # operator1.  This way is about twice as fast as a python
+        #     # loop with indexing.
+        #     chunk = (operator1[row1, :, newaxis, newaxis] *
+        #              mat.reshape(in_chunk)).sum(axis=0)
+        #     chunks[row1, :, :] = operator2.dot(chunk)
+
+        chunks = (
+            operator2.dot(
+                # Inner loop
+                # Reshape `operator1` and `mat` to allow broadcasting
+                # Perform the needed products
+                (operator1.reshape(self._n_chunks, operator1.shape[1], 1, 1) *
+                 mat.reshape(in_chunk))
+                # Perform the sum
+                .sum(axis=1)
+                # Transpose and reshape to be 2d for operator2
+                .transpose((1, 0, 2)).reshape(block_size, -1)
+            )
+            # Reshape to separate out the block dimension from the
+            # original second dim of mat
+            .reshape(operator2.shape[0], self._n_chunks, mat.shape[1])
+            # Transpose back to have block dimension first
+            .transpose((1, 0, 2))
+        )
+        # Reshape back to expected result size
+        return chunks.reshape(self.shape[0], mat.shape[1])
 
     def quadratic_form(self, mat):
         r"""Calculate the quadratic form mat.T @ self @ mat.
