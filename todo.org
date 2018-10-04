@@ -74,11 +74,11 @@
   Arch also has a few cross-validators built-in.
 * TODO Learn about cross-validation and implement it.
 * TODO Check whether optimization ideas help
-** python3.4.4 cluster_python
+*** python3.4.4 cluster_python
    2.75h cpu
    ~82GiB mem
    4.75 wall
-** python3.6.6 inversion_environment default numpy 1.14.5
+*** python3.6.6 inversion_environment default numpy 1.14.5
    2.75h cpu
    ~80GiB mem
    115GiB vmem
@@ -88,6 +88,17 @@
    90GiB mem
    111GiB vmem
    4.25h wall
+*** inversion_environment einsum
+    9 towers, non-nan July obs and file prior
+    2.1h cpu
+    139GiB mem
+    176GiB vmem
+    1.6h wall
+    7 towers?, matching July obs
+    7.5h cpu
+    160GiB mem
+    178GiB vmem
+    8.4h wall
 ** DONE optimize YMKronecker product sums
   100x100 and 1000x1000 matrices, 100000x10 test vec
   bn.nansum: 662 ms/loop
@@ -100,11 +111,12 @@
   100x100 and 1000x1000 matrices, 100000x10 test vec
   vec.T @ (op @ vec): 263 ms/loop
   op.quadratic_form(vec): 273 ms/loop
+** TODO See where I can use np.linalg.multidot
 * TODO Rewrite integrators using wrapper and generators
 * TODO Get a toepelitz matrix implementation using np.as_strided working
 * TODO Implement Multivariate Laplace noise
   Ref: 
-    Samuel KotzTomaz J. KozubowskiKrzysztof Podgórski
+    Samuel Kotz, Tomaz J. Kozubowski, Krzysztof Podgórski
     The Laplace Distribution and Generalizations
     A Revisit with Applications to Communications, Economics, Engineering, and Finance
     URL: https://link.springer.com/book/10.1007%2F978-1-4612-0173-1#about
