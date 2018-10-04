@@ -147,6 +147,7 @@ Used to convert WRF fluxes to units expected by observation operator.
 """
 CO2_MOLAR_MASS_UNITS = cf_units.Unit("g/mol")
 FLUX_UNITS = cf_units.Unit("mol/m^2/s")
+BAD_SITES = ("WGC", "OSI")
 
 # Inverting a single day of observations
 # Four stations; afternoon is four hours
@@ -563,6 +564,8 @@ for i, inversion_period in enumerate(grouper(
     site_obs_index = []
     print(datetime.datetime.now(UTC).strftime("%c"), "Selecting observations")
     for j, site in enumerate(INFLUENCE_FUNCTIONS.indexes["site"]):
+        if site in BAD_SITES:
+            continue
         local_times = pd.Index([
             obs_time.tz_localize(UTC)
             .tz_convert(LOCAL_TIME_ZONES[j])
@@ -644,8 +647,6 @@ for i, inversion_period in enumerate(grouper(
         unaligned_file_prior,
         exclude=("dim_x", "dim_y", "observation", "realization"),
         join="outer", copy=False)
-    print("Aligned flux coords")
-    print(aligned_fluxes.coords)
 
     print("Aligned incluences")
     print(aligned_influences)
@@ -658,6 +659,8 @@ for i, inversion_period in enumerate(grouper(
     aligned_influences = aligned_influences.fillna(0).transpose(
         "observation", "flux_time", "dim_y", "dim_x")
     aligned_fluxes = aligned_fluxes.transpose(
+        "flux_time", "dim_y", "dim_x", "realization")
+    aligned_file_prior = aligned_file_prior.transpose(
         "flux_time", "dim_y", "dim_x", "realization")
     print(datetime.datetime.now(UTC).strftime("%c"),
           "Influence functions now H")
@@ -767,14 +770,15 @@ for i, inversion_period in enumerate(grouper(
     sys.stdout.flush()
     posterior = posterior.reshape(aligned_fluxes.shape)
     posterior_ds = xarray.Dataset(
-        dict(posterior=(aligned_fluxes.dims, posterior,
-                        posterior_var_atts),
-             this_stage_prior=(aligned_fluxes.dims, aligned_fluxes,
-                    aligned_fluxes.attrs),
-             overall_prior=(aligned_fluxes.dims, aligned_file_prior,
-                            aligned_file_prior.attrs),
-             increment=(aligned_fluxes.dims, posterior - aligned_fluxes,
-                        increment_var_atts),
+        dict(posterior=(
+                aligned_fluxes.dims, posterior,
+                posterior_var_atts),
+             this_stage_prior=(
+                aligned_fluxes.dims, aligned_fluxes,
+                aligned_fluxes.attrs),
+             overall_prior=(
+                aligned_fluxes.dims, aligned_file_prior,
+                aligned_file_prior.attrs),
              ),
         aligned_fluxes.coords,
         posterior_global_atts
