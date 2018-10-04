@@ -464,14 +464,20 @@ with open("{year:04d}-{month:02d}_small_gain_dist.txt".format(
 
 ############################################################
 # Plot timeseries of mean flux
-spatial_avg_differences = all_differences.sel(
-    projection_x_coordinate=slice(WEST_BOUNDARY_WRF, None)).mean(
+spatial_avg_differences = all_differences.mean(
     ["projection_x_coordinate", "projection_y_coordinate"])
 
 fig = plt.figure(figsize=(5, 3.4))
 fig.autofmt_xdate()
 plt.subplots_adjust(left=.18)
 ax = plt.gca()
+spatial_avg_differences.sel(
+    type="prior_error", realization=0).plot.line(
+    "-", label="Initial estimate")
+spatial_avg_differences.sel(
+    type="posterior_error", realization=0).plot.line(
+    "--", label="Final estimate")
+
 ax.set_xlim(mpl.dates.datestr2num(
     ["2010-06-18T00:00:00Z", "2010-08-01T00:00:00Z"]))
 for xval, color in (zip(
@@ -483,15 +489,8 @@ for xval, color in (zip(
 
 ax.axhline(0, color="black", linewidth=.75)
 
-spatial_avg_differences.sel(
-    type="prior_error", realization=0).plot.line(
-    "--", label="Initial estimate")
-spatial_avg_differences.sel(
-    type="posterior_error", realization=0).plot.line(
-    "-.", label="Final estimate")
-
 plt.legend()
-ax.set_ylabel("Average flux error of eastern domain\n(μmol/m$^2$/s)")
+ax.set_ylabel("Average flux error over whole domain\n(μmol/m²/s)")
 ax.set_xlabel("")
 plt.title("Spatial average flux error")
 
@@ -502,6 +501,38 @@ fig.savefig(
     "{year:04d}-{month:02d}_realization_spatial_avg_timeseries.png".format(
         year=YEAR, month=MONTH))
 
+plt.close(fig)
+
+############################################################
+# Plot timeseries of increment
+spatial_avg_increment = (
+    spatial_avg_differences.sel(type="posterior_error") -
+    spatial_avg_differences.sel(type="prior_error")
+)
+fig = plt.figure(figsize=(5, 3.4))
+fig.autofmt_xdate()
+plt.subplots_adjust(left=.18)
+ax = plt.gca()
+spatial_avg_increment.isel(realization=0).plot.line('-')
+
+ax.set_xlim(mpl.dates.datestr2num(
+    ["2010-06-18T00:00:00Z", "2010-08-01T00:00:00Z"]))
+for xval, color in (zip(
+        mpl.dates.datestr2num(
+            ["2010-07-01T00:00:00Z", "2010-07-03T00:00:00Z",
+             "2010-07-17T00:00:00Z"]),
+        ["red", "gray", "red"])):
+    ax.axvline(xval, color=color)
+
+ax.axhline(0, color="black", linewidth=.75)
+ax.set_ylabel("Average increment over whole domain\n(μmol/m²/s)")
+ax.set_xlabel("")
+plt.title("Spatial average increment")
+
+fig.savefig("{year:04d}-{month:02d}_realization_spatial_avg_increment_timeseries.pdf".format(
+        year=YEAR, month=MONTH))
+fig.savefig("{year:04d}-{month:02d}_realization_spatial_avg_increment_timeseries.png".format(
+        year=YEAR, month=MONTH))
 plt.close(fig)
 
 ############################################################
