@@ -502,8 +502,8 @@ print(datetime.datetime.now(UTC).strftime("%c"), "Have temporal correlations")
 sys.stdout.flush(); sys.stderr.flush()
 
 full_correlations = kronecker_product(
-    day_correlations,
-    kronecker_product(hour_correlations, spatial_correlations))
+    temporal_correlations
+    spatial_correlations)
 print("Full:", type(full_correlations))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have combined correlations")
 sys.stdout.flush(); sys.stderr.flush()
