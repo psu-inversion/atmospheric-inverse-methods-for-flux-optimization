@@ -454,6 +454,10 @@ aligned_influences = aligned_influences.transpose(
     "observation", "flux_time", "dim_y", "dim_x")
 print(datetime.datetime.now(UTC).strftime("%c"), "Rechunked to square")
 aligned_influences = aligned_influences.fillna(0)
+aligned_true_fluxes.load()
+aligned_prior_fluxes.load()
+aligned_influences.load()
+print(datetime.datetime.now(UTC).strftime("%c"), "Loaded data")
 
 posterior_var_atts = aligned_prior_fluxes.attrs.copy()
 posterior_var_atts.update(dict(
