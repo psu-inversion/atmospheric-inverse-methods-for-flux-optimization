@@ -34,12 +34,15 @@ import inversion.optimal_interpolation
 import inversion.variational
 import inversion.correlations
 import inversion.covariances
-from inversion.util import kronecker_product, asarray
+from inversion.util import kronecker_product
+from inversion.linalg import asarray
 from inversion.noise import gaussian_noise
 import cf_acdd
 
-INFLUENCE_PATH = ("/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
-                  "ACT-America_trial5/2010/01/GROUP1")
+INFLUENCE_PATHS = ["/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
+                   "ACT-America_trial5/2010/01/GROUP1",
+                   "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
+                   "candidacy_more_towers/2010/01/GROUP1"]
 PRIOR_PATH = "/mc1s2/s4/dfw5129/inversion_code/data_files"
 OBS_PATH = "/mc1s2/s4/dfw5129/inversion"
 
@@ -56,25 +59,36 @@ Note
 ----
 Must divide twenty-four.
 """
+FLUX_RESOLUTION = 27
+"""Resolution of fluxes and influence functions in kilometers."""
+
 # Linear interpolation in space
-OBS_FILES = glob.glob(os.path.join(OBS_PATH,
-                                   "2010_01_4tower_LPDM_concentrations?.nc"))
+OBS_FILES = glob.glob(os.path.join(
+    OBS_PATH,
+    "2010_07_[45]tower_{inter:02d}hr_{res:03d}km_"
+    "LPDM_concentrations?.nc".format(
+        inter=FLUX_INTERVAL, res=FLUX_RESOLUTION)))
 CORR_FUN = "exp"
-CORR_LEN = 84
+CORR_LEN = 200
 TIME_CORR_FUN = "exp"
 TIME_CORR_LEN = 14
 FLUX_FILES = glob.glob(os.path.join(
     PRIOR_PATH,
-    ("osse_priors_{interval:1d}h_27km_noise_{corr_fun:s}{corr_len:d}km"
-     "_{corr_fun_time:s}{corr_len_time:d}d_exp3h.nc").format(
+    ("2010-07_osse_priors_{interval:1d}h_{res:02d}km_noise_"
+     "{corr_fun:s}{corr_len:d}km_"
+     "{corr_fun_time:s}{corr_len_time:d}d_exp3h.nc").format(
         interval=FLUX_INTERVAL, corr_fun=CORR_FUN, corr_len=CORR_LEN,
-        corr_fun_time=TIME_CORR_FUN, corr_len_time=TIME_CORR_LEN)))
+        corr_fun_time=TIME_CORR_FUN, corr_len_time=TIME_CORR_LEN,
+        res=FLUX_RESOLUTION)))
 FLUX_FILES.sort()
 OBS_FILES.sort()
-INFLUENCE_FILES = glob.glob(os.path.join(
-    INFLUENCE_PATH,
-    "LPDM_2010_01_{flux_interval:02d}hrly_027km_footprints.nc4"
-    .format(flux_interval=FLUX_INTERVAL)))
+INFLUENCE_FILES = [
+    name
+    for path in INFLUENCE_PATHS
+    for name in glob.glob(os.path.join(
+        path,
+        "LPDM_2010_01_{flux_interval:02d}hrly_{res:03d}km_molar_footprints.nc4"
+        .format(flux_interval=FLUX_INTERVAL, res=FLUX_RESOLUTION)))]
 
 print("Flux files", FLUX_FILES)
 print("Influence Files", INFLUENCE_FILES)
@@ -115,7 +129,10 @@ CO2_MOLAR_MASS = 16 * 2 + 12.01
 
 Used to convert WRF fluxes to units expected by observation operator.
 """
-OBS_DAYS = 16
+DAYS_DROPPED_FROM_END = 1
+"""Currently 1 to avoid problems with lack of fluxes in August."""
+OBS_DAYS = 2
+#  1 3m51
 #  4 6m9
 #  8 15m56
 # 16 44m43
@@ -125,6 +142,7 @@ OBS_WINDOW = OBS_DAYS * OBS_TIMES_PER_DAY
 """Number of observation times."""
 CO2_MOLAR_MASS_UNITS = cf_units.Unit("g/mol")
 FLUX_UNITS = cf_units.Unit("g/m^2/hr")
+BAD_SITES = ("WGC", "OSI")
 
 FLUX_CHUNKS = HOURS_PER_DAY * 8 // FLUX_INTERVAL
 # 48 51s
@@ -227,17 +245,25 @@ INFLUENCE_DATASET = xarray.open_mfdataset(
     #             time_before_observation=FLUX_CHUNKS,
     #             dim_y=NY, dim_x=NX)
 ).isel(
-    observation_time=slice(0, OBS_DAYS * HOURS_PER_DAY),
+    observation_time=slice(DAYS_DROPPED_FROM_END * HOURS_PER_DAY,
+                           (OBS_DAYS + DAYS_DROPPED_FROM_END) * HOURS_PER_DAY),
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
 INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
 # Use site names as index/dim coord for site dim
 INFLUENCE_FUNCTIONS.coords["site"] = np.char.decode(
     INFLUENCE_FUNCTIONS["site_names"].values, "ascii")
 
-OBS_TIME_INDEX = INFLUENCE_DATASET.indexes["observation_time"].round("S")
-TIME_BACK_INDEX = INFLUENCE_DATASET.indexes["time_before_observation"]
+OBS_TIME_INDEX = (INFLUENCE_DATASET.indexes["observation_time"].round("S") +
+                  datetime.timedelta(days=181))
+TIME_BACK_INDEX = (
+    INFLUENCE_DATASET.indexes["time_before_observation"].round("S"))
 
 INFLUENCE_FUNCTIONS.coords["observation_time"] = OBS_TIME_INDEX
+
+FLUX_TIMES = (INFLUENCE_DATASET.coords["flux_time"] +
+              np.array(datetime.timedelta(days=181),
+                       dtype='m8[ns]'))
+INFLUENCE_DATASET.coords["flux_time"] = FLUX_TIMES
 
 # NB: Remember to change frequency and time zone as necessary.
 FLUX_START = (OBS_TIME_INDEX[-1] - TIME_BACK_INDEX[-1]).replace(hour=0)
@@ -282,11 +308,11 @@ FLUX_DATASET = xarray.open_mfdataset(
     #             flux_time=FLUX_CHUNKS,
     #             realization=REALIZATION_CHUNK),
     concat_dim="flux_time",
-).isel(realization=slice(0, 20))
+).isel(realization=slice(0, 10))
 OBS_DATASET = xarray.open_mfdataset(
     OBS_FILES,
     # chunks=dict(forecast_reference_time=OBS_CHUNKS_USED),
-    concat_dim="forecast_reference_time",
+    concat_dim="dim1",
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have obs, normalizing")
 sys.stdout.flush(); sys.stderr.flush()
@@ -376,6 +402,8 @@ obs_times = (INFLUENCE_FUNCTIONS.indexes["observation_time"][::-1])
 site_obs_index = []
 print(datetime.datetime.now(UTC).strftime("%c"), "Selecting observations")
 for i, site in enumerate(INFLUENCE_FUNCTIONS.indexes["site"]):
+    if site in BAD_SITES:
+        continue
     local_times = pd.Index([
         obs_time.tz_localize(UTC)
         .tz_convert(LOCAL_TIME_ZONES[i])
