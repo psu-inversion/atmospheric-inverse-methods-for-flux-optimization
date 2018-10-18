@@ -220,9 +220,10 @@ print("Days of obs used:", OBS_DAYS)
 #   8m for Kd, 75 to find HBH^T
 INFLUENCE_DATASET = xarray.open_mfdataset(
     INFLUENCE_FILES,
-    chunks=dict(observation_time=OBS_CHUNKS_ALL, site=1,
-                time_before_observation=FLUX_CHUNKS,
-                dim_y=NY, dim_x=NX)).isel(
+    # chunks=dict(observation_time=OBS_CHUNKS_ALL, site=1,
+    #             time_before_observation=FLUX_CHUNKS,
+    #             dim_y=NY, dim_x=NX)
+).isel(
     observation_time=slice(0, OBS_DAYS * HOURS_PER_DAY),
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
 INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
@@ -274,14 +275,14 @@ print(datetime.datetime.now(UTC).strftime("%c"),
 # Read prior fluxes
 FLUX_DATASET = xarray.open_mfdataset(
     FLUX_FILES,
-    chunks=dict(dim_x=NX, dim_y=NY,
-                flux_time=FLUX_CHUNKS,
-                realization=REALIZATION_CHUNK),
+    # chunks=dict(dim_x=NX, dim_y=NY,
+    #             flux_time=FLUX_CHUNKS,
+    #             realization=REALIZATION_CHUNK),
     concat_dim="flux_time",
 ).isel(realization=slice(0, 20))
 OBS_DATASET = xarray.open_mfdataset(
     OBS_FILES,
-    chunks=dict(forecast_reference_time=OBS_CHUNKS_USED),
+    # chunks=dict(forecast_reference_time=OBS_CHUNKS_USED),
     concat_dim="forecast_reference_time",
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have obs, normalizing")
@@ -417,16 +418,11 @@ aligned_influences, aligned_true_fluxes, aligned_prior_fluxes = (
         join="outer", copy=False))
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Aligned fluxes and influence function")
-aligned_true_fluxes = aligned_true_fluxes.chunk(dict(
-    dim_y=NY, dim_x=NX, flux_time=FLUX_CHUNKS)).transpose(
+aligned_true_fluxes = aligned_true_fluxes.transpose(
     "flux_time", "dim_y", "dim_x")
-aligned_prior_fluxes = aligned_prior_fluxes.chunk(dict(
-    dim_y=NY, dim_x=NX, flux_time=FLUX_CHUNKS)).transpose(
+aligned_prior_fluxes = aligned_prior_fluxes.transpose(
     "flux_time", "dim_y", "dim_x", "realization")
-aligned_influences = aligned_influences.chunk(dict(
-    dim_y=NY, dim_x=NX, flux_time=FLUX_CHUNKS,
-    # One chunk per site.  Should be fast with the zeros in R.
-    observation=OBS_CHUNKS_USED)).transpose(
+aligned_influences = aligned_influences.transpose(
     "observation", "flux_time", "dim_y", "dim_x")
 print(datetime.datetime.now(UTC).strftime("%c"), "Rechunked to square")
 aligned_influences = aligned_influences.fillna(0)
@@ -532,9 +528,7 @@ print(datetime.datetime.now(UTC).strftime("%c"), "Have covariances")
 sys.stdout.flush(); sys.stderr.flush()
 
 # I realize this isn't quite the intended use for OBS_CHUNK
-prior_fluxes = aligned_prior_fluxes.chunk(dict(
-    dim_y=NY, dim_x=NX, flux_time=FLUX_CHUNKS, realization=OBS_CHUNKS_USED
-)).transpose(
+prior_fluxes = aligned_prior_fluxes.transpose(
     "flux_time", "dim_y", "dim_x", "realization")
 print(datetime.datetime.now(UTC).strftime("%c"), "Have prior noise")
 sys.stdout.flush(); sys.stderr.flush()
@@ -583,8 +577,7 @@ used_observations = xarray.DataArray(
     dict(
         observation_standard_deviation=OBSERVATION_STD,
         observation_correlation_time=OBS_CORR_FUN._length)
-).rename(dict(longitude_0="tower_lon", latitude_0="tower_lat")).chunk(
-    dict(realization=REALIZATION_CHUNK))
+).rename(dict(longitude_0="tower_lon", latitude_0="tower_lat"))
 used_observations.coords["realization"] = range(N_REALIZATIONS)
 used_observations.coords["realization"].attrs.update(dict(
     standard_name="realization"))
@@ -618,9 +611,7 @@ posterior_ds = xarray.Dataset(
                     increment_var_atts),
          ),
     TRUE_FLUXES_MATCHED.coords,
-    posterior_global_atts).chunk(dict(
-        dim_x=249, dim_y=184, flux_time=FLUX_CHUNKS,
-        realization=REALIZATION_CHUNK))
+    posterior_global_atts)
 posterior_ds["pseudo_observations"] = used_observations
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior structure, evaluating and writing")
