@@ -12,7 +12,6 @@ import os.path
 import glob
 import sys
 
-import dask.array as da
 import pandas as pd
 import dateutil.tz
 import numpy as np
@@ -111,13 +110,10 @@ Measured in hours.
 Implemented by slicing out this much of the stored influence functions
 for use as the linearized observation operator in the inversion.
 """
-OBS_HOURS = (datetime.time(14), datetime.time(18))
+OBS_HOURS = (datetime.time(12), datetime.time(16))
 """Which observation times will be used in the inversion.
 
-Assumed to be UTC. Should give afternoon hours for the domain.  Not
-currently set up for domains spanning many time zones. This shouldn't
-matter for OSSEs, but will for real-data cases (PBL schemes don't
-treat night well)
+Assumed to be local solar. Should give afternoon hours for the domain.
 
 I really hope I can assume this doesn't depend on latitude. That would
 make this much more complicated.
@@ -141,7 +137,7 @@ OBS_DAYS = 2
 OBS_WINDOW = OBS_DAYS * OBS_TIMES_PER_DAY
 """Number of observation times."""
 CO2_MOLAR_MASS_UNITS = cf_units.Unit("g/mol")
-FLUX_UNITS = cf_units.Unit("g/m^2/hr")
+FLUX_UNITS = cf_units.Unit("mol/m^2/s")
 BAD_SITES = ("WGC", "OSI")
 
 FLUX_CHUNKS = HOURS_PER_DAY * 8 // FLUX_INTERVAL
@@ -308,7 +304,7 @@ FLUX_DATASET = xarray.open_mfdataset(
     #             flux_time=FLUX_CHUNKS,
     #             realization=REALIZATION_CHUNK),
     concat_dim="flux_time",
-).isel(realization=slice(0, 10))
+).isel(realization=slice(0, None))
 OBS_DATASET = xarray.open_mfdataset(
     OBS_FILES,
     # chunks=dict(forecast_reference_time=OBS_CHUNKS_USED),
@@ -443,8 +439,9 @@ print(datetime.datetime.now(UTC).strftime("%c"),
 sys.stdout.flush(); sys.stderr.flush()
 aligned_influences, aligned_true_fluxes, aligned_prior_fluxes = (
     xarray.align(
-        aligned_influences, TRUE_FLUXES_MATCHED[TRUE_FLUX_NAME],
-        PRIOR_FLUXES_MATCHED[PRIOR_FLUX_NAME],
+        aligned_influences,
+        TRUE_FLUXES_MATCHED[TRUE_FLUX_NAME].isel(flux_time=slice(1, None)),
+        PRIOR_FLUXES_MATCHED[PRIOR_FLUX_NAME].isel(flux_time=slice(1, None)),
         exclude=("dim_x", "dim_y"),
         join="outer", copy=False))
 print(datetime.datetime.now(UTC).strftime("%c"),
@@ -519,7 +516,7 @@ DAILY_FLUX_FUN = "exp"
 day_correlations = (
     inversion.correlations.make_matrix(
         inversion.correlations.ExponentialCorrelation(DAILY_FLUX_TIMESCALE),
-        (len(TRUE_FLUXES_MATCHED.coords["flux_time"]) *
+        (len(aligned_prior_fluxes.indexes["flux_time"]) *
          FLUX_INTERVAL // HOURS_PER_DAY,)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have daily correlations")
 sys.stdout.flush(); sys.stderr.flush()
@@ -544,16 +541,16 @@ flux_std_pattern = xarray.open_dataset("../data_files/wrf_flux_rms.nc").get(
     ["E_TRA{:d}".format(i + 1) for i in range(10)]).isel(emissions_zdim=0)
 # Ensure units work out
 for flux_part in flux_std_pattern.data_vars.values():
-    unit = (cf_units.Unit(flux_part.attrs["units"]) *
-            CO2_MOLAR_MASS_UNITS)
-    flux_part *= (unit / FLUX_UNITS).convert(1, 1)
-    flux_part.attrs["units"] = str(FLUX_UNITS)
+    unit = (cf_units.Unit(flux_part.attrs["units"]))
+    if unit is not FLUX_UNITS:
+        flux_part *= unit.convert(1, FLUX_UNITS)
+        flux_part.attrs["units"] = str(FLUX_UNITS)
 flux_stds = (
     FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern[TRUE_FLUX_NAME].data)
 
 prior_covariance = kronecker_product(
     temporal_correlations,
-    inversion.util.CorrelationStandardDeviation(
+    inversion.covariances.CorrelationStandardDeviation(
         spatial_correlations, flux_stds))
 print("Covariance:", type(prior_covariance))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have covariances")
@@ -579,7 +576,7 @@ OBSERVATION_STD = 0.4
 This assumes similar deviations can be expected at each site.
 
 Representativeness error from Gerbig et al 2003 for 27 km is .2 ppm
-Ken says transport error is usually given as O(2-3ppmv)
+Ken says transport error is usually given as O(2-3ppm)
 """
 OBS_CORR_FUN = inversion.correlations.ExponentialCorrelation(3)
 """Temporal correlations in observation error.
@@ -620,29 +617,31 @@ print(datetime.datetime.now(UTC).strftime("%c"),
       "Got covariance parts, getting posterior")
 sys.stdout.flush(); sys.stderr.flush()
 posterior, correlations = inversion.optimal_interpolation.save_sum(
-    prior_fluxes.data.reshape(
-        N_GRID_POINTS * N_FLUX_TIMES, N_REALIZATIONS).compute(),
+    aligned_prior_fluxes.values.reshape(
+        N_GRID_POINTS * len(aligned_prior_fluxes.indexes["flux_time"]),
+        N_REALIZATIONS),
     prior_covariance,
-    used_observations.data.compute(),
+    used_observations.values,
     observation_covariance,
-    (aligned_influences.data
+    (aligned_influences.values
      .reshape(aligned_influences.shape[0],
-              np.prod(aligned_influences.shape[-3:]))).compute(),
+              np.prod(aligned_influences.shape[-3:]))),
     np.ones((1, 1)),
     np.ones((used_observations.shape[0], 1)))
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior values, making dataset")
 sys.stdout.flush(); sys.stderr.flush()
 
-posterior = posterior.reshape(prior_fluxes.shape)
+posterior = posterior.reshape(aligned_prior_fluxes.shape)
 posterior_ds = xarray.Dataset(
-    dict(posterior=(prior_fluxes.dims, posterior,
+    dict(posterior=(aligned_prior_fluxes.dims, posterior,
                     posterior_var_atts),
-         prior=prior_fluxes,
-         increment=(prior_fluxes.dims, posterior - prior_fluxes,
-                    increment_var_atts),
+         prior=(aligned_prior_fluxes.dims, aligned_prior_fluxes,
+                aligned_prior_fluxes.attrs),
+         truth=(aligned_true_fluxes.dims, aligned_true_fluxes,
+                aligned_true_fluxes.attrs)
          ),
-    TRUE_FLUXES_MATCHED.coords,
+    aligned_prior_fluxes.coords,
     posterior_global_atts)
 posterior_ds["pseudo_observations"] = used_observations
 print(datetime.datetime.now(UTC).strftime("%c"),
@@ -655,7 +654,8 @@ encoding.update({name: {"_FillValue": False}
 posterior_ds.to_netcdf(
     ("monthly_inversion_{flux_interval:02d}h_027km_"
      "noise{ncorr_fun:s}{ncorr_len:d}km{ncorr_fun_time:s}{ncorr_len_time:d}h_"
-     "icov{icorr_fun:s}{icorr_len:d}km{icorr_fun_time:s}{icorr_len_time:d}h_output.nc4")
+     "icov{icorr_fun:s}{icorr_len:d}km{icorr_fun_time:s}{icorr_len_time:d}h_"
+     "output.nc4")
     .format(flux_interval=FLUX_INTERVAL, ncorr_fun=CORR_FUN,
             ncorr_len=CORR_LEN, icorr_len=CORRELATION_LENGTH, icorr_fun="exp",
             icorr_len_time=DAILY_FLUX_TIMESCALE, icorr_fun_time=DAILY_FLUX_FUN,
