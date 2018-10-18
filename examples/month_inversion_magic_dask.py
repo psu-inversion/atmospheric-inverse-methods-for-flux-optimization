@@ -61,11 +61,14 @@ OBS_FILES = glob.glob(os.path.join(OBS_PATH,
                                    "2010_01_4tower_LPDM_concentrations?.nc"))
 CORR_FUN = "exp"
 CORR_LEN = 84
+TIME_CORR_FUN = "exp"
+TIME_CORR_LEN = 14
 FLUX_FILES = glob.glob(os.path.join(
     PRIOR_PATH,
     ("osse_priors_{interval:1d}h_27km_noise_{corr_fun:s}{corr_len:d}km"
-     "_exp14d_exp3h.nc").format(
-        interval=FLUX_INTERVAL, corr_fun=CORR_FUN, corr_len=CORR_LEN)))
+     "_{corr_fun_time:s}{corr_len_time:d}d_exp3h.nc").format(
+        interval=FLUX_INTERVAL, corr_fun=CORR_FUN, corr_len=CORR_LEN,
+        corr_fun_time=TIME_CORR_FUN, corr_len_time=TIME_CORR_LEN)))
 FLUX_FILES.sort()
 OBS_FILES.sort()
 INFLUENCE_FILES = glob.glob(os.path.join(
@@ -484,6 +487,7 @@ hour_correlations_matrix = hour_correlations.dot(np.eye(
 print(datetime.datetime.now(UTC).strftime("%c"), "Have hourly correlations")
 sys.stdout.flush(); sys.stderr.flush()
 DAILY_FLUX_TIMESCALE = 14
+DAILY_FLUX_FUN = "exp"
 day_correlations = (
     inversion.correlations.make_matrix(
         inversion.correlations.ExponentialCorrelation(DAILY_FLUX_TIMESCALE),
@@ -622,10 +626,12 @@ encoding.update({name: {"_FillValue": False}
                  for name in posterior_ds.coords})
 posterior_ds.to_netcdf(
     ("monthly_inversion_{flux_interval:02d}h_027km_"
-     "noise{ncorr_fun:s}{ncorr_len:d}_"
-     "icov{icorr_fun:s}{icorr_len:d}_output.nc4")
+     "noise{ncorr_fun:s}{ncorr_len:d}km{ncorr_fun_time:s}{ncorr_len_time:d}h_"
+     "icov{icorr_fun:s}{icorr_len:d}km{icorr_fun_time:s}{icorr_len_time:d}h_output.nc4")
     .format(flux_interval=FLUX_INTERVAL, ncorr_fun=CORR_FUN,
-            ncorr_len=CORR_LEN, icorr_len=CORRELATION_LENGTH, icorr_fun="exp"),
+            ncorr_len=CORR_LEN, icorr_len=CORRELATION_LENGTH, icorr_fun="exp",
+            icorr_len_time=DAILY_FLUX_TIMESCALE, icorr_fun_time=DAILY_FLUX_FUN,
+            ncorr_fun_time=TIME_CORR_FUN, ncorr_len_time=TIME_CORR_LEN),
     encoding=encoding)
 print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior")
 sys.stdout.flush(); sys.stderr.flush()
