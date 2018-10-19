@@ -555,6 +555,9 @@ for flux_part in flux_std_pattern.data_vars.values():
         flux_part.attrs["units"] = str(FLUX_UNITS)
 flux_stds = (
     FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern[TRUE_FLUX_NAME].data)
+print(datetime.datetime.now(UTC), "Loading flux standard deviations")
+flux_stds.load()
+print(datetime.datetime.now(UTC), "Loaded flux standard deviations")
 
 prior_covariance = kronecker_product(
     temporal_correlations,
