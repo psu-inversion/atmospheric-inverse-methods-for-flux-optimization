@@ -160,7 +160,7 @@ OBS_CHUNKS_USED = 96
 Must also allow a few chunks to be loaded at once.
 """
 REALIZATION_CHUNK = 20
-NC_ENGINE = "h5netcdf"
+NC_ENGINE = "netcdf4"
 
 
 ############################################################
