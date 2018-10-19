@@ -200,21 +200,18 @@ def save_sum(background, background_covariance,
 
     # B_{proj} = HBH^T
     if isinstance(observation_operator, ARRAY_TYPES):
-        B_HT = background_covariance.dot(observation_operator.T)
-
         # TODO: test this
         if hasattr(background_covariance, "quadratic_form"):
             projected_background_covariance = (
                 background_covariance.quadratic_form(
                     observation_operator.T))
         else:
-            projected_background_covariance = observation_operator.dot(B_HT)
+            projected_background_covariance = observation_operator.dot(
+                background_covariance.dot(observation_operator.T))
     else:
-        B_HT = tolinearoperator(background_covariance).dot(
-            observation_operator.T)
-
         projected_background_covariance = ProductLinearOperator(
-            observation_operator, B_HT)
+            observation_operator, tolinearoperator(background_covariance),
+            observation_operator.T)
 
     if ((isinstance(projected_background_covariance, LinearOperator) ^
          isinstance(observation_covariance, LinearOperator))):
@@ -235,6 +232,11 @@ def save_sum(background, background_covariance,
 
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
     if reduced_background_covariance is None:
+        if isinstance(observation_operator, ARRAY_TYPES):
+            B_HT = background_covariance.dot(observation_operator.T)
+        else:
+            B_HT = ProductLinearOperator(background_covariance,
+                                         observation_operator.T)
         decrease = B_HT.dot(solve(
             covariance_sum,
             B_HT.T))
