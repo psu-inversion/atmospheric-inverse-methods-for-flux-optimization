@@ -160,6 +160,7 @@ OBS_CHUNKS_USED = 96
 Must also allow a few chunks to be loaded at once.
 """
 REALIZATION_CHUNK = 20
+NC_ENGINE = "h5netcdf"
 
 
 ############################################################
@@ -239,6 +240,7 @@ INFLUENCE_DATASET = xarray.open_mfdataset(
     # chunks=dict(observation_time=OBS_CHUNKS_ALL, site=1,
     #             time_before_observation=FLUX_CHUNKS,
     #             dim_y=NY, dim_x=NX)
+    engine=NC_ENGINE,
 ).isel(
     observation_time=slice(DAYS_DROPPED_FROM_END * HOURS_PER_DAY,
                            (OBS_DAYS + DAYS_DROPPED_FROM_END) * HOURS_PER_DAY),
@@ -303,11 +305,13 @@ FLUX_DATASET = xarray.open_mfdataset(
     #             flux_time=FLUX_CHUNKS,
     #             realization=REALIZATION_CHUNK),
     concat_dim="flux_time",
+    engine=NC_ENGINE,
 ).isel(realization=slice(0, None))
 OBS_DATASET = xarray.open_mfdataset(
     OBS_FILES,
     # chunks=dict(forecast_reference_time=OBS_CHUNKS_USED),
     concat_dim="dim1",
+    engine=NC_ENGINE,
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have obs, normalizing")
 sys.stdout.flush(); sys.stderr.flush()
@@ -540,7 +544,8 @@ sys.stdout.flush(); sys.stderr.flush()
 # full stds would then be sqrt(fixed^2 + varying^2)
 # average seasonal variation (or some fraction thereof) might work.
 FLUX_VARIANCE_VARYING_FRACTION = 1
-flux_std_pattern = xarray.open_dataset("../data_files/wrf_flux_rms.nc").get(
+flux_std_pattern = xarray.open_dataset("../data_files/wrf_flux_rms.nc",
+                                       engine=NC_ENGINE).get(
     ["E_TRA{:d}".format(i + 1) for i in range(10)]).isel(emissions_zdim=0)
 # Ensure units work out
 for flux_part in flux_std_pattern.data_vars.values():
@@ -663,6 +668,6 @@ posterior_ds.to_netcdf(
             ncorr_len=CORR_LEN, icorr_len=CORRELATION_LENGTH, icorr_fun="exp",
             icorr_len_time=DAILY_FLUX_TIMESCALE, icorr_fun_time=DAILY_FLUX_FUN,
             ncorr_fun_time=TIME_CORR_FUN, ncorr_len_time=TIME_CORR_LEN),
-    encoding=encoding)
+    encoding=encoding, engine=NC_ENGINE)
 print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior")
 sys.stdout.flush(); sys.stderr.flush()
