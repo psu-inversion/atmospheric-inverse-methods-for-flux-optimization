@@ -127,7 +127,7 @@ Used to convert WRF fluxes to units expected by observation operator.
 """
 DAYS_DROPPED_FROM_END = 1
 """Currently 1 to avoid problems with lack of fluxes in August."""
-OBS_DAYS = 30
+OBS_DAYS = 24
 #  1  3m51 (10 realizations)
 #  2  6m49 (10 realizations)
 #  2 20m10 (80 realizations)
@@ -237,9 +237,9 @@ print("Days of obs used:", OBS_DAYS)
 #   8m for Kd, 75 to find HBH^T
 INFLUENCE_DATASET = xarray.open_mfdataset(
     INFLUENCE_FILES,
-    # chunks=dict(observation_time=OBS_CHUNKS_ALL, site=1,
-    #             time_before_observation=FLUX_CHUNKS,
-    #             dim_y=NY, dim_x=NX)
+    chunks=dict(observation_time=OBS_CHUNKS_ALL, site=1,
+                time_before_observation=FLUX_CHUNKS,
+                dim_y=NY, dim_x=NX),
     engine=NC_ENGINE,
 ).isel(
     observation_time=slice(DAYS_DROPPED_FROM_END * HOURS_PER_DAY,
@@ -301,15 +301,15 @@ print(datetime.datetime.now(UTC).strftime("%c"),
 # Read prior fluxes
 FLUX_DATASET = xarray.open_mfdataset(
     FLUX_FILES,
-    # chunks=dict(dim_x=NX, dim_y=NY,
-    #             flux_time=FLUX_CHUNKS,
-    #             realization=REALIZATION_CHUNK),
+    chunks=dict(dim_x=NX, dim_y=NY,
+                flux_time=FLUX_CHUNKS,
+                realization=REALIZATION_CHUNK),
     concat_dim="flux_time",
     engine=NC_ENGINE,
 ).isel(realization=slice(0, None))
 OBS_DATASET = xarray.open_mfdataset(
     OBS_FILES,
-    # chunks=dict(forecast_reference_time=OBS_CHUNKS_USED),
+    chunks=dict(forecast_reference_time=OBS_CHUNKS_USED),
     concat_dim="dim1",
     engine=NC_ENGINE,
 )
