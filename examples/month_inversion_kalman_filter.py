@@ -218,6 +218,12 @@ def sort_key_to_consecutive(sequence):
     return tuple(item[0] for item in items)
 
 
+def flush_output_streams():
+    """Flush stdout and stderr."""
+    sys.stdout.flush()
+    sys.stderr.flush()
+
+
 ############################################################
 # Read sizes from influence function file
 TEST_DS = netCDF4.Dataset(INFLUENCE_FILES[0])
@@ -319,7 +325,7 @@ OBS_ROUGH_SIGMA = 0.9486
 
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have constants, getting priors")
-sys.stdout.flush()
+flush_output_streams()
 
 
 ############################################################
@@ -346,7 +352,7 @@ FLUX_DATASET = xarray.open_mfdataset(
     # preprocess=fix_wrf_times,
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have fluxes, getting obs")
-sys.stdout.flush()
+flush_output_streams()
 OBS_DATASET = xarray.open_mfdataset(
     OBS_FILES,
     concat_dim="dim1",
@@ -354,7 +360,7 @@ OBS_DATASET = xarray.open_mfdataset(
     # drop_variables=("HGT", "PH", "PHB", "ZS"),
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have obs, normalizing")
-sys.stdout.flush()
+flush_output_streams()
 
 # Many of the times are of by about four milliseconds.
 # This difference is irrelevant here.
@@ -433,7 +439,7 @@ WRF_OBS_INTERVAL = (
     WRF_OBS_START - WRF_OBS_MATCHED.indexes["observation_time"].round("S")[1])
 
 print(datetime.datetime.now(UTC).strftime("%c"), "Getting solar times")
-sys.stdout.flush()
+flush_output_streams()
 ############################################################
 # Get time zone representing local solar time for each site
 LOCAL_TIME_ZONES = list(map(
@@ -491,7 +497,7 @@ posterior_global_atts.update(dict(
 # Covariances have time-varying component
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Getting correlations")
-sys.stdout.flush()
+flush_output_streams()
 
 CORRELATION_LENGTH = 200
 GRID_RESOLUTION = FLUX_RESOLUTION
@@ -505,7 +511,7 @@ spatial_correlations = (
          len(TRUE_FLUXES_MATCHED.coords["dim_x"]))))
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have spatial correlations")
-sys.stdout.flush()
+flush_output_streams()
 HOURLY_FLUX_TIMESCALE = 3
 hour_correlations = (
     inversion.correlations.HomogeneousIsotropicCorrelation.
@@ -516,20 +522,20 @@ hour_correlations_matrix = hour_correlations.dot(
     np.eye(hour_correlations.shape[0]))
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have hourly correlations")
-sys.stdout.flush()
-DAILY_FLUX_TIMESCALE = 14
+flush_output_streams()
+DAILY_FLUX_TIMESCALE = 7
 day_correlations = (
     inversion.correlations.make_matrix(
-        inversion.correlations.ExponentialCorrelation(DAILY_FLUX_TIMESCALE),
+        inversion.correlations.GaussianCorrelation(DAILY_FLUX_TIMESCALE),
         ((FLUX_WINDOW) // HOURS_PER_DAY + OBS_WINDOW,)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have daily correlations")
-sys.stdout.flush()
+flush_output_streams()
 temporal_correlations = kronecker_product(day_correlations,
                                           hour_correlations_matrix)
 
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have combined correlations")
-sys.stdout.flush()
+flush_output_streams()
 
 OBSERVATION_STD = 0.4
 """Standard deviation of observations
@@ -585,7 +591,7 @@ for i, inversion_period in enumerate(grouper(
 
     print(datetime.datetime.now(UTC).strftime("%c"),
           "Aligning flux times in influence function")
-    sys.stdout.flush()
+    flush_output_streams()
     print(datetime.datetime.now(UTC).strftime("%c"),
           "Converting influence function to have alignment necessary for H")
     matched_influences = xarray.concat(
@@ -599,7 +605,7 @@ for i, inversion_period in enumerate(grouper(
     print(datetime.datetime.now(UTC).strftime("%c"),
           "Aligned flux times in influence function, "
           "aligning fluxes with influence function")
-    sys.stdout.flush()
+    flush_output_streams()
     start_date, end_date = [
         dt.replace(hour=0)
         for dt in matched_influences.indexes["flux_time"][[0, -1]]]
@@ -695,13 +701,13 @@ for i, inversion_period in enumerate(grouper(
              FLUX_INTERVAL // HOURS_PER_DAY,)))
     print(datetime.datetime.now(UTC).strftime("%c"),
           "Have daily correlations")
-    sys.stdout.flush()
+    flush_output_streams()
     temporal_correlations = kronecker_product(day_correlations,
                                               hour_correlations_matrix)
 
     print(datetime.datetime.now(UTC).strftime("%c"),
           "Have combined correlations")
-    sys.stdout.flush()
+    flush_output_streams()
 
     prior_covariance = kronecker_product(
         temporal_correlations,
@@ -709,7 +715,7 @@ for i, inversion_period in enumerate(grouper(
             spatial_correlations, flux_stds))
 
     print(datetime.datetime.now(UTC).strftime("%c"), "Have covariances")
-    sys.stdout.flush(); sys.stderr.flush()
+    flush_output_streams()
 
     # TODO: use actual heights
     here_obs = WRF_OBS_SITE[TRACER_NAME].sel_points(
@@ -747,11 +753,11 @@ for i, inversion_period in enumerate(grouper(
         long_name="pseudo_observations"))
     print(datetime.datetime.now(UTC).strftime("%c"),
           "Have observation noise")
-    sys.stdout.flush(); sys.stderr.flush()
+    flush_output_streams()
 
     print(datetime.datetime.now(UTC).strftime("%c"),
           "Got covariance parts, getting posterior")
-    sys.stdout.flush()
+    flush_output_streams()
     posterior, post_cov = inversion.optimal_interpolation.save_sum(
         aligned_fluxes.values.reshape(
             N_GRID_POINTS * len(aligned_influences.indexes["flux_time"]),
@@ -767,7 +773,7 @@ for i, inversion_period in enumerate(grouper(
 
     print(datetime.datetime.now(UTC).strftime("%c"),
           "Have posterior values, making dataset")
-    sys.stdout.flush()
+    flush_output_streams()
     posterior = posterior.reshape(aligned_fluxes.shape)
     posterior_ds = xarray.Dataset(
         dict(posterior=(
@@ -818,12 +824,12 @@ for i, inversion_period in enumerate(grouper(
     have_posterior_part = True
     print(datetime.datetime.now(UTC).strftime("%c"),
           "Have posterior dataset, looping for next obs")
-    sys.stdout.flush()
+    flush_output_streams()
 
 
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior structure, evaluating and writing")
-sys.stdout.flush()
+flush_output_streams()
 print("Parts of posterior already written, catenate parts with ncrcat.")
 print("Not all of posterior written; writing rest")
 unwritten_post_ds = posterior_ds.isel(
@@ -833,4 +839,4 @@ unwritten_post_ds.to_netcdf(
         flux_interval=FLUX_INTERVAL),
     encoding=post_encoding, unlimited_dims=["flux_time"])
 print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior")
-sys.stdout.flush()
+flush_output_streams()

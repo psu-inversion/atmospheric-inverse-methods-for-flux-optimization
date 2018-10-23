@@ -191,6 +191,12 @@ def sort_key_to_consecutive(sequence):
     return tuple(item[0] for item in items)
 
 
+def flush_output_streams():
+    """Flush stdout and stderr."""
+    sys.stdout.flush()
+    sys.stderr.flush()
+
+
 UTC = dateutil.tz.tzutc()
 SECONDS_PER_HOUR = 3600
 
@@ -314,7 +320,7 @@ OBS_DATASET = xarray.open_mfdataset(
     engine=NC_ENGINE,
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have obs, normalizing")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 
 wrf_times = OBS_DATASET.indexes["forecast_reference_time"].round("S")
 OBS_DATASET.coords["forecast_reference_time"] = wrf_times
@@ -421,7 +427,7 @@ site_obs_pd_index = pd.MultiIndex.from_tuples(
 
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Aligning flux times in influence function")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 dimension_order = [item for item in INFLUENCE_FUNCTIONS.dims]
 dimension_order.insert(dimension_order.index("time_before_observation"),
                        "flux_time")
@@ -439,7 +445,7 @@ aligned_influences = xarray.concat(
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Aligned flux times in influence function, "
       "aligning fluxes with influence function")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 aligned_influences, aligned_true_fluxes, aligned_prior_fluxes = (
     xarray.align(
         aligned_influences,
@@ -449,6 +455,7 @@ aligned_influences, aligned_true_fluxes, aligned_prior_fluxes = (
         join="outer", copy=False))
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Aligned fluxes and influence function")
+flush_output_streams()
 aligned_true_fluxes = aligned_true_fluxes.transpose(
     "flux_time", "dim_y", "dim_x")
 aligned_prior_fluxes = aligned_prior_fluxes.transpose(
@@ -456,11 +463,13 @@ aligned_prior_fluxes = aligned_prior_fluxes.transpose(
 aligned_influences = aligned_influences.transpose(
     "observation", "flux_time", "dim_y", "dim_x")
 print(datetime.datetime.now(UTC).strftime("%c"), "Rechunked to square")
+flush_output_streams()
 aligned_influences = aligned_influences.fillna(0)
 aligned_true_fluxes.load()
 aligned_prior_fluxes.load()
 aligned_influences.load()
 print(datetime.datetime.now(UTC).strftime("%c"), "Loaded data")
+flush_output_streams()
 
 posterior_var_atts = aligned_prior_fluxes.attrs.copy()
 posterior_var_atts.update(dict(
@@ -493,7 +502,7 @@ posterior_global_atts.update(dict(
 ############################################################
 # Define correlation constants and get covariances
 print(datetime.datetime.now(UTC).strftime("%c"), "Getting covariances")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 CORRELATION_LENGTH = 84
 GRID_RESOLUTION = 27
 spatial_correlations = (
@@ -505,7 +514,7 @@ spatial_correlations = (
         (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
          len(TRUE_FLUXES_MATCHED.coords["dim_x"]))))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have spatial correlations")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 HOURLY_FLUX_TIMESCALE = 3
 INTERVALS_PER_DAY = HOURS_PER_DAY // FLUX_INTERVAL
 hour_correlations = (
@@ -517,7 +526,7 @@ hour_correlations = (
 hour_correlations_matrix = hour_correlations.dot(np.eye(
     hour_correlations.shape[0]))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have hourly correlations")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 DAILY_FLUX_TIMESCALE = 14
 DAILY_FLUX_FUN = "exp"
 day_correlations = (
@@ -526,19 +535,19 @@ day_correlations = (
         (len(aligned_prior_fluxes.indexes["flux_time"]) *
          FLUX_INTERVAL // HOURS_PER_DAY,)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have daily correlations")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 temporal_correlations = kronecker_product(day_correlations,
                                           hour_correlations_matrix)
 print("Temporal:", type(temporal_correlations))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have temporal correlations")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 
 full_correlations = kronecker_product(
     temporal_correlations,
     spatial_correlations)
 print("Full:", type(full_correlations))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have combined correlations")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 
 # I would like to add a fixed minimum at some point.
 # full stds would then be sqrt(fixed^2 + varying^2)
@@ -562,13 +571,13 @@ prior_covariance = kronecker_product(
         spatial_correlations, flux_stds))
 print("Covariance:", type(prior_covariance))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have covariances")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 
 # I realize this isn't quite the intended use for OBS_CHUNK
 prior_fluxes = aligned_prior_fluxes.transpose(
     "flux_time", "dim_y", "dim_x", "realization")
 print(datetime.datetime.now(UTC).strftime("%c"), "Have prior noise")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 
 # TODO: use actual heights
 here_obs = WRF_OBS_SITE[TRACER_NAME].sel_points(
@@ -619,11 +628,11 @@ used_observations.coords["realization"] = range(N_REALIZATIONS)
 used_observations.coords["realization"].attrs.update(dict(
     standard_name="realization"))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have observation noise")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Got covariance parts, getting posterior")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 posterior, correlations = inversion.optimal_interpolation.save_sum(
     aligned_prior_fluxes.values.reshape(
         N_GRID_POINTS * len(aligned_prior_fluxes.indexes["flux_time"]),
@@ -638,7 +647,7 @@ posterior, correlations = inversion.optimal_interpolation.save_sum(
     np.ones((used_observations.shape[0], 1)))
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior values, making dataset")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 
 posterior = posterior.reshape(aligned_prior_fluxes.shape)
 posterior_ds = xarray.Dataset(
@@ -654,7 +663,7 @@ posterior_ds = xarray.Dataset(
 posterior_ds["pseudo_observations"] = used_observations
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior structure, evaluating and writing")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 encoding = {name: {"_FillValue": -99}
             for name in posterior_ds.data_vars}
 encoding.update({name: {"_FillValue": False}
@@ -670,4 +679,4 @@ posterior_ds.to_netcdf(
             ncorr_fun_time=TIME_CORR_FUN, ncorr_len_time=TIME_CORR_LEN),
     encoding=encoding, engine=NC_ENGINE)
 print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
