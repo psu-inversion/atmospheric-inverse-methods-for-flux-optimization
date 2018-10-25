@@ -710,11 +710,17 @@ plt.close(fig)
 error_range = da.asarray(
     [all_mean_error.min(), all_mean_error.max()]).compute()
 fig, ax = plt.subplots(1, 1)
-ax.hist([all_mean_error.sel(type="prior_error"),
-         all_mean_error.sel(type="posterior_error")],
-        range=[-.1, .1],
-        label=["Initial estimate", "Final estimate"])
-ax.set_ylabel("Count")
+# ax.hist([all_mean_error.sel(type="prior_error"),
+#              all_mean_error.sel(type="posterior_error")],
+#             range=[-.1, .1],
+#             label=["Prior", "Posterior"])
+all_mean_error.sel(
+    type=["prior_error", "posterior_error"]
+).plot.kde(
+    ax=ax, subplots=False, xlim=(-.1, .1),
+)
+ax.legend(["Prior", "Posterior"])
+ax.set_ylabel("Density")
 ax.set_xlabel("Error in estimate (μmol/m$^2$/s)")
 
 
@@ -734,12 +740,17 @@ plt.close(fig)
 small_error_range = da.asarray(
     [small_mean_error.min(), small_mean_error.max()]).compute()
 fig, ax = plt.subplots(1, 1)
-ax.hist([small_mean_error.sel(type="prior_error"),
-         small_mean_error.sel(type="posterior_error")],
-        range=[-.15, .15],
-        label=["Initial estimate", "Final estimate"])
-ax.set_xlabel("Whole-domain flux error (μmol/m$^2$/s)")
-ax.set_ylabel("Count")
+# ax.hist([small_mean_error.sel(type="prior_error"),
+#          small_mean_error.sel(type="posterior_error")],
+#         range=[-4, 4],
+#         label=["Initial estimate", "Final estimate"])
+ax.set_xlabel("West Virginia flux error (μmol/m$^2$/s)")
+small_mean_error.sel(
+    type=["prior_error", "posterior_error"]
+).plot.kde(
+    ax=ax, subplots=False, xlim=(-4, 4)
+)
+ax.set_ylabel("Density")
 
 plt.legend()
 fig.savefig(
