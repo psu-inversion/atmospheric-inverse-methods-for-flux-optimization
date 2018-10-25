@@ -16,7 +16,7 @@ from scipy.sparse.linalg.interface import (
 from scipy.sparse.linalg.eigen import eigsh as linop_eigsh
 from numpy import newaxis
 
-from numpy import concatenate, hstack, zeros
+from numpy import concatenate, hstack, zeros, einsum
 from numpy import asarray, atleast_2d, stack, where, sqrt
 from scipy.linalg import cholesky
 import numpy.linalg as la
@@ -264,7 +264,7 @@ def matrix_sqrt(mat):
         warnings.warn("The square root will be approximate.")
         vals, vecs = linop_eigsh(
             mat, min(mat.shape[0] // 2, OPTIMAL_ELEMENTS // mat.shape[0]))
-        sqrt_valop = DiagonalOperator(np.sqrt(vals))
+        sqrt_valop = DiagonalOperator(sqrt(vals))
         vecop = DaskMatrixLinearOperator(vecs)
         return ProductLinearOperator(vecop, sqrt_valop, vecop.T)
 
@@ -860,7 +860,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
 
         chunks = (
             operator2.dot(
-                np.einsum(
+                einsum(
                     "ij,jkl->kil", operator1, mat.reshape(in_chunk)
                 ).reshape(block_size, -1)
             )
@@ -917,7 +917,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
                 0, mat.shape[0], block_size)):
             # Two function calls and a C loop, instead of python loop
             # with lots of indexing.
-            chunk = np.einsum("j,jkl->kl", operator1[row1, :],
+            chunk = einsum("j,jkl->kl", operator1[row1, :],
                               mat.reshape(in_chunk))
             result += mat[row_start:(row_start + block_size)].T.dot(
                 operator2.dot(chunk))
