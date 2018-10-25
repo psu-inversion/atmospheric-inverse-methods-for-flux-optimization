@@ -6,6 +6,7 @@ import glob
 import sys
 import os
 
+import numpy as np
 import scipy.stats
 import scipy.special
 import matplotlib as mpl
@@ -25,24 +26,34 @@ MONTH = 7
 
 NOISE_FUNCTION = "exp"
 NOISE_LENGTH = 200
+NOISE_TIME_FUN = "exp"
+NOISE_TIME_LEN = 14
 INV_FUNCTION = "exp"
 INV_LENGTH = 200
+INV_TIME_FUN = "gau"
+INV_TIME_LEN = 7
 
 FLUX_INTERVAL = 6
 FLUX_RESOLUTION = 27
 
-PRIOR_PATH = ("../data_files/"
-              "{year:04d}-{month:02d}_osse_priors_{interval:d}h_{res:02d}km_"
-              "noise_{fun:s}{len:d}km_exp14d_exp3h.nc").format(
+PRIOR_PATH = (
+    "../data_files/"
+    "{year:04d}-{month:02d}_osse_priors_{interval:d}h_{res:02d}km_"
+    "noise_{fun:s}{len:d}km_{time_fun:s}{time_len:d}d_exp3h.nc"
+).format(
     year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
-    fun=NOISE_FUNCTION, len=NOISE_LENGTH)
+    fun=NOISE_FUNCTION, len=NOISE_LENGTH, time_fun=NOISE_TIME_FUN,
+    time_len=NOISE_TIME_LEN)
 POSTERIOR_PATH = (
     "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
-    "noise{noisefun:s}{noiselen:d}_icov{invfun:s}{invlen:d}"
-    "_lagged16_output_cf_conda.nc4"
+    "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}h"
+    "_icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}h"
+    "_output.nc4"
 ).format(year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
          noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
-         invfun=INV_FUNCTION, invlen=INV_LENGTH)
+         noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
+         invfun=INV_FUNCTION, invlen=INV_LENGTH,
+         inv_time_fun=INV_TIME_FUN, inv_time_len=INV_TIME_LEN)
 
 WRF_CRS = ccrs.LambertConformal(
     standard_parallels=(30, 60), central_latitude=40,
@@ -284,8 +295,13 @@ for i, site in enumerate(set(PSEUDO_OBS_DS.site.values)):
 fig.suptitle("Pseudo-observations used in inversion")
 # fig.savefig("{year:04d}-{month:02d}_pseudo_obs_afternoon.png".format(
 #     year=YEAR, month=MONTH))
-fig.savefig("{year:04d}-{month:02d}_pseudo_obs_afternoon.pdf".format(
-    year=YEAR, month=MONTH))
+fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_pseudo_obs_afternoon.pdf"
+    .format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN))
 plt.close(fig)
 
 ############################################################
@@ -321,10 +337,16 @@ plots.axes[0, 0].set_title('"Truth"')
 plots.axes[0, 1].set_title("Initial estimate")
 plots.axes[0, 2].set_title("Final estimate")
 
-plots.fig.savefig("{year:04d}-{month:02d}_osse_realization.png".format(
-    year=YEAR, month=MONTH), dpi=400)
-plots.fig.savefig("{year:04d}-{month:02d}_osse_realization.pdf".format(
-    year=YEAR, month=MONTH))
+plots.fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_osse_realization.png".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN),
+    dpi=400)
 plt.close(plots.fig)
 
 ############################################################
@@ -364,8 +386,15 @@ plots.cbar.ax.set_ylabel("CO$_2$ Flux (μmol/m$^2$/s)")
 plots.axes[0, 0].set_title("Prior $-$ \"Truth\"")
 plots.axes[0, 1].set_title("Posterior $-$ \"Truth\"")
 
-plots.fig.savefig("{year:04d}-{month:02d}_osse_errors.png".format(
-    year=YEAR, month=MONTH))
+plots.fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_osse_errors.png".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
 plt.close(plots.fig)
 
 ############################################################
@@ -387,8 +416,15 @@ for ax in plots.axes.flat:
     ax.coastlines()
 
 plots.fig.savefig(
-    "{year:04d}-{month:02d}_realization_pointwise_gain.png".format(
-        year=YEAR, month=MONTH))
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_realization_pointwise_gain.png"
+    .format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
 plt.close(plots.fig)
 
 ############################################################
@@ -423,10 +459,15 @@ total_gain.plot.hist(range=(-2, 1), bins=15)
 fig.suptitle("Total gain")
 plt.xlabel("Gain in total flux")
 
-fig.savefig("{year:04d}-{month:02d}_total_gain_hist.png".format(
-    year=YEAR, month=MONTH))
-fig.savefig("{year:04d}-{month:02d}_total_gain_hist.pdf".format(
-    year=YEAR, month=MONTH))
+fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_total_gain_hist.pdf".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
 plt.close(fig)
 
 small_gain = 1 - (da.fabs(small_mean_error.sel(type="posterior_error")) /
@@ -438,25 +479,44 @@ small_gain.plot.hist(range=(-2, 1), bins=15)
 fig.suptitle("Total gain on small domain")
 plt.xlabel("Gain in flux in small domain")
 
-fig.savefig("{year:04d}-{month:02d}_small_gain_hist.png".format(
-    year=YEAR, month=MONTH))
-fig.savefig("{year:04d}-{month:02d}_small_gain_hist.pdf".format(
-    year=YEAR, month=MONTH))
+fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_small_gain_hist.pdf".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
 plt.close(fig)
 
 ############################################################
 # Describe the distribution
-with open("{year:04d}-{month:02d}_gain_dist.txt".format(
-        year=YEAR, month=MONTH), "w") as result_file:
+with open(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_gain_dist.txt".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN), "w") as result_file:
     print(datetime.datetime.now(), "Total gain", file=result_file)
     print(scipy.stats.describe(total_gain), file=result_file)
 
     print(total_gain.quantile((0, .2, .25, .4, .5, .6, .75, .8, 1)),
           file=result_file)
 
-with open("{year:04d}-{month:02d}_small_gain_dist.txt".format(
-        year=YEAR, month=MONTH), "w") as result_file:
-    print(datetime.datetime.now(), "Total gain", file=result_file)
+with open(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_small_gain_dist.txt".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN), "w") as result_file:
+    print(datetime.datetime.now(), "Gain in small domain", file=result_file)
     print(scipy.stats.describe(small_gain), file=result_file)
 
     print(small_gain.quantile((0, .2, .25, .4, .5, .6, .75, .8, 1)),
@@ -529,10 +589,16 @@ ax.set_ylabel("Average increment over whole domain\n(μmol/m²/s)")
 ax.set_xlabel("")
 plt.title("Spatial average increment")
 
-fig.savefig("{year:04d}-{month:02d}_realization_spatial_avg_increment_timeseries.pdf".format(
-        year=YEAR, month=MONTH))
-fig.savefig("{year:04d}-{month:02d}_realization_spatial_avg_increment_timeseries.png".format(
-        year=YEAR, month=MONTH))
+fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_realization_spatial_"
+    "avg_increment_timeseries.pdf".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
 plt.close(fig)
 
 ############################################################
@@ -549,10 +615,15 @@ ax.set_xlabel("Error in estimate (μmol/m$^2$/s)")
 
 
 plt.legend()
-fig.savefig("{year:04d}-{month:02d}_flux_error_hist.png".format(
-    year=YEAR, month=MONTH))
-fig.savefig("{year:04d}-{month:02d}_flux_error_hist.pdf".format(
-    year=YEAR, month=MONTH))
+fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_flux_error_density.pdf".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
 
 plt.close(fig)
 
@@ -567,10 +638,15 @@ ax.set_xlabel("Whole-domain flux error (μmol/m$^2$/s)")
 ax.set_ylabel("Count")
 
 plt.legend()
-fig.savefig("{year:04d}-{month:02d}_small_flux_error_hist.png".format(
-    year=YEAR, month=MONTH))
-fig.savefig("{year:04d}-{month:02d}_small_flux_error_hist.pdf".format(
-    year=YEAR, month=MONTH))
+fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_small_flux_error_density.pdf".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
 plt.close(fig)
 
 ############################################################
@@ -582,10 +658,15 @@ plt.xlabel("Gain")
 plt.ylabel("Prior error (μmol/m$^2$/s)")
 plt.xlim(-1, 1)
 
-fig.savefig("{year:04d}-{month:02d}_gain_prior_mag.png".format(
-    year=YEAR, month=MONTH))
-fig.savefig("{year:04d}-{month:02d}_gain_prior_mag.pdf".format(
-    year=YEAR, month=MONTH))
+fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_gain_prior_mag.pdf".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
 plt.close(fig)
 
 fig = plt.figure(figsize=(4, 2.5))
@@ -595,10 +676,15 @@ plt.xlabel("Gain")
 plt.ylabel("Prior error (μmol/m$^2$/s)")
 plt.xlim(-1, 1)
 
-fig.savefig("{year:04d}-{month:02d}_gain_prior_mag.png".format(
-    year=YEAR, month=MONTH))
-fig.savefig("{year:04d}-{month:02d}_gain_prior_mag.pdf".format(
-    year=YEAR, month=MONTH))
+fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_small_gain_prior_mag.pdf".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
 plt.close(fig)
 
 ############################################################
@@ -619,8 +705,15 @@ ax.coastlines()
 ax.set_xlim(xlim)
 ax.set_ylim(ylim)
 
-fig.savefig("{year:04d}-{month:02d}_error_reduction.png".format(
-    year=YEAR, month=MONTH))
+fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_error_reduction.png".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
 plt.close(fig)
 
 
