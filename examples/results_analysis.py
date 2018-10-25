@@ -86,9 +86,21 @@ TRACER_NAMES = [
     "",
 ]
 
-WEST_BOUNDARY_LPDM = 2.7e6
-WEST_BOUNDARY_WRF = WRF_CRS.transform_point(
-    WEST_BOUNDARY_LPDM, 0, LPDM_PROJ)[0]
+# WEST_BOUNDARY_LPDM = 2.7e6
+# WEST_BOUNDARY_WRF = WRF_CRS.transform_point(
+#     WEST_BOUNDARY_LPDM, 0, LPDM_PROJ)[0]
+
+# Estimates for West Virginia, roughly
+WEST_BOUNDARY_WRF = 1.13e6
+EAST_BOUNDARY_WRF = 1.52e6
+SOUTH_BOUNDARY_WRF = -1.76e5
+NORTH_BOUNDARY_WRF = 2.02e5
+
+LPDM_BOUNDS = LPDM_PROJ.transform_points(
+    WRF_CRS,
+    np.array([WEST_BOUNDARY_WRF, EAST_BOUNDARY_WRF]),
+    np.array([SOUTH_BOUNDARY_WRF, NORTH_BOUNDARY_WRF]),
+)
 
 print(datetime.datetime.now(), "Constants")
 sys.stdout.flush()
@@ -226,8 +238,12 @@ for var in POSTERIOR_DS.data_vars.values():
     var.attrs["units"] = "μ" + var.attrs["units"]
 
 SMALL_POSTERIOR_DS = POSTERIOR_DS.sel(
-    projection_x_coordinate=slice(WEST_BOUNDARY_WRF, None))
-SMALL_PRIOR_DS = PRIOR_DS.sel(dim_x=slice(WEST_BOUNDARY_WRF, None))
+    projection_x_coordinate=slice(WEST_BOUNDARY_WRF, EAST_BOUNDARY_WRF),
+    projection_y_coordinate=slice(SOUTH_BOUNDARY_WRF, NORTH_BOUNDARY_WRF),
+)
+SMALL_PRIOR_DS = PRIOR_DS.sel(
+    dim_x=slice(WEST_BOUNDARY_WRF, EAST_BOUNDARY_WRF),
+    dim_y=slice(SOUTH_BOUNDARY_WRF, NORTH_BOUNDARY_WRF))
 
 PSEUDO_OBS_DS = xarray.open_mfdataset(
     "observation_realizations_for_06h_0?.nc4",
@@ -444,7 +460,9 @@ all_mean_error = time_mean_error.mean(
     ("projection_x_coordinate", "projection_y_coordinate"))
 all_mean_error.load()
 small_mean_error = time_mean_error.sel(
-    projection_x_coordinate=slice(WEST_BOUNDARY_WRF, None)).mean(
+    projection_x_coordinate=slice(WEST_BOUNDARY_WRF, EAST_BOUNDARY_WRF),
+    projection_y_coordinate=slice(SOUTH_BOUNDARY_WRF, NORTH_BOUNDARY_WRF)
+).mean(
     ("projection_x_coordinate", "projection_y_coordinate"))
 small_mean_error.load()
 print(datetime.datetime.now(), "Have means")
@@ -555,13 +573,62 @@ ax.set_xlabel("")
 plt.title("Spatial average flux error")
 
 fig.savefig(
-    "{year:04d}-{month:02d}_realization_spatial_avg_timeseries.pdf".format(
-        year=YEAR, month=MONTH))
-fig.savefig(
-    "{year:04d}-{month:02d}_realization_spatial_avg_timeseries.png".format(
-        year=YEAR, month=MONTH))
-
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_realization_spatial_"
+    "avg_timeseries.pdf".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
 plt.close(fig)
+
+
+small_spatial_avg_differences = all_differences.sel(
+    projection_x_coordinate=slice(WEST_BOUNDARY_WRF, EAST_BOUNDARY_WRF),
+    projection_y_coordinate=slice(SOUTH_BOUNDARY_WRF, NORTH_BOUNDARY_WRF)
+).mean(["projection_x_coordinate", "projection_y_coordinate"])
+
+fig = plt.figure(figsize=(5, 3.4))
+fig.autofmt_xdate()
+plt.subplots_adjust(left=.18)
+ax = plt.gca()
+small_spatial_avg_differences.sel(
+    type="prior_error", realization=0).plot.line(
+    "-", label="Initial estimate")
+small_spatial_avg_differences.sel(
+    type="posterior_error", realization=0).plot.line(
+    "--", label="Final estimate")
+
+ax.set_xlim(mpl.dates.datestr2num(
+    ["2010-06-18T00:00:00Z", "2010-08-01T00:00:00Z"]))
+for xval, color in (zip(
+        mpl.dates.datestr2num(
+            ["2010-07-01T00:00:00Z", "2010-07-03T00:00:00Z",
+             "2010-07-17T00:00:00Z"]),
+        ["red", "gray", "red"])):
+    ax.axvline(xval, color=color)
+
+ax.axhline(0, color="black", linewidth=.75)
+
+plt.legend()
+ax.set_ylabel("Average flux error over West Virginia\n(μmol/m²/s)")
+ax.set_xlabel("")
+plt.title("Spatial average flux error")
+
+fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_realization_small_spatial_"
+    "avg_timeseries.pdf".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
+plt.close(fig)
+
 
 ############################################################
 # Plot timeseries of increment
@@ -593,6 +660,43 @@ fig.savefig(
     "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
     "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
     "{inv_time_fun:s}{inv_time_len:02d}d_realization_spatial_"
+    "avg_increment_timeseries.pdf".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
+plt.close(fig)
+
+
+small_spatial_avg_increment = (
+    small_spatial_avg_differences.sel(type="posterior_error") -
+    small_spatial_avg_differences.sel(type="prior_error")
+)
+fig = plt.figure(figsize=(5, 3.4))
+fig.autofmt_xdate()
+plt.subplots_adjust(left=.18)
+ax = plt.gca()
+small_spatial_avg_increment.isel(realization=0).plot.line('-')
+
+ax.set_xlim(mpl.dates.datestr2num(
+    ["2010-06-18T00:00:00Z", "2010-08-01T00:00:00Z"]))
+for xval, color in (zip(
+        mpl.dates.datestr2num(
+            ["2010-07-01T00:00:00Z", "2010-07-03T00:00:00Z",
+             "2010-07-17T00:00:00Z"]),
+        ["red", "gray", "red"])):
+    ax.axvline(xval, color=color)
+
+ax.axhline(0, color="black", linewidth=.75)
+ax.set_ylabel("Average increment over West Virginia\n(μmol/m²/s)")
+ax.set_xlabel("")
+plt.title("Spatial average increment")
+
+fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_realization_small_spatial_"
     "avg_increment_timeseries.pdf".format(
         year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
         noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
