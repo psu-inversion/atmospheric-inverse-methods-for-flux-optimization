@@ -21,6 +21,7 @@ from numpy import exp, square, fmin, sqrt, zeros
 from numpy import logical_or, concatenate, isnan
 from numpy import sum as da_sum
 from numpy import where
+import pyfftw.interfaces.cache
 from pyfftw.interfaces.numpy_fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
 import six
 
@@ -28,7 +29,6 @@ from inversion.linalg import schmidt_decomposition, is_odd
 from inversion.linalg import tolinearoperator, kron
 from inversion.linalg import DaskLinearOperator
 
-import pyfftw.interfaces.cache
 NUM_THREADS = 8
 PLANNER_EFFORT = "FFTW_PATIENT"
 pyfftw.interfaces.cache.enable()
@@ -116,12 +116,15 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         if ndims == 1:
             fft = functools.partial(rfft, axis=0, threads=NUM_THREADS,
                                     planner_effort=PLANNER_EFFORT)
-            ifft = functools.partial(irfft, n=shape[0], axis=0, threads=NUM_THREADS,
+            ifft = functools.partial(irfft, n=shape[0], axis=0,
+                                     threads=NUM_THREADS,
                                      planner_effort=PLANNER_EFFORT)
         elif ndims == 2:
-            fft = functools.partial(rfft2, axes=(0, 1), threads=NUM_THREADS,
+            fft = functools.partial(rfft2, axes=(0, 1),
+                                    threads=NUM_THREADS,
                                     planner_effort=PLANNER_EFFORT)
-            ifft = functools.partial(irfft2, s=shape, axes=(0, 1), threads=NUM_THREADS,
+            ifft = functools.partial(irfft2, s=shape, axes=(0, 1),
+                                     threads=NUM_THREADS,
                                      planner_effort=PLANNER_EFFORT)
         else:
             fft = functools.partial(

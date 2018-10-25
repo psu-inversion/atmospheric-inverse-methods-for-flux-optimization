@@ -918,7 +918,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
             # Two function calls and a C loop, instead of python loop
             # with lots of indexing.
             chunk = einsum("j,jkl->kl", operator1[row1, :],
-                              mat.reshape(in_chunk))
+                           mat.reshape(in_chunk))
             result += mat[row_start:(row_start + block_size)].T.dot(
                 operator2.dot(chunk))
         return result

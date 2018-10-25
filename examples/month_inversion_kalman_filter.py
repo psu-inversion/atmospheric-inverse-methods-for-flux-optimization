@@ -128,7 +128,7 @@ for use as the linearized observation operator in the inversion.
 OBS_HOURS = (datetime.time(12), datetime.time(16))
 """Which observation times will be used in the inversion.
 
-Assumed to be UTC. Should give afternoon hours for the domain.  Not
+Assumed to be local solar. Should give afternoon hours for the domain.  Not
 currently set up for domains spanning many time zones. This shouldn't
 matter for OSSEs, but will for real-data cases (PBL schemes don't
 treat night well)
@@ -265,7 +265,8 @@ INFLUENCE_DATASET = xarray.open_mfdataset(
 # Not entirely sure why this is one too many
 # N_FLUX_TIMES = INFLUENCE_DATASET.dims["observation_time"] + FLUX_WINDOW - 1
 
-OUTPUT_TIME_UNITS = INFLUENCE_DATASET.coords["observation_time"].encoding["units"]
+OUTPUT_TIME_UNITS = (
+    INFLUENCE_DATASET.coords["observation_time"].encoding["units"])
 
 OBS_TIME_INDEX = (INFLUENCE_DATASET.indexes["observation_time"].round("S") +
                   datetime.timedelta(days=181))
@@ -776,16 +777,17 @@ for i, inversion_period in enumerate(grouper(
     flush_output_streams()
     posterior = posterior.reshape(aligned_fluxes.shape)
     posterior_ds = xarray.Dataset(
-        dict(posterior=(
+        dict(
+            posterior=(
                 aligned_fluxes.dims, posterior,
                 posterior_var_atts),
-             this_stage_prior=(
+            this_stage_prior=(
                 aligned_fluxes.dims, aligned_fluxes,
                 aligned_fluxes.attrs),
-             overall_prior=(
+            overall_prior=(
                 aligned_fluxes.dims, aligned_file_prior,
                 aligned_file_prior.attrs),
-             ),
+        ),
         aligned_fluxes.coords,
         posterior_global_atts
     ).transpose("flux_time", "realization", "dim_y", "dim_x")

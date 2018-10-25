@@ -7,14 +7,11 @@ files.
 from __future__ import print_function, division, unicode_literals
 # Four runs in 22min, 2h cpu time, 54 GiB memory for one tracer.
 
-import itertools
 import datetime
 import os.path
 import glob
 import sys
 
-import dask
-import dask.array as da
 import pandas as pd
 import dateutil.tz
 import numpy as np
@@ -194,7 +191,7 @@ hour_correlations = (
             HOURLY_FLUX_TIMESCALE / FLUX_INTERVAL),
         (INTERVALS_PER_DAY,)))
 hour_correlations_matrix = hour_correlations.dot(np.eye(
-        hour_correlations.shape[0]))
+    hour_correlations.shape[0]))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have hourly correlations")
 sys.stdout.flush(); sys.stderr.flush()
 DAILY_FLUX_TIMESCALE = 14
@@ -235,9 +232,9 @@ for flux_name, flux_vals in TRUE_FLUXES_MATCHED.data_vars.items():
     flux_stds = FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern[flux_name]
 
     prior_covariance = kronecker_product(
-            temporal_correlations,
-            CorrelationStandardDeviation(
-                spatial_correlations, flux_stds.data))
+        temporal_correlations,
+        CorrelationStandardDeviation(
+            spatial_correlations, flux_stds.data))
     print("Covariance:", type(prior_covariance))
     print(datetime.datetime.now(UTC).strftime("%c"), "Have covariances")
     sys.stdout.flush(); sys.stderr.flush()
@@ -273,6 +270,7 @@ osse_prior_dataset.coords["realization"] = np.arange(
 osse_prior_dataset.coords["realization"].attrs.update(dict(
     standard_name="realization",
     long_name="realization_of_the_noise_process"))
+osse_prior_dataset.attrs.update(cf_acdd.global_attributes_dict())
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have all prior noise, chunking")
 sys.stdout.flush(); sys.stderr.flush()
