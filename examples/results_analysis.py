@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 # ~*~ utf8 ~*~
+"""Plot results from inversion.
+
+Only a single run.  Currently set up for plots from
+month_inversion_magic_dask
+"""
 from __future__ import print_function, division
 import datetime
 import glob
@@ -107,7 +112,7 @@ sys.stdout.flush()
 
 
 def plot_realizations(data_array):
-    """Plot a `Dataarray` with realizations"""
+    """Plot a `Dataarray` with realizations."""
     time_dim = [dim for dim in data_array.dims if "time" in dim][0]
     x_dim = [dim for dim in data_array.dims if "_x" in dim][0]
     y_dim = [dim for dim in data_array.dims if "_y" in dim][0]
@@ -379,7 +384,6 @@ ax.scatter(pseudo_obs.tower_lon, pseudo_obs.tower_lat,
            transform=WRF_CRS.as_geodetic())
 fig.suptitle("WRF domain and tower locations")
 fig.savefig("tower_locations.pdf")
-fig.savefig("tower_locations.png")
 plt.close(fig)
 
 ############################################################
@@ -564,7 +568,6 @@ for xval, color in (zip(
              "2010-07-17T00:00:00Z"]),
         ["red", "gray", "red"])):
     ax.axvline(xval, color=color)
-
 ax.axhline(0, color="black", linewidth=.75)
 
 plt.legend()
@@ -852,10 +855,8 @@ axes.coastlines()
 axes.add_feature(cfeat.BORDERS)
 axes.add_feature(BIG_LAKES, facecolor="none")
 axes.add_feature(STATES)
-axes.axvline(WEST_BOUNDARY_LPDM, color="white")
+# axes.axvline(WEST_BOUNDARY_LPDM, color="white")
 
 fig.savefig("{year:04d}-{month:02d}_integrated_influence_functions.png".format(
     year=YEAR, month=MONTH), dpi=400)
-fig.savefig("{year:04d}-{month:02d}_integrated_influence_functions.pdf".format(
-    year=YEAR, month=MONTH))
 plt.close(fig)
