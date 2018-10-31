@@ -861,7 +861,10 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         chunks = (
             operator2.dot(
                 einsum(
-                    "ij,jkl->kil", operator1, mat.reshape(in_chunk)
+                    "ij,jkl->kil", operator1, mat.reshape(in_chunk),
+                    # Column-major output should speed the
+                    # operator2 @ tmp bit
+                    order="F"
                 ).reshape(block_size, -1)
             )
             # Reshape to separate out the block dimension from the
@@ -917,8 +920,10 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
                 0, mat.shape[0], block_size)):
             # Two function calls and a C loop, instead of python loop
             # with lots of indexing.
+            # Having the chunk be fortran-contiguous should speed the
+            # next steps (operator2 @ chunk)
             chunk = einsum("j,jkl->kl", operator1[row1, :],
-                           mat.reshape(in_chunk))
+                           mat.reshape(in_chunk), order="F")
             result += mat[row_start:(row_start + block_size)].T.dot(
                 operator2.dot(chunk))
         return result
