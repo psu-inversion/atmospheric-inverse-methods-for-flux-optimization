@@ -68,7 +68,7 @@ OBS_FILES = glob.glob(os.path.join(
     "LPDM_concentrations?.nc".format(
         inter=FLUX_INTERVAL, res=FLUX_RESOLUTION)))
 CORR_FUN = "exp"
-CORR_LEN = 200
+CORR_LEN = 100
 TIME_CORR_FUN = "exp"
 TIME_CORR_LEN = 14
 FLUX_FILES = glob.glob(os.path.join(
@@ -503,7 +503,7 @@ posterior_global_atts.update(dict(
 # Define correlation constants and get covariances
 print(datetime.datetime.now(UTC).strftime("%c"), "Getting covariances")
 flush_output_streams()
-CORRELATION_LENGTH = 84
+CORRELATION_LENGTH = 100
 GRID_RESOLUTION = 27
 spatial_correlations = (
     inversion.correlations.HomogeneousIsotropicCorrelation.
