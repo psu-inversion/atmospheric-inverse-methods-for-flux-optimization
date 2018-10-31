@@ -671,9 +671,9 @@ encoding = {name: {"_FillValue": -99}
 encoding.update({name: {"_FillValue": False}
                  for name in posterior_ds.coords})
 posterior_ds.to_netcdf(
-    ("monthly_inversion_{flux_interval:02d}h_027km_"
-     "noise{ncorr_fun:s}{ncorr_len:d}km{ncorr_fun_time:s}{ncorr_len_time:d}h_"
-     "icov{icorr_fun:s}{icorr_len:d}km{icorr_fun_time:s}{icorr_len_time:d}h_"
+    ("2010-07_monthly_inversion_{flux_interval:02d}h_027km_"
+     "noise{ncorr_fun:s}{ncorr_len:d}km{ncorr_fun_time:s}{ncorr_len_time:d}d_"
+     "icov{icorr_fun:s}{icorr_len:d}km{icorr_fun_time:s}{icorr_len_time:d}d_"
      "output.nc4")
     .format(flux_interval=FLUX_INTERVAL, ncorr_fun=CORR_FUN,
             ncorr_len=CORR_LEN, icorr_len=CORRELATION_LENGTH, icorr_fun="exp",
