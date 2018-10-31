@@ -127,10 +127,14 @@ Used to convert WRF fluxes to units expected by observation operator.
 """
 DAYS_DROPPED_FROM_END = 1
 """Currently 1 to avoid problems with lack of fluxes in August."""
-OBS_DAYS = 24
-#  1  3m51 (10 realizations)
-#  2  6m49 (10 realizations)
-#  2 20m10 (80 realizations)
+OBS_DAYS = 30
+N_REALIZATIONS = 80
+#  1    3m36 ( 5 realizations)  8m42
+#  1   11m08 (80 realizations) 28m50
+#  2   12m43 (80 realizations) 32m34
+#  4   14m27 (80 realizations) 36m16
+#  8   20m43 (80 realizations) 48m33
+# 16   38m06 (80 realizations) 76m57
 # 30
 """Number of days of obs to use."""
 OBS_WINDOW = OBS_DAYS * OBS_TIMES_PER_DAY
@@ -314,7 +318,7 @@ FLUX_DATASET = xarray.open_mfdataset(
                 realization=REALIZATION_CHUNK),
     concat_dim="flux_time",
     engine=NC_ENGINE,
-).isel(realization=slice(0, None))
+).isel(realization=slice(0, N_REALIZATIONS))
 OBS_DATASET = xarray.open_mfdataset(
     OBS_FILES,
     chunks=dict(forecast_reference_time=OBS_CHUNKS_USED),
