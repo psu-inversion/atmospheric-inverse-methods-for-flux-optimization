@@ -31,8 +31,9 @@ sys.path.append(THIS_DIR)
 
 import inversion.correlations
 import inversion.covariances
-from inversion.util import kronecker_product, asarray
-from inversion.util import CorrelationStandardDeviation
+from inversion.linalg import asarray
+from inversion.util import kronecker_product
+from inversion.covariances import CorrelationStandardDeviation
 from inversion.noise import gaussian_noise
 import cf_acdd
 
