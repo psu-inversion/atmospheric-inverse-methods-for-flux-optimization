@@ -251,22 +251,24 @@ INFLUENCE_DATASET = xarray.open_mfdataset(
     observation_time=slice(DAYS_DROPPED_FROM_END * HOURS_PER_DAY,
                            (OBS_DAYS + DAYS_DROPPED_FROM_END) * HOURS_PER_DAY),
     time_before_observation=slice(0, FLUX_WINDOW // FLUX_INTERVAL))
-INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
-# Use site names as index/dim coord for site dim
-INFLUENCE_FUNCTIONS.coords["site"] = np.char.decode(
-    INFLUENCE_FUNCTIONS["site_names"].values, "ascii")
-
 OBS_TIME_INDEX = (INFLUENCE_DATASET.indexes["observation_time"].round("S") +
                   datetime.timedelta(days=181))
 TIME_BACK_INDEX = (
     INFLUENCE_DATASET.indexes["time_before_observation"].round("S"))
-
-INFLUENCE_FUNCTIONS.coords["observation_time"] = OBS_TIME_INDEX
+INFLUENCE_DATASET.coords["observation_time"] = OBS_TIME_INDEX
+INFLUENCE_DATASET.coords["time_before_observation"] = TIME_BACK_INDEX
 
 FLUX_TIMES = (INFLUENCE_DATASET.coords["flux_time"] +
               np.array(datetime.timedelta(days=181),
                        dtype='m8[ns]'))
 INFLUENCE_DATASET.coords["flux_time"] = FLUX_TIMES
+
+INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
+# Use site names as index/dim coord for site dim
+INFLUENCE_FUNCTIONS.coords["site"] = np.char.decode(
+    INFLUENCE_FUNCTIONS["site_names"].values, "ascii")
+
+INFLUENCE_FUNCTIONS.coords["observation_time"] = OBS_TIME_INDEX
 
 # NB: Remember to change frequency and time zone as necessary.
 FLUX_START = (OBS_TIME_INDEX[-1] - TIME_BACK_INDEX[-1]).replace(hour=0)
@@ -449,8 +451,8 @@ flush_output_streams()
 aligned_influences, aligned_true_fluxes, aligned_prior_fluxes = (
     xarray.align(
         aligned_influences,
-        TRUE_FLUXES_MATCHED[TRUE_FLUX_NAME].isel(flux_time=slice(1, None)),
-        PRIOR_FLUXES_MATCHED[PRIOR_FLUX_NAME].isel(flux_time=slice(1, None)),
+        TRUE_FLUXES_MATCHED[TRUE_FLUX_NAME],
+        PRIOR_FLUXES_MATCHED[PRIOR_FLUX_NAME],
         exclude=("dim_x", "dim_y"),
         join="outer", copy=False))
 print(datetime.datetime.now(UTC).strftime("%c"),
