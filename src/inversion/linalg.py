@@ -903,7 +903,8 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         mat = asarray(mat)
         if mat.shape[0] != self.shape[1]:
             # TODO: test failure mode
-            raise ValueError("Dim mismatch")
+            raise ValueError("Dim mismatch: {mat:d} != {self:d}".format(
+                    mat=mat.shape[0], self=self.shape[1]))
         outer_size = mat.shape[-1]
         result_shape = (outer_size, outer_size)
         result_dtype = np.result_type(self.dtype, mat.dtype)
