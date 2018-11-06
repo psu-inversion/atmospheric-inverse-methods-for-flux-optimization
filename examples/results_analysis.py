@@ -30,13 +30,13 @@ YEAR = 2010
 MONTH = 7
 
 NOISE_FUNCTION = "exp"
-NOISE_LENGTH = 200
+NOISE_LENGTH = 100
 NOISE_TIME_FUN = "exp"
 NOISE_TIME_LEN = 14
 INV_FUNCTION = "exp"
-INV_LENGTH = 200
-INV_TIME_FUN = "gau"
-INV_TIME_LEN = 7
+INV_LENGTH = 100
+INV_TIME_FUN = "exp"
+INV_TIME_LEN = 14
 
 FLUX_INTERVAL = 6
 FLUX_RESOLUTION = 27
@@ -49,10 +49,11 @@ PRIOR_PATH = (
     year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
     fun=NOISE_FUNCTION, len=NOISE_LENGTH, time_fun=NOISE_TIME_FUN,
     time_len=NOISE_TIME_LEN)
+# 2010-07_monthly_inversion_06h_027km_noiseexp100kmexp14d_icovexp100kmexp14d_output.nc4
 POSTERIOR_PATH = (
     "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
-    "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}h"
-    "_icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}h"
+    "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d"
+    "_icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d"
     "_output.nc4"
 ).format(year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
          noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
@@ -229,14 +230,17 @@ for name, var in NOISE_STD_DS.data_vars.items():
 NOISE_STD_DS.coords["south_north"] = PRIOR_DS.coords["dim_y"].data
 NOISE_STD_DS.coords["west_east"] = PRIOR_DS.coords["dim_x"].data
 
-POSTERIOR_DS = xarray.open_dataset(POSTERIOR_PATH,
-                                   chunks=dict(realization=1)).rename(
+INVERSION_DS = xarray.open_dataset(POSTERIOR_PATH,
+                                   chunks=dict(realization=1))
+PSEUDO_OBS_DS = INVERSION_DS["pseudo_observations"]
+POSTERIOR_DS = INVERSION_DS[["posterior", "prior", "truth"]].rename(
     dict(dim_x="projection_x_coordinate", dim_y="projection_y_coordinate",
          flux_time="time"))
 POSTERIOR_DS.coords["projection_x_coordinate"].attrs.update(
     dict(units="m", standard_name="projection_x_coordinate", axis="X"))
 POSTERIOR_DS.coords["projection_y_coordinate"].attrs.update(
     dict(units="m", standard_name="projection_y_coordinate", axis="Y"))
+POSTERIOR_DS.coords["time"] = POSTERIOR_DS.indexes["time"].round("S")
 
 for var in POSTERIOR_DS.data_vars.values():
     var *= 1e6
@@ -327,16 +331,17 @@ plt.close(fig)
 
 ############################################################
 # Plot "truth", prior, and posterior side-by-side
-for_plotting = xarray.concat((POSTERIOR_DS.overall_prior.isel(realization=0),
+for_plotting = xarray.concat((POSTERIOR_DS.prior.isel(realization=0),
                               POSTERIOR_DS.posterior.isel(realization=0)),
                              dim="type")
 del for_plotting.coords["realization"]
 
-e_tra7_for_plot = PRIOR_DS["E_TRA7"].rename(
-    dict(dim_x="projection_x_coordinate", dim_y="projection_y_coordinate",
-         flux_time="time"))
-for_plotting = xarray.concat((e_tra7_for_plot, for_plotting), dim="type")
-for_plotting.coords["type"] = ['"Truth"', "Initial estimate", "Final estimate"]
+# e_tra7_for_plot = PRIOR_DS["E_TRA7"].rename(
+#     dict(dim_x="projection_x_coordinate", dim_y="projection_y_coordinate",
+#          flux_time="time"))
+for_plotting = xarray.concat((POSTERIOR_DS.truth, for_plotting), dim="type")
+for_plotting.coords["type"] = ['"Truth"', "Prior", "Posterior"]
+for_plotting.persist()
 
 xlim = for_plotting.coords["projection_x_coordinate"][[0, -1]]
 ylim = for_plotting.coords["projection_y_coordinate"][[0, -1]]
@@ -419,8 +424,8 @@ plt.close(plots.fig)
 
 ############################################################
 # Plot gain over time
-gain = 1 - (da.fabs(differences.sel(type="Final estimate")) /
-            da.fabs(differences.sel(type="Initial estimate")))
+gain = 1 - (da.fabs(differences.sel(type="Posterior")) /
+            da.fabs(differences.sel(type="Prior")))
 gain.attrs["long_name"] = "inversion_gain"
 gain.attrs["units"] = "1"
 
@@ -450,7 +455,7 @@ plt.close(plots.fig)
 ############################################################
 # Find and plot gains for all realizations
 all_differences = xarray.concat(
-    (POSTERIOR_DS.overall_prior - for_plotting.sel(type='"Truth"'),
+    (POSTERIOR_DS.prior - for_plotting.sel(type='"Truth"'),
      POSTERIOR_DS.posterior - for_plotting.sel(type='"Truth"')),
     dim="type")
 all_differences.coords["type"] = ["prior_error", "posterior_error"]
@@ -555,10 +560,10 @@ plt.subplots_adjust(left=.18)
 ax = plt.gca()
 spatial_avg_differences.sel(
     type="prior_error", realization=0).plot.line(
-    "-", label="Initial estimate")
+    "-", label="Prior")
 spatial_avg_differences.sel(
     type="posterior_error", realization=0).plot.line(
-    "--", label="Final estimate")
+    "--", label="Posterior")
 
 ax.set_xlim(mpl.dates.datestr2num(
     ["2010-06-18T00:00:00Z", "2010-08-01T00:00:00Z"]))
@@ -599,10 +604,10 @@ plt.subplots_adjust(left=.18)
 ax = plt.gca()
 small_spatial_avg_differences.sel(
     type="prior_error", realization=0).plot.line(
-    "-", label="Initial estimate")
+    "-", label="Prior")
 small_spatial_avg_differences.sel(
     type="posterior_error", realization=0).plot.line(
-    "--", label="Final estimate")
+    "--", label="Posterior")
 
 ax.set_xlim(mpl.dates.datestr2num(
     ["2010-06-18T00:00:00Z", "2010-08-01T00:00:00Z"]))
@@ -746,7 +751,7 @@ fig, ax = plt.subplots(1, 1)
 # ax.hist([small_mean_error.sel(type="prior_error"),
 #          small_mean_error.sel(type="posterior_error")],
 #         range=[-4, 4],
-#         label=["Initial estimate", "Final estimate"])
+#         label=["Prior", "Posterior"])
 ax.set_xlabel("West Virginia flux error (μmol/m$^2$/s)")
 small_mean_error.sel(
     type=["prior_error", "posterior_error"]
