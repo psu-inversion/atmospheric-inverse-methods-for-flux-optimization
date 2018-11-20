@@ -630,10 +630,11 @@ class ExponentialCorrelation(DistanceCorrelationFunction):
 
 
 class BalgovindCorrelation(DistanceCorrelationFunction):
-    """A Balgovind correlation structure.
+    """A Balgovind 3D correlation structure.
 
-    Follows Balgovind et al. 1983, modified so the correlation length
-    better matches that used by other correlation functions.
+    Follows Balgovind et al. 1983 recommendations for a 3D field,
+    modified so the correlation length better matches that used by
+    other correlation functions.
 
     Note
     ----
@@ -691,6 +692,7 @@ class MaternCorrelation(DistanceCorrelationFunction):
             The smoothness parameter
             :math:`kappa=\infty` is equivalent to Gaussian correlations
             :math:`kappa=\frac{1}{2}` is equivalent to exponential
+            :math:`kappa=1` is Balgovind's recommendation for 2D fields
             Default value is only for full equivalence with other classes.
             The default value is entirely arbitrary and may change without
             notice.
