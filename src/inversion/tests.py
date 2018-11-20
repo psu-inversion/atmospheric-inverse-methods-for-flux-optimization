@@ -45,7 +45,13 @@ import inversion.psas
 import inversion.util
 from inversion.linalg import tolinearoperator
 
-dask.set_options(get=dask.get)
+try:
+    from dask import set_options as config_set
+    config_set(get=dask.get)
+except (ImportError, TypeError):
+    from dask.config import set as config_set
+    config_set(scheduler="single-threaded")
+
 
 # If adding other inexact methods to the list tested, be sure to add
 # those to the `if "var" in name or "psas" in name` and

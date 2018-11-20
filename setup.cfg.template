@@ -1,5 +1,0 @@
-[bdist_wheel]
-universal=True
-
-[sdist]
-formats=bztar,zip
