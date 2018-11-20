@@ -32,14 +32,10 @@ from scipy.linalg import cholesky
 
 import inversion.covariance_estimation
 import inversion.optimal_interpolation
-import inversion.ensemble.integrators
 import inversion.correlations
 import inversion.covariances
-import inversion.integrators
 import inversion.variational
-import inversion.ensemble
 import inversion.linalg
-import inversion.models
 import inversion.noise
 import inversion.psas
 import inversion.util
@@ -1170,78 +1166,6 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
                                  tuple(np.multiply(op1.shape, mat2.shape)))
 
 
-class TestIntegrators(unittest2.TestCase):
-    """Test the integrators."""
-
-    def test_exp(self):
-        """Test that the integrators can integrate y'=y for one unit.
-
-        Uses a very small integration step to get similarity from
-        one-step forward Euler.
-
-        """
-        for integrator in (inversion.integrators.forward_euler,
-                           inversion.integrators.scipy_odeint):
-            with self.subTest(integrator=getname(integrator)):
-                solns = integrator(
-                    lambda y, t: y,
-                    1.,
-                    (0, 1),
-                    1e-6)
-
-                np_tst.assert_allclose(solns[1, :],
-                                       np.exp(1.), rtol=1e-5)
-
-
-class TestEnsembleIntegrators(unittest2.TestCase):
-    """Test the ensemble integrators."""
-
-    IMPLEMENTATIONS = (inversion.ensemble.integrators.
-                       EnsembleIntegrator.__subclasses__())
-
-    if sys.version_info >= (3, 5):
-        OS_ISSUES = ()
-    else:
-        OS_ISSUES = (inversion.ensemble.integrators.
-                     MultiprocessEnsembleIntegrator,)
-
-    @staticmethod
-    def trial_function(y, t):
-        r"""Evaluate derivative given y and t.
-
-        This is f(y, t) in :math:`y^\prime = f(y, t)`.
-        Here :math:`f(y, t) = y`.
-
-        Parameters
-        ----------
-        y: array_like[N]
-        t: float
-
-        Returns
-        -------
-        yprime: array_like[N]
-        """
-        return y
-
-    def test_working(self):
-        """Test if the integrators work."""
-        start_state = np.arange(2.).reshape(2, 1)
-        end_state = np.array((0, np.exp(1))).reshape(2, 1)
-
-        for int_cls in self.IMPLEMENTATIONS:
-            if int_cls in self.OS_ISSUES:
-                raise unittest2.SkipTest(
-                    "OS has trouble with {name:s}"
-                    .format(name=getname(int_cls)))
-
-            with self.subTest(int_cls=getname(int_cls)):
-                int_inst = int_cls(inversion.integrators.forward_euler)
-                solns = int_inst(self.trial_function, start_state,
-                                 (0, 1), 1e-5)
-
-                np_tst.assert_allclose(solns[1, :, :], end_state, rtol=1e-4)
-
-
 class TestCovarianceEstimation(unittest2.TestCase):
     """Test the background error covariance estimators.
 
@@ -1361,42 +1285,6 @@ class TestCovarianceEstimation(unittest2.TestCase):
 
                     np_tst.assert_allclose(estimated_covariances, corr_mat,
                                            rtol=3e-3, atol=3e-3)
-
-
-class TestEnsembleBase(unittest2.TestCase):
-    """Test the utility functions in inversion.ensemble."""
-
-    sample_size = int(1e6)
-    state_size = 10
-
-    def test_mean(self):
-        """Test whether ensemble mean is close."""
-        sample_data = np_rand.standard_normal((self.sample_size,
-                                               self.state_size))
-
-        np_tst.assert_allclose(inversion.ensemble.mean(sample_data),
-                               np.zeros(self.state_size),
-                               # Use 5 * standard error
-                               # 3 fails a tad too often for my taste.
-                               atol=5 / np.sqrt(self.sample_size))
-
-    def test_spread(self):
-        """Test whether ensemble spread is reasonable."""
-        sample_data = np_rand.standard_normal((self.sample_size,
-                                               self.state_size))
-        self.assertAlmostEqual(inversion.ensemble.spread(sample_data),
-                               # rtol is 10**(-places)/state_size
-                               self.state_size, places=1)
-
-    def test_mean_and_perturbations(self):
-        """Test if mean and perturbations combine to give original."""
-        sample_data = np_rand.standard_normal((self.sample_size,
-                                               self.state_size))
-
-        mean, perturbations = inversion.ensemble.mean_and_perturbations(
-            sample_data)
-
-        np_tst.assert_allclose(mean + perturbations, sample_data)
 
 
 class TestUtilSchmidtDecomposition(unittest2.TestCase):
@@ -1997,143 +1885,6 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
 
     # TODO: test arbitrary linear operators
     # TODO: Test odd chunking
-
-
-class TestPointVortex(unittest2.TestCase):
-    """Test the point-vortex model."""
-
-    def test_equilateral(self):
-        """Test derivative for equilateral triangle."""
-        model = inversion.models.PointVortex((1, 1, 1.))
-
-        triangle = ((0, 0),
-                    (2, 0),
-                    (1, math.sqrt(3)))
-        velocities = model(np.asarray(triangle))
-        np_tst.assert_allclose(
-            velocities,
-            ((.25 * math.sqrt(3), -.75),
-             (.25 * math.sqrt(3), .75),
-             (-.5 * math.sqrt(3), 0)))
-
-    def test_line(self):
-        """Test derivative for a line."""
-        model = inversion.models.PointVortex((1, 1, 1.))
-
-        with self.subTest(orientation="horiz"):
-            line = ((1, 0),
-                    (0, 0),
-                    (-1, 0.))
-            velocities = model(np.asarray(line))
-            np_tst.assert_allclose(
-                velocities,
-                ((0, 1.5),
-                 (0, 0),
-                 (0, -1.5)))
-
-        with self.subTest(orientation="vert"):
-            line = ((0, 1),
-                    (0, 0),
-                    (0, -1.))
-            velocities = model(np.asarray(line))
-            np_tst.assert_allclose(
-                velocities,
-                ((-1.5, 0),
-                 (0, 0),
-                 (1.5, 0)))
-
-    def test_self_advection(self):
-        """Test advection for a pair of vortices."""
-        model = inversion.models.PointVortex((1, -1.))
-
-        locs = ((0, 0),
-                (1, 0.))
-        velocities = model(np.asarray(locs))
-        np_tst.assert_allclose(
-            velocities,
-            ((0, 1),
-             (0, 1)))
-
-    def test_uneven_orbit(self):
-        """Test orbit with unequal vortices."""
-        model = inversion.models.PointVortex((2, 1))
-
-        with self.subTest(orientation="+x"):
-            locs = ((0, 0),
-                    (1, 0.))
-            velocities = model(np.asarray(locs))
-            np_tst.assert_allclose(
-                velocities,
-                ((0, -1),
-                 (0, 2)))
-
-        with self.subTest(orientation="+y"):
-            locs = ((0, 0),
-                    (0, 1.))
-            velocities = model(np.asarray(locs))
-            np_tst.assert_allclose(
-                velocities,
-                ((1, 0),
-                 (-2, 0)))
-
-        with self.subTest(orientation="-x"):
-            locs = ((0, 0),
-                    (-1, 0.))
-            velocities = model(np.asarray(locs))
-            np_tst.assert_allclose(
-                velocities,
-                ((0, 1),
-                 (0, -2)))
-
-        with self.subTest(orientation="-y"):
-            locs = ((0, 0),
-                    (0, -1.))
-            velocities = model(np.asarray(locs))
-            np_tst.assert_allclose(
-                velocities,
-                ((-1, 0),
-                 (2, 0)))
-
-
-class TestLorenz96(unittest2.TestCase):
-    """Test Lorenz96 system."""
-
-    def test_zero(self):
-        """Test model with state of all zeros."""
-        model = inversion.models.Lorenz96(8., 40)
-
-        state = np.zeros(40)
-        deriv = model(state)
-        np_tst.assert_allclose(
-            deriv,
-            np.full(40, 8))
-
-    def test_equilibrium(self):
-        """Test model at equilibrium."""
-        model = inversion.models.Lorenz96(8., 40)
-
-        state = np.full(40, 8.)
-        deriv = model(state)
-        np_tst.assert_allclose(
-            deriv,
-            np.zeros(40))
-
-    def test_single_perturbation(self):
-        """Test simple perturbation from eq."""
-        model = inversion.models.Lorenz96(8., 40)
-
-        for i in range(40):
-            with self.subTest(i=i):
-                state = np.full(40, 8.)
-                state[i] += 1
-                deriv = model(state)
-
-                analytic = np.zeros(40)
-                analytic[i - 1] = 8
-                analytic[i] = -1
-                analytic[(i + 2) % 40] = -8
-
-                np_tst.assert_allclose(deriv, analytic)
 
 
 class TestReducedUncertainties(unittest2.TestCase):
