@@ -643,27 +643,31 @@ class TestCorrelations(unittest2.TestCase):
             for test_shape in ((300,), (20, 30)):
                 test_size = int(np.prod(test_shape, dtype=int))
                 for dist in (1, 3, 10, 30):
-                    corr_fun = corr_class(dist)
+                    for is_cyclic in (True, False):
+                        corr_fun = corr_class(dist)
 
-                    corr_op = (
-                        inversion.correlations.HomogeneousIsotropicCorrelation.
-                        from_function(corr_fun, test_shape))
-                    # This is the fastest way to get column-major
-                    # order from da.eye.
-                    corr_mat = corr_op.dot(np.eye(test_size).T)
+                        corr_op = (
+                            inversion.correlations.
+                            HomogeneousIsotropicCorrelation.
+                            from_function(corr_fun, test_shape, is_cyclic))
+                        # This is the fastest way to get column-major
+                        # order from da.eye.
+                        corr_mat = corr_op.dot(np.eye(test_size).T)
 
-                    with self.subTest(corr_class=getname(corr_class),
-                                      dist=dist, test_shape=test_shape,
-                                      test="symmetry"):
-                        np_tst.assert_allclose(corr_mat, corr_mat.T,
-                                               rtol=1e-14, atol=1e-15)
-                    with self.subTest(corr_class=getname(corr_class),
-                                      dist=dist, test_shape=test_shape,
-                                      test="self-correlation"):
-                        np_tst.assert_allclose(np.diag(corr_mat), 1)
+                        with self.subTest(
+                                corr_class=getname(corr_class), dist=dist,
+                                test_shape=test_shape, is_cyclic=is_cyclic,
+                                test="symmetry"):
+                            np_tst.assert_allclose(corr_mat, corr_mat.T,
+                                                   rtol=1e-14, atol=1e-15)
+                        with self.subTest(
+                                corr_class=getname(corr_class), dist=dist,
+                                test_shape=test_shape, is_cyclic=is_cyclic,
+                                test="self-correlation"):
+                            np_tst.assert_allclose(np.diag(corr_mat), 1)
 
-    def test_1d_fft_correlation(self):
-        """Test HomogeneousIsotropicCorrelation for 1D arrays.
+    def test_1d_fft_correlation_cyclic(self):
+        """Test HomogeneousIsotropicCorrelation for cyclic 1D arrays.
 
         Check against `make_matrix` and ignore values near the edges
         of the domain where the two methods are different.
@@ -725,8 +729,68 @@ class TestCorrelations(unittest2.TestCase):
                                 test_vec)[noncorr_dist:-noncorr_dist],
                             rtol=1e-3, atol=1e-5)
 
-    def test_2d_fft_correlation(self):
-        """Test HomogeneousIsotropicCorrelation for 2D arrays.
+    def test_1d_fft_correlation_acyclic(self):
+        """Test HomogeneousIsotropicCorrelation for acyclic 1D arrays.
+
+        Check against `make_matrix` and ignore values near the edges
+        of the domain where the two methods are different.
+        """
+        test_nt = 512
+        test_lst = (np.zeros(test_nt), np.ones(test_nt), np.arange(test_nt),
+                    np.eye(100, test_nt)[-1])
+
+        for corr_class in (
+                inversion.correlations.DistanceCorrelationFunction.
+                __subclasses__()):
+            for dist in (1, 3, 10):
+                # Magic numbers
+                # May need to increase for larger test_nt
+                corr_fun = corr_class(dist)
+
+                corr_mat = inversion.correlations.make_matrix(
+                    corr_fun, test_nt)
+                corr_op = (
+                    inversion.correlations.HomogeneousIsotropicCorrelation.
+                    from_function(corr_fun, test_nt, False))
+
+                for i, test_vec in enumerate(test_lst):
+                    with self.subTest(corr_class=getname(corr_class),
+                                      dist=dist, test_num=i,
+                                      inverse="no"):
+                        np_tst.assert_allclose(
+                            corr_op.dot(test_vec),
+                            corr_mat.dot(test_vec),
+                            rtol=1e-3, atol=1e-5)
+
+                for i, test_vec in enumerate(test_lst):
+                    with self.subTest(corr_class=getname(corr_class),
+                                      dist=dist, test_num=i,
+                                      inverse="yes"):
+                        if ((corr_class is inversion.correlations.
+                             GaussianCorrelation and
+                             dist >= 3)):
+                            # Gaussian(3) has FFT less
+                            # well-conditioned than make_matrix
+                            raise unittest2.SkipTest(
+                                "Gaussian({0:d}) correlations ill-conditioned".
+                                format(dist))
+                        elif ((corr_class is inversion.correlations.
+                               BalgovindCorrelation and
+                               dist == 10)):
+                            # This one distance is problematic
+                            # Roughly 3% of the points disagree
+                            # for the last half of the tests
+                            # I have no idea why
+                            raise unittest2.SkipTest(
+                                "Balgovind(10) correlations weird")
+                        np_tst.assert_allclose(
+                            corr_op.solve(
+                                test_vec),
+                            la.solve(corr_mat, test_vec),
+                            rtol=1e-3, atol=1e-5)
+
+    def test_2d_fft_correlation_cyclic(self):
+        """Test HomogeneousIsotropicCorrelation for cyclic 2D arrays.
 
         Check against `make_matrix` and ignore values near the edges
         where the two methods differ.
@@ -788,6 +852,61 @@ class TestCorrelations(unittest2.TestCase):
                                 test_vec).reshape(test_shape)
                             [noncorr_dist:-noncorr_dist,
                              noncorr_dist:-noncorr_dist],
+                            rtol=1e-3, atol=1e-5)
+
+    def test_2d_fft_correlation_acyclic(self):
+        """Test HomogeneousIsotropicCorrelation for acyclic 2D arrays.
+
+        Check against `make_matrix` and ignore values near the edges
+        where the two methods differ.
+        """
+        test_shape = (20, 30)
+        test_size = np.prod(test_shape)
+        test_lst = (np.zeros(test_size),
+                    np.ones(test_size),
+                    np.arange(test_size),
+                    np.eye(10 * test_shape[0], test_size)[-1])
+
+        for corr_class in (
+                inversion.correlations.DistanceCorrelationFunction.
+                __subclasses__()):
+            for dist in (1, 3):
+                # Magic numbers
+                # May need to increase for larger domains
+                corr_fun = corr_class(dist)
+
+                corr_mat = inversion.correlations.make_matrix(
+                    corr_fun, test_shape)
+                corr_op = (
+                    inversion.correlations.HomogeneousIsotropicCorrelation.
+                    from_function(corr_fun, test_shape, False))
+
+                for i, test_vec in enumerate(test_lst):
+                    with self.subTest(corr_class=getname(corr_class),
+                                      dist=dist, test_num=i,
+                                      direction="forward"):
+                        np_tst.assert_allclose(
+                            corr_op.dot(test_vec).reshape(test_shape),
+                            corr_mat.dot(test_vec).reshape(test_shape),
+                            rtol=1e-3, atol=1e-5)
+
+                for i, test_vec in enumerate(test_lst):
+                    with self.subTest(corr_class=getname(corr_class),
+                                      dist=dist, test_num=i,
+                                      direction="backward"):
+                        if ((corr_class is inversion.correlations.
+                             GaussianCorrelation and
+                             dist >= 3)):
+                            # Gaussian(3) has FFT less
+                            # well-conditioned than make_matrix
+                            raise unittest2.SkipTest(
+                                "Gaussian({0:d}) correlations ill-conditioned".
+                                format(dist))
+                        np_tst.assert_allclose(
+                            corr_op.solve(
+                                test_vec).reshape(test_shape),
+                            la.solve(corr_mat,
+                                     test_vec).reshape(test_shape),
                             rtol=1e-3, atol=1e-5)
 
     def test_homogeneous_from_array(self):

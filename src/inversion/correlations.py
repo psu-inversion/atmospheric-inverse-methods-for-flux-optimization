@@ -22,8 +22,8 @@ from numpy import logical_or, concatenate, isnan
 from numpy import sum as da_sum
 from numpy import where
 import pyfftw.interfaces.cache
-from pyfftw.interfaces.numpy_fft import rfft, rfft2, rfftn
-from pyfftw.interfaces.numpy_fft import irfft, irfft2, irfftn
+from pyfftw import next_fast_len, zeros_aligned
+from pyfftw.interfaces.numpy_fft import rfftn, irfftn
 import six
 
 from inversion.linalg import schmidt_decomposition, kron
@@ -75,7 +75,7 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         I stole the idea from here.
     """
 
-    def __init__(self, shape):
+    def __init__(self, shape, is_cyclic=True):
         """Set up the instance.
 
         .. note::
@@ -86,77 +86,107 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
 
         Parameters
         ----------
-        corr_func: callable(float) -> float[-1, 1]
         shape: tuple of int
             The state is formally input as a vector, but the correlations
             depend on the layout in some other shape, usually related to the
             physical layout. This is that shape.
+        is_cyclic: bool
+            Whether to assume the domain is periodic in all directions.
         """
         state_size = np.prod(shape)
+        ndims = len(shape)
 
         super(HomogeneousIsotropicCorrelation, self).__init__(
             dtype=DTYPE, shape=(state_size, state_size))
 
-        self._fft, self._ifft = self._rfft_irfft(shape)
+        self._is_cyclic = is_cyclic
         self._underlying_shape = tuple(shape)
 
-    # noqa W0212
-    @staticmethod
-    def _rfft_irfft(shape):
-        """Get the forward and inverse rffts for the given dimensions.
-
-        Parameters
-        ----------
-        ndim: int
-
-        Returns
-        -------
-        fft, ifft: callable
-        """
-        ndims = len(shape)
-        if ndims == 1:
-            fft = functools.partial(rfft, axis=0, threads=NUM_THREADS,
-                                    planner_effort=PLANNER_EFFORT)
-            ifft = functools.partial(irfft, n=shape[0], axis=0,
-                                     threads=NUM_THREADS,
-                                     planner_effort=PLANNER_EFFORT)
-        elif ndims == 2:
-            fft = functools.partial(rfft2, axes=(0, 1),
-                                    threads=NUM_THREADS,
-                                    planner_effort=PLANNER_EFFORT)
-            ifft = functools.partial(irfft2, s=shape, axes=(0, 1),
-                                     threads=NUM_THREADS,
-                                     planner_effort=PLANNER_EFFORT)
-        else:
-            fft = functools.partial(
+        if is_cyclic:
+            self._computational_shape = tuple(shape)
+            self._fft = functools.partial(
                 rfftn, axes=arange(0, ndims, dtype=int),
                 threads=NUM_THREADS, planner_effort=PLANNER_EFFORT)
-            ifft = functools.partial(
+            self._ifft = functools.partial(
                 irfftn, axes=arange(0, ndims, dtype=int), s=shape,
                 threads=NUM_THREADS, planner_effort=PLANNER_EFFORT)
-        return fft, ifft
+        else:
+            computational_shape = tuple(next_fast_len(2 * dim)
+                                        for dim in shape)
+            self._computational_shape = computational_shape
+            axes = arange(0, ndims, dtype=int)
+            base_slices = tuple(slice(None, dim) for dim in shape)
 
-    # noqa W0212
+            def _fft(arry):
+                """Find FFT of arry.
+
+                Parameters
+                ----------
+                arry: array_like
+
+                Returns
+                -------
+                spectrum: array_like
+                """
+                required_shape = computational_shape + arry.shape[ndims:]
+                big_array = zeros_aligned(required_shape, dtype=DTYPE,
+                                          order="F")
+                slicer = (
+                    base_slices +
+                    tuple(slice(None) for dim in arry.shape[ndims:])
+                )
+                big_array[slicer] = arry
+                return rfftn(big_array, axes=axes, threads=NUM_THREADS,
+                             planner_effort=PLANNER_EFFORT)
+
+            def _ifft(arry):
+                """Find inverse FFT of arry.
+
+                Parameters
+                ----------
+                spectrum: array_like
+
+                Returns
+                -------
+                result: array_like
+                """
+                slicer = (
+                    base_slices +
+                    tuple(slice(None) for dim in arry.shape[ndims:])
+                )
+                big_result = irfftn(
+                    arry, axes=axes, s=computational_shape,
+                    threads=NUM_THREADS, planner_effort=PLANNER_EFFORT)
+                return big_result[slicer]
+
+            self._fft = _fft
+            self._ifft = _ifft
+
     @classmethod
-    def from_function(cls, corr_func, shape):
+    def from_function(cls, corr_func, shape, is_cyclic=True):
         """Create an instance to apply the correlation function.
 
         Parameters
         ----------
         corr_func: callable(dist) -> float
+            The correlation of the first element of the domain with
+            each other element.
         shape: tuple of int
             The state is formally a vector, but the correlations are
             assumed to depend on the layout in some other shape,
             usually related to the physical layout. This is the other
             shape.
+        is_cyclic: bool
+            Whether to assume the domain is periodic in all directions.
 
         Returns
         -------
         HomogeneousIsotropicCorrelation
         """
         shape = np.atleast_1d(shape)
+        self = cls(shape, is_cyclic)
+        shape = np.asarray(self._computational_shape)
         ndims = len(shape)
-        self = cls(shape)
 
         broadcastable_shape = shape[:, newaxis]
         while broadcastable_shape.ndim < ndims + 1:
@@ -192,11 +222,13 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
             corr_from_index, shape=tuple(shape),
             dtype=DTYPE)
 
-        # The dask fft functions require all relevant axes to be in
-        # memory already, so keeping the array in memory won't hurt.
-        # TODO delegate to from_array
-        corr_fourier = (self._fft(corr_struct))
+        # I should be able to generate this sequence with a type-I DCT
+        # For some odd reason complex/complex is faster than complex/real
+        corr_fourier = rfftn(
+            corr_struct, axes=arange(ndims, dtype=int),
+            threads=NUM_THREADS, planner_effort="FFTW_EXHAUSTIVE")
         self._corr_fourier = (corr_fourier)
+
         # This is also affected by roundoff
         self._fourier_near_zero = abs(corr_fourier) < FOURIER_NEAR_ZERO
         return self
@@ -334,7 +366,8 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         -------
         scipy.sparse.linalg.LinearOperator
         """
-        if not isinstance(other, HomogeneousIsotropicCorrelation):
+        if ((not isinstance(other, HomogeneousIsotropicCorrelation) or
+             self._is_cyclic != other._is_cyclic)):
             return SchmidtKroneckerProduct(self, other)
         shape = self._underlying_shape + other._underlying_shape
         shift = len(self._underlying_shape)
