@@ -5,8 +5,11 @@ different methods agree for simple problems.
 
 """
 from __future__ import print_function, division
-import itertools
 import fractions
+import itertools
+import os.path
+import atexit
+import pickle
 import math
 try:
     from functools import reduce
@@ -22,6 +25,7 @@ import scipy.linalg
 import scipy.sparse
 import scipy.optimize
 import unittest2
+import pyfftw
 
 import dask
 import dask.array as da
@@ -46,6 +50,21 @@ try:
 except (ImportError, TypeError):
     from dask.config import set as config_set
     config_set(scheduler="single-threaded")
+
+
+if os.path.exists(".pyfftw.pickle"):
+    with open(".pyfftw.pickle", "rb") as wis_in:
+        pyfftw.import_wisdom(pickle.load(wis_in))
+
+    def save_wisdom():
+        """Save accumulated pyfftw wisdom.
+
+        Saves in hidden file in current directory.
+        Should help speed subsequent tests.
+        """
+        with open(".pyfftw.pickle", "wb") as wis_out:
+            pickle.dump(pyfftw.export_wisdom(), wis_out)
+    atexit.register(save_wisdom)
 
 
 # If adding other inexact methods to the list tested, be sure to add
