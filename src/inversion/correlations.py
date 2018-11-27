@@ -240,17 +240,19 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         Parameters
         ----------
         corr_array: array_like
+            The correlation of the first element of the domain with
+            each other element.
 
         Returns
         -------
         HomogeneousIsotropicCorrelation
         """
         corr_array = asarray(corr_array)
-        self = cls(corr_array.shape)
+        self = cls(corr_array.shape, is_cyclic=True)
         # The fft axes need to be a single chunk for the dask ffts
         # It's in memory already anyway
         # TODO: create a from_spectrum to delegate to
-        corr_fourier = (self._fft(corr_array))
+        corr_fourier = self._fft(corr_array)
         self._corr_fourier = (corr_fourier)
         self._fourier_near_zero = (corr_fourier < FOURIER_NEAR_ZERO)
         return self
@@ -322,8 +324,22 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
     # Correlation matrices are also real
 
     def inv(self):
-        """Construct the matrix inverse of this operator."""
+        """Construct the matrix inverse of this operator.
+
+        Returns
+        -------
+        LinearOperator
+
+        Raises
+        ------
+        ValueError
+            if the instance is acyclic
+        """
         # TODO: Test this
+        if not self._is_cyclic:
+            raise ValueError(
+                "HomogeneousIsotropicCorrelation.inv "
+                "does not support acyclic correlations")
         # TODO: Return a HomogeneousIsotropicLinearOperator
         return DaskLinearOperator(
             shape=self.shape, dtype=self.dtype,
@@ -340,7 +356,16 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         -------
         array_like[N]
             Solution of `self @ x = vec`
+
+        Raises
+        ------
+        ValueError
+            if the instance is acyclic.
         """
+        if not self._is_cyclic:
+            raise ValueError(
+                "HomogeneousIsotropicCorrelation.solve "
+                "does not support acyclic correlations")
         field = asarray(vec).reshape(self._underlying_shape)
 
         spectral_field = self._fft(field)

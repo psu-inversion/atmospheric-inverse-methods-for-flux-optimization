@@ -541,7 +541,10 @@ class TestCorrelations(unittest2.TestCase):
                 corr_mat = corr.reshape((np.prod(test_size),) * 2)
 
                 # test postitive definite
-                chol_upper = cholesky(corr_mat)
+                try:
+                    chol_upper = cholesky(corr_mat)
+                except la.LinAlgError:
+                    self.fail("corr_mat not positive definite")
 
                 # test symmetry
                 np_tst.assert_allclose(chol_upper.T.dot(chol_upper),
@@ -785,28 +788,8 @@ class TestCorrelations(unittest2.TestCase):
                     with self.subTest(corr_class=getname(corr_class),
                                       dist=dist, test_num=i,
                                       inverse="yes"):
-                        if ((corr_class is inversion.correlations.
-                             GaussianCorrelation and
-                             dist >= 3)):
-                            # Gaussian(3) has FFT less
-                            # well-conditioned than make_matrix
-                            raise unittest2.SkipTest(
-                                "Gaussian({0:d}) correlations ill-conditioned".
-                                format(dist))
-                        elif ((corr_class is inversion.correlations.
-                               BalgovindCorrelation and
-                               dist == 10)):
-                            # This one distance is problematic
-                            # Roughly 3% of the points disagree
-                            # for the last half of the tests
-                            # I have no idea why
-                            raise unittest2.SkipTest(
-                                "Balgovind(10) correlations weird")
-                        np_tst.assert_allclose(
-                            corr_op.solve(
-                                test_vec),
-                            la.solve(corr_mat, test_vec),
-                            rtol=1e-3, atol=1e-5)
+                        self.assertRaises(
+                            ValueError, corr_op.solve, test_vec)
 
     def test_2d_fft_correlation_cyclic(self):
         """Test HomogeneousIsotropicCorrelation for cyclic 2D arrays.
@@ -913,23 +896,11 @@ class TestCorrelations(unittest2.TestCase):
                     with self.subTest(corr_class=getname(corr_class),
                                       dist=dist, test_num=i,
                                       direction="backward"):
-                        if ((corr_class is inversion.correlations.
-                             GaussianCorrelation and
-                             dist >= 3)):
-                            # Gaussian(3) has FFT less
-                            # well-conditioned than make_matrix
-                            raise unittest2.SkipTest(
-                                "Gaussian({0:d}) correlations ill-conditioned".
-                                format(dist))
-                        np_tst.assert_allclose(
-                            corr_op.solve(
-                                test_vec).reshape(test_shape),
-                            la.solve(corr_mat,
-                                     test_vec).reshape(test_shape),
-                            rtol=1e-3, atol=1e-5)
+                        self.assertRaises(
+                            ValueError, corr_op.solve, test_vec)
 
-    def test_homogeneous_from_array(self):
-        """Make sure from_array can be roundtripped.
+    def test_homogeneous_from_array_cyclic(self):
+        """Make sure cyclic from_array can be roundtripped.
 
         Also tests that odd state sizes work.
         """
@@ -941,7 +912,7 @@ class TestCorrelations(unittest2.TestCase):
                 corr_fun = corr_class(dist)
                 corr_op1 = (
                     inversion.correlations.HomogeneousIsotropicCorrelation.
-                    from_function(corr_fun, test_size))
+                    from_function(corr_fun, test_size, True))
                 first_column = corr_op1.dot(np.eye(test_size, 1)[:, 0])
 
                 corr_op2 = (
@@ -1056,8 +1027,24 @@ class TestCorrelations(unittest2.TestCase):
             from_function)
         toeplitz = scipy.linalg.toeplitz
 
+        with self.subTest(is_cyclic=False, nd=1):
+            corr_op = from_function(corr_func, [10], False)
+            np_tst.assert_allclose(
+                corr_op.dot(np.eye(10)),
+                toeplitz(0.5 ** np.arange(10)))
+
+        with self.subTest(is_cyclic=False, nd=2):
+            corr_op = from_function(corr_func, [2, 3], False)
+            same_row = toeplitz(0.5 ** np.array([0, 1, 2]))
+            other_row = toeplitz(
+                0.5 ** np.array([1, np.sqrt(2), np.sqrt(5)]))
+            np_tst.assert_allclose(
+                corr_op.dot(np.eye(6)),
+                np.block([[same_row, other_row],
+                          [other_row, same_row]]))
+
         with self.subTest(is_cyclic=True, nd=1):
-            corr_op = from_function(corr_func, [10])
+            corr_op = from_function(corr_func, [10], True)
             np_tst.assert_allclose(
                 corr_op.dot(np.eye(10)),
                 toeplitz(
