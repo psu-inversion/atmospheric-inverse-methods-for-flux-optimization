@@ -903,6 +903,38 @@ class TestCorrelations(unittest2.TestCase):
         np_tst.assert_allclose(operator.dot(mat),
                                sqrt_squared.dot(mat))
 
+    def test_from_function_direct(self):
+        """Directly test the output of from_function."""
+        corr_func = (inversion.correlations.
+                     ExponentialCorrelation(1 / np.log(2)))
+        from_function = (
+            inversion.correlations.HomogeneousIsotropicCorrelation.
+            from_function)
+        toeplitz = scipy.linalg.toeplitz
+
+        with self.subTest(is_cyclic=False, nd=1):
+            corr_op = from_function(corr_func, [10], False)
+            np_tst.assert_allclose(
+                corr_op.dot(np.eye(10)),
+                toeplitz(0.5 ** np.arange(10)))
+
+        with self.subTest(is_cyclic=True, nd=1):
+            corr_op = from_function(corr_func, [10], True)
+            np_tst.assert_allclose(
+                corr_op.dot(np.eye(10)),
+                toeplitz(
+                    0.5 ** np.array([0, 1, 2, 3, 4, 5, 4, 3, 2, 1])))
+
+        with self.subTest(is_cyclic=False, nd=2):
+            corr_op = from_function(corr_func, [2, 3], False)
+            same_row = toeplitz(0.5 ** np.array([0, 1, 2]))
+            other_row = toeplitz(
+                0.5 ** np.array([1, np.sqrt(2), np.sqrt(5)]))
+            np_tst.assert_allclose(
+                corr_op.dot(np.eye(6)),
+                np.block([[same_row, other_row],
+                          [other_row, same_row]]))
+
 
 class TestSchmidtKroneckerProduct(unittest2.TestCase):
     """Test the Schmidt Kronecker product implementation for LinearOperators.
