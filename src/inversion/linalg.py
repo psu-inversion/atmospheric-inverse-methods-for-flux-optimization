@@ -13,11 +13,13 @@ from scipy.sparse.linalg.interface import (
 from scipy.sparse.linalg.eigen import eigsh as linop_eigsh
 from numpy import newaxis
 
-from numpy import concatenate, zeros, einsum
+from numpy import concatenate, zeros
 from numpy import asarray, atleast_2d, stack, where, sqrt
 from scipy.linalg import cholesky
 import numpy.linalg as la
 
+# See if this will speed up inversions.
+from dask.array import einsum
 
 from .linalg_interface import (
     DaskLinearOperator, DaskMatrixLinearOperator,
@@ -360,7 +362,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
                     # Column-major output should speed the
                     # operator2 @ tmp bit
                     order="F"
-                ).reshape(block_size, -1)
+                ).reshape(block_size, -1).compute()
             )
             # Reshape to separate out the block dimension from the
             # original second dim of mat
