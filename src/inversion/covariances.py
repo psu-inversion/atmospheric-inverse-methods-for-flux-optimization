@@ -10,7 +10,6 @@ from .linalg import (
     DiagonalOperator, matrix_sqrt)
 
 
-# TODO: move to covariances.py and inherit from SelfAdjointOperator
 class CorrelationStandardDeviation(ProductLinearOperator,
                                    SelfAdjointLinearOperator):
     """Represent correlation-std product."""
@@ -31,7 +30,7 @@ class CorrelationStandardDeviation(ProductLinearOperator,
 
     def _transpose(self):
         """Return transpose of self."""
-        return self
+        return self  # pragma: no cover
 
     def _adjoint(self):
         """Return adjoint of self."""

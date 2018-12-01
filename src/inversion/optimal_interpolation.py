@@ -42,8 +42,14 @@ def simple(background, background_covariance,
     observation_increment = observations - projected_obs
 
     # B_{proj} = HBH^T
-    projected_background_covariance = observation_operator.dot(
-        background_covariance.dot(observation_operator.T))
+    if ((isinstance(observation_operator, LinearOperator) or
+         isinstance(background_covariance, LinearOperator))):
+        projected_background_covariance = ProductLinearOperator(
+            observation_operator, background_covariance, observation_operator.T
+        )
+    else:
+        projected_background_covariance = observation_operator.dot(
+            background_covariance.dot(observation_operator.T))
 
     if isinstance(observation_covariance, LinearOperator):
         projected_background_covariance = tolinearoperator(

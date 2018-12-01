@@ -22,12 +22,13 @@ from numpy import logical_or, concatenate, isnan
 from numpy import sum as da_sum
 from numpy import where
 import pyfftw.interfaces.cache
-from pyfftw.interfaces.numpy_fft import rfft, rfft2, rfftn, irfft, irfft2, irfftn
+from pyfftw.interfaces.numpy_fft import rfft, rfft2, rfftn
+from pyfftw.interfaces.numpy_fft import irfft, irfft2, irfftn
 import six
 
-from inversion.linalg import schmidt_decomposition, is_odd
-from inversion.linalg import tolinearoperator, kron
-from inversion.linalg import DaskLinearOperator
+from inversion.linalg import schmidt_decomposition, kron
+from inversion.linalg_interface import DaskLinearOperator
+from inversion.linalg_interface import is_odd, tolinearoperator
 
 NUM_THREADS = 8
 PLANNER_EFFORT = "FFTW_PATIENT"
@@ -558,7 +559,7 @@ class DistanceCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
         -------
         correlation: float[-1, 1]
         """
-        pass
+        pass  # pragma: no cover
 
     def correlation_from_index(self, *indices):
         """Find the correlation between the indices.
