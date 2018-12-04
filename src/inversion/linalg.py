@@ -11,6 +11,7 @@ from scipy.sparse.linalg.interface import (
     MatrixLinearOperator)
 
 from scipy.sparse.linalg.eigen import eigsh as linop_eigsh
+from scipy.sparse.linalg import svds
 from numpy import newaxis
 
 from numpy import concatenate, zeros, nonzero
@@ -186,16 +187,17 @@ def schmidt_decomposition(vector, dim1, dim2):
         # TODO: Test failure mode
         raise ValueError("Schmidt decomposition only valid for vectors")
     state_matrix = asarray(vector).reshape(dim1, dim2)
+    min_dim = min(dim1, dim2)
 
-    if dim1 > dim2:
-        vecs1, lambdas, vecs2 = la.svd(state_matrix)
+    if min_dim > 6:
+        n_singular_vectors = min(max(6, int(0.05 * min_dim)), min_dim - 1)
+        vecs1, lambdas, vecs2 = svds(state_matrix, n_singular_vectors)
     else:
-        # Transpose, because dask expects tall and skinny
-        vecs2T, lambdas, vecs1T = la.svd(state_matrix.T)
-        vecs1 = vecs1T.T
-        vecs2 = vecs2T.T
+        vecs1, lambdas, vecs2 = svd(state_matrix)
 
-    return lambdas, vecs1.T[:len(lambdas), :], vecs2[:len(lambdas), :]
+    big_lambdas = nonzero(lambdas)[0]
+
+    return lambdas[big_lambdas], vecs1.T[big_lambdas, :], vecs2[big_lambdas, :]
 
 
 def matrix_sqrt(mat):
