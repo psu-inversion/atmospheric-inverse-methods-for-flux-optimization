@@ -410,6 +410,7 @@ class ProductLinearOperator(DaskLinearOperator):
                 self.sqrt = self._sqrt
         except NotImplementedError:
             # Transpose not implemented for a subclass
+            # TODO: test
             pass
 
     def _matvec(self, vector):
@@ -428,7 +429,7 @@ class ProductLinearOperator(DaskLinearOperator):
 
         return vector
 
-    def _rmatvec(self, vector):
+    def _rmatvec(self, vector):  # pragma: nocover
         """Matrix-vector product on the left.
 
         Parameters

@@ -12,6 +12,7 @@ import dask.array as da
 from numpy import atleast_1d, atleast_2d
 
 from .linalg import DaskKroneckerProductOperator, kron, solve
+from .linalg_interface import ProductLinearOperator, tolinearoperator
 
 OPTIMAL_ELEMENTS = int(2e5)
 """Optimal elements per chunk in a dask array.
@@ -180,16 +181,39 @@ def method_common(inversion_method):
                              reduced_observation_operator))
 
         if analysis_covariance is None:
-            B_HT = reduced_background_covariance.dot(
-                reduced_observation_operator.T)
+            if isinstance(observation_operator, _LinearOperator):
+                B_HT = ProductLinearOperator(reduced_background_covariance,
+                                             reduced_observation_operator.T)
+                projected_reduced_background_covariance = (
+                    ProductLinearOperator(
+                        reduced_observation_operator,
+                        reduced_background_covariance,
+                        reduced_observation_operator.T))
+            else:
+                # H is an array
+                B_HT = reduced_background_covariance.dot(
+                    reduced_observation_operator.T)
+                projected_reduced_background_covariance = (
+                    reduced_observation_operator.dot(
+                        B_HT))
+            if isinstance(observation_covariance,
+                          _LinearOperator):
+                projected_reduced_background_covariance = tolinearoperator(
+                    projected_reduced_background_covariance)
+
+            decrease = B_HT.dot(solve(
+                projected_reduced_background_covariance +
+                observation_covariance,
+                B_HT.T))
+            if isinstance(decrease, _LinearOperator):
+                reduced_background_covariance = tolinearoperator(
+                    reduced_background_covariance)
+
             # (I - KH) B
             analysis_covariance = (
                 # May need to be a LinearOperator to work properly
                 reduced_background_covariance -
-                B_HT.dot(solve(
-                    reduced_observation_operator.dot(B_HT) +
-                    observation_covariance,
-                    B_HT.T))
+                decrease
             )
 
         return analysis_estimate, analysis_covariance

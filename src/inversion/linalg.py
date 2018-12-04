@@ -13,10 +13,11 @@ from scipy.sparse.linalg.interface import (
 from scipy.sparse.linalg.eigen import eigsh as linop_eigsh
 from numpy import newaxis
 
-from numpy import concatenate, zeros
+from numpy import concatenate, zeros, nonzero
 from numpy import asarray, atleast_2d, stack, where, sqrt
 from scipy.linalg import cholesky
 import numpy.linalg as la
+from numpy.linalg import svd, LinAlgError
 
 # See if this will speed up inversions.
 from dask.array import einsum
@@ -56,10 +57,13 @@ def linop_solve(operator, arr):
     array_like
     """
     if arr.ndim == 1:
-        return asarray(lgmres(operator, np.asarray(arr))[0])
-    return asarray(stack([lgmres(operator, np.asarray(col))[0]
-                          for col in atleast_2d(arr).T],
-                         axis=1))
+        return asarray(lgmres(operator, np.asarray(arr),
+                              atol=1e-7)[0])
+    return asarray(
+        stack(
+            [lgmres(operator, np.asarray(col), atol=1e-7)[0]
+             for col in atleast_2d(arr).T],
+            axis=1))
 
 
 def solve(arr1, arr2):
@@ -74,35 +78,45 @@ def solve(arr1, arr2):
     -------
     array_like[N]
     """
+    if arr1.shape[0] != arr2.shape[0]:
+        print(arr1.shape[1], arr2.shape[0])
+        raise ValueError("Dimension mismatch")
+    if arr1.shape[0] != arr1.shape[1]:
+        raise LinAlgError("arr1 is not square")
+    # Get everything in a standard form
+    if isinstance(arr2, MatrixLinearOperator):
+        arr2 = arr2.A
+    # Deal with arr2 being a LinearOperator
+    if not isinstance(arr2, ARRAY_TYPES):
+        def solver(vec):
+            """Solve `arr1 x = vec`.
+
+            Parameters
+            ----------
+            vec: array_like
+
+            Returns
+            -------
+            array_like
+            """
+            return solve(arr1, vec)
+        inverse = DaskLinearOperator(matvec=solver, shape=arr1.shape[::-1])
+        return inverse.dot(arr2)
+
+    # arr2 is an array
     if hasattr(arr1, "solve"):
-        return arr1.solve(arr2)
-    elif isinstance(arr1, (MatrixLinearOperator, DaskMatrixLinearOperator)):
+        try:
+            return arr1.solve(arr2)
+        except NotImplementedError:
+            pass
+
+    if isinstance(arr1, (MatrixLinearOperator, DaskMatrixLinearOperator)):
         return la.solve(asarray(arr1.A), asarray(arr2))
     elif isinstance(arr1, LinearOperator):
         # Linear operators with neither an underlying matrix nor a
         # provided solver. Use iterative sparse solvers.
         # TODO: Test Ax = b for b not column vector
-        if isinstance(arr2, ARRAY_TYPES):
-            return linop_solve(arr1, arr2)
-        elif isinstance(arr2, (MatrixLinearOperator,
-                               DaskMatrixLinearOperator)):
-            # TODO: test this branch
-            return linop_solve(arr1, arr2.A)
-        else:
-            def solver(vec):
-                """Solve `arr1 x = vec`.
-
-                Parameters
-                ----------
-                vec: array_like
-
-                Returns
-                -------
-                array_like
-                """
-                return linop_solve(arr1, vec)
-            inverse = DaskLinearOperator(matvec=solver, shape=arr1.shape[::-1])
-            return inverse.dot(arr2)
+        return linop_solve(arr1, arr2)
         # # TODO: Figure out dask tasks for this
         # return da.Array(
         #     {(chunkname, 0):
@@ -454,7 +468,7 @@ class SelfAdjointLinearOperator(DaskLinearOperator):
         array_like
         """
         # TODO: Figure out how to test this and do it
-        return self._matvec(vector)
+        return self._matvec(vector)  # pragma: no cover
 
     def _adjoint(self):
         """Return transpose.

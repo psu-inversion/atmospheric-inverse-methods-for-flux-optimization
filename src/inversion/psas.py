@@ -119,7 +119,7 @@ def simple(background, background_covariance,
         # tests.  I feel it safer to do it analytically at low
         # resolution than trying to use the high-resolution iterative
         # approximation.
-        method = "Newton-CG"
+        method = "CG"
 
     result = scipy.optimize.minimize(
         cost_function, observation_increment,
@@ -270,7 +270,7 @@ def fold_common(background, background_covariance,
     if reduced_background_covariance is None:
         method = "BFGS"
     else:
-        method = "Newton-CG"
+        method = "CG"
 
     result = scipy.optimize.minimize(
         cost_function, observation_increment,

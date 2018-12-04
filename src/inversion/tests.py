@@ -439,7 +439,7 @@ class TestGaussianNoise(unittest2.TestCase):
                                rtol=1.1e-2, atol=1e-2)
         np_tst.assert_allclose(np.cov(noise.T),
                                scipy.linalg.kron(op1, np.diag(diag)),
-                               rtol=3e-2, atol=1e-2)
+                               rtol=3e-2, atol=3e-2)
 
     def test_off_diagonal(self):
         """Test that the code works with off-diagonal elements."""
@@ -1025,6 +1025,25 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
             operator.dot(epr_state),
             matrix.dot(epr_state))
 
+    def test_drop_small(self):
+        """Test that the implementation properly drops small components."""
+        SchmidtKroneckerProduct = (
+            inversion.correlations.SchmidtKroneckerProduct)
+
+        # I want to be sure either being smaller works.
+        # Even versus odd also causes problems occasionally
+        mat1 = np.eye(2)
+        mat2 = np.eye(3)
+
+        full_mat = SchmidtKroneckerProduct(
+            mat1, mat2)
+        test_vec = np.array([1, 0, 0,
+                             0, 1e-15, 0])
+
+        np_tst.assert_allclose(
+            full_mat.dot(test_vec),
+            np.eye(6, 1)[:, 0])
+
 
 class TestYMKroneckerProduct(unittest2.TestCase):
     """Test the YM13 Kronecker product implementation for LinearOperators.
@@ -1167,8 +1186,23 @@ class TestYMKroneckerProduct(unittest2.TestCase):
 
         tester = np.eye(product.shape[0])
 
+        dense_product = scipy.linalg.kron(matrix1, matrix2)
+        test_vec = np.arange(product.shape[0])
+
         np_tst.assert_allclose(product.quadratic_form(tester),
-                               scipy.linalg.kron(matrix1, matrix2))
+                               dense_product)
+        np_tst.assert_allclose(product.quadratic_form(test_vec),
+                               test_vec.dot(dense_product.dot(test_vec)))
+
+        test_op = inversion.linalg.DiagonalOperator(test_vec)
+        self.assertRaises(
+            TypeError,
+            product.quadratic_form,
+            test_op)
+        self.assertRaises(
+            ValueError,
+            product.quadratic_form,
+            test_vec[:-1])
 
     def test_matrix_linop(self):
         """Test that the implementation works with MatrixLinearOperator."""
@@ -1204,6 +1238,23 @@ class TestYMKroneckerProduct(unittest2.TestCase):
             ValueError,
             inversion.linalg.DaskKroneckerProductOperator,
             mat1, mat2)
+
+    def test_sqrt_fails(self):
+        """Test that the square root fails for bad inputs.
+
+        Specifically, non-square arrays and asymmetric arrays.
+        """
+        kron_op = inversion.linalg.DaskKroneckerProductOperator
+
+        self.assertRaises(
+            ValueError,
+            kron_op(np.eye(3, 2), np.eye(3)).sqrt)
+        self.assertRaises(
+            ValueError,
+            kron_op(np.eye(3), np.eye(2, 3)).sqrt)
+        self.assertRaises(
+            ValueError,
+            kron_op(np.array([[1, 1], [0, 1]]), np.eye(3)).sqrt)
 
 
 class TestUtilKroneckerProduct(unittest2.TestCase):
@@ -1517,6 +1568,27 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
         self.assertRaises(
             ValueError, schmidt_decomp, np.eye(6, 2), 2, 3)
 
+    def test_big_vector(self):
+        """Test size of results for large vectors."""
+        vec = np.arange(1000, dtype=float)
+        lambdas, uvecs, vvecs = (
+            inversion.linalg.schmidt_decomposition(vec, 10, 100))
+        self.assertLessEqual(len(lambdas), 10)
+        self.assertNotIn(0, lambdas)
+        np_tst.assert_allclose(
+            sum(lambd[...] * scipy.linalg.kron(
+                vec1.reshape(-1, 1),
+                vec2.reshape(-1, 1))[:, 0]
+                for lambd, vec1, vec2 in zip(lambdas, uvecs, vvecs)),
+            vec, atol=1e-10)
+
+    def test_small_nonzero(self):
+        """Test that all returned data is significant."""
+        vec = np.eye(20, 1)
+        lambdas, uvecs, vvecs = (
+            inversion.linalg.schmidt_decomposition(vec, 4, 5))
+        self.assertNotIn(0, lambdas)
+
 
 class TestUtilIsOdd(unittest2.TestCase):
     """Test inversion.linalg.is_odd."""
@@ -1583,7 +1655,6 @@ class TestHomogeneousInversions(unittest2.TestCase):
     """
 
     CURRENTLY_BROKEN = frozenset((
-        inversion.optimal_interpolation.simple,  # Invalid addition
         inversion.optimal_interpolation.scipy_chol,  # cho_factor/solve
         inversion.variational.incr_chol,  # cho_factor/solve
     ))
@@ -1628,6 +1699,15 @@ class TestHomogeneousInversions(unittest2.TestCase):
                         self.bg_vals, bg_corr,
                         self.obs_vals, obs_corr,
                         obs_op)
+                with self.subTest(method=getname(inversion_method),
+                                  bg_corr=getname(type(bg_corr)),
+                                  obs_corr=getname(type(obs_corr)),
+                                  obs_op=getname(type(obs_op)),
+                                  request_reduced=True):
+                    post, post_cov = inversion_method(
+                        self.bg_vals, bg_corr,
+                        self.obs_vals, obs_corr,
+                        obs_op, bg_corr, obs_op)
 
 
 class TestKroneckerQuadraticForm(unittest2.TestCase):
@@ -1967,6 +2047,113 @@ class TestCovariances(unittest2.TestCase):
             with self.subTest(test_mat=mat):
                 np_tst.assert_allclose(operator.dot(mat),
                                        arry.dot(mat))
+
+
+class TestLinalgSolve(unittest2.TestCase):
+    """Test the general solve function."""
+
+    def test_array_array(self):
+        """Test solving a system with two arrays."""
+        test_op = np.eye(2)
+        test_vec = np.arange(2)
+
+        np_tst.assert_allclose(
+            inversion.linalg.solve(test_op, test_vec),
+            la.solve(test_op, test_vec))
+
+    def test_method_array(self):
+        """Test that solve delegates."""
+        test_op = (
+            inversion.correlations.HomogeneousIsotropicCorrelation.
+            from_array([1, .5, .25, .5]))
+        test_vec = np.arange(4)
+
+        np_tst.assert_allclose(
+            inversion.linalg.solve(
+                test_op, test_vec),
+            la.solve(test_op.dot(np.eye(4)),
+                     test_vec),
+            atol=1e-10)
+
+    def test_linop_array(self):
+        """Test solve for a linear operator."""
+        test_diag = np.ones(4)
+        test_op = (
+            inversion.linalg_interface.DaskLinearOperator(
+                matvec=lambda x: x * test_diag, shape=(4, 4)))
+        test_vec = np.arange(4)
+
+        np_tst.assert_allclose(
+            inversion.linalg.solve(test_op, test_vec),
+            test_vec / test_diag)
+
+    def test_array_linop(self):
+        """Test solve with a linear operator as rhs."""
+        test_diag = 1 + np.arange(4)
+        test_op = (
+            inversion.linalg.DiagonalOperator(
+                test_diag))
+        test_arry = np.diag(test_diag)
+
+        result = inversion.linalg.solve(
+            test_arry, test_op)
+        self.assertIsInstance(
+            result, inversion.linalg_interface.DaskLinearOperator)
+        np_tst.assert_allclose(
+            result.dot(np.eye(4)),
+            np.eye(4),
+            atol=1e-10)
+
+    def test_matop_matop(self):
+        """Test solve with a MatrixOperator as rhs."""
+        test_op = inversion.linalg.DaskMatrixLinearOperator(
+            np.eye(4))
+        test_vec = inversion.linalg.DaskMatrixLinearOperator(
+            np.arange(4).reshape(4, 1))
+
+        np_tst.assert_allclose(
+            inversion.linalg.solve(
+                test_op, test_vec),
+            la.solve(test_op.A, test_vec.A))
+
+    def test_bad_shape(self):
+        """Test solve fails for bad input."""
+        test_op = np.eye(4)
+        test_vec = np.arange(5)
+
+        self.assertRaises(
+            ValueError,
+            inversion.linalg.solve,
+            test_op, test_vec)
+        self.assertRaises(
+            la.LinAlgError,
+            inversion.linalg.solve,
+            test_op[:, :-1],
+            test_vec[:-1])
+
+
+class TestLinopSolve(unittest2.TestCase):
+    """Test the abilities of linop_solve."""
+
+    def test_single(self):
+        """Test with single vector."""
+        test_op = np.eye(4)
+        test_vec = np.arange(4)
+
+        np_tst.assert_allclose(
+            inversion.linalg.linop_solve(
+                test_op, test_vec),
+            la.solve(test_op, test_vec))
+
+    def test_multi(self):
+        """Test with multiple vectors."""
+        test_op = np.eye(4)
+        test_vecs = np.arange(12).reshape(4, 3)
+
+        np_tst.assert_allclose(
+            inversion.linalg.linop_solve(
+                test_op, test_vecs),
+            la.solve(test_op, test_vecs))
 
 
 class TestUtilMatrixSqrt(unittest2.TestCase):

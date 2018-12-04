@@ -42,8 +42,7 @@ def simple(background, background_covariance,
     observation_increment = observations - projected_obs
 
     # B_{proj} = HBH^T
-    if ((isinstance(observation_operator, LinearOperator) or
-         isinstance(background_covariance, LinearOperator))):
+    if isinstance(observation_operator, LinearOperator):
         projected_background_covariance = ProductLinearOperator(
             observation_operator, background_covariance, observation_operator.T
         )
@@ -69,24 +68,46 @@ def simple(background, background_covariance,
 
     # P_a = B - B H^T (B_{proj} + R)^{-1} H B
     if reduced_background_covariance is None:
-        decrease = background_covariance.dot(
+        # The possibility that the arguments may be a mix of
+        # LinearOperators and arrays requires an odd evaluation order
+        # This is symmetric
+        # Calculate B H^T cov_sum^-1 H
+        most_of_decrease = background_covariance.dot(
             observation_operator.T.dot(
                 solve(
                     covariance_sum,
-                    observation_operator).dot(
-                    background_covariance)))
+                    observation_operator
+                )
+            )
+        )
+        # Transpose to get H^T cov_sum^-1 H B
+        # Then B * _ to get the decrease
+        decrease = background_covariance.dot(most_of_decrease.T)
 
         if isinstance(background_covariance, LinearOperator):
             decrease = tolinearoperator(decrease)
 
         analysis_covariance = background_covariance - decrease
     else:
-        decrease = reduced_background_covariance.dot(
+        # The possibility that the arguments may be a mix of
+        # LinearOperators and arrays requires an odd evaluation order
+        # This is symmetric
+        # Calculate B H^T cov_sum^-1 H
+        most_of_decrease = reduced_background_covariance.dot(
             reduced_observation_operator.T.dot(
                 solve(
                     covariance_sum,
-                    reduced_observation_operator).dot(
-                    reduced_background_covariance)))
+                    reduced_observation_operator
+                )
+            )
+        )
+        # Transpose to get H^T cov_sum^-1 H B
+        # Then B * _ to get the decrease
+        decrease = reduced_background_covariance.dot(most_of_decrease.T)
+
+        if isinstance(background_covariance, LinearOperator):
+            decrease = tolinearoperator(decrease)
+
         analysis_covariance = reduced_background_covariance - decrease
 
     return analysis, analysis_covariance
@@ -164,11 +185,25 @@ def fold_common(background, background_covariance,
                 background_covariance)
         analysis_covariance = background_covariance - decrease
     else:
-        B_HT_red = reduced_background_covariance.dot(
-            reduced_observation_operator.T)
-        decrease = B_HT_red.dot(solve(
-            covariance_sum,
-            B_HT_red.T))
+        # The possibility that the arguments may be a mix of
+        # LinearOperators and arrays requires an odd evaluation order
+        # This is symmetric
+        # Calculate B H^T cov_sum^-1 H
+        most_of_decrease = reduced_background_covariance.dot(
+            reduced_observation_operator.T.dot(
+                solve(
+                    covariance_sum,
+                    reduced_observation_operator
+                )
+            )
+        )
+        # Transpose to get H^T cov_sum^-1 H B
+        # Then B * _ to get the decrease
+        decrease = reduced_background_covariance.dot(most_of_decrease.T)
+
+        if isinstance(background_covariance, LinearOperator):
+            decrease = tolinearoperator(decrease)
+
         analysis_covariance = reduced_background_covariance - decrease
 
     return analysis, analysis_covariance
@@ -251,11 +286,25 @@ def save_sum(background, background_covariance,
                 background_covariance)
         analysis_covariance = background_covariance - decrease
     else:
-        B_HT_red = reduced_background_covariance.dot(
-            reduced_observation_operator.T)
-        decrease = B_HT_red.dot(solve(
-            covariance_sum,
-            B_HT_red.T))
+        # The possibility that the arguments may be a mix of
+        # LinearOperators and arrays requires an odd evaluation order
+        # This is symmetric
+        # Calculate B H^T cov_sum^-1 H
+        most_of_decrease = reduced_background_covariance.dot(
+            reduced_observation_operator.T.dot(
+                solve(
+                    covariance_sum,
+                    reduced_observation_operator
+                )
+            )
+        )
+        # Transpose to get H^T cov_sum^-1 H B
+        # Then B * _ to get the decrease
+        decrease = reduced_background_covariance.dot(most_of_decrease.T)
+
+        if isinstance(background_covariance, LinearOperator):
+            decrease = tolinearoperator(decrease)
+
         analysis_covariance = reduced_background_covariance - decrease
 
     return analysis, analysis_covariance
