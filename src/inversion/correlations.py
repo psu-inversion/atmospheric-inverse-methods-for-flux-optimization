@@ -16,7 +16,7 @@ from numpy.linalg import eigh, norm
 from numpy import arange, newaxis, asanyarray
 from scipy.special import gamma, kv as K_nu
 
-from numpy import fromfunction, asarray, hstack
+from numpy import fromfunction, asarray, hstack, flip
 from numpy import exp, square, fmin, sqrt, zeros
 from numpy import logical_or, concatenate, isnan
 from numpy import sum as da_sum
@@ -75,7 +75,7 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         I stole the idea from here.
     """
 
-    def __init__(self, shape, is_cyclic=True):
+    def __init__(self, shape, computational_shape=None):
         """Set up the instance.
 
         .. note::
@@ -90,8 +90,9 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
             The state is formally input as a vector, but the correlations
             depend on the layout in some other shape, usually related to the
             physical layout. This is that shape.
-        is_cyclic: bool
-            Whether to assume the domain is periodic in all directions.
+        computational_shape: tuple of int
+            The shape of the embedding computational domain.  Defaults
+            to shape.  May be larger to induce non-periodic correlations
         """
         state_size = np.prod(shape)
         ndims = len(shape)
@@ -99,11 +100,15 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         super(HomogeneousIsotropicCorrelation, self).__init__(
             dtype=DTYPE, shape=(state_size, state_size))
 
+        if computational_shape is None:
+            computational_shape = shape
+
+        is_cyclic = (shape == computational_shape)
         self._is_cyclic = is_cyclic
         self._underlying_shape = tuple(shape)
+        self._computational_shape = computational_shape
 
         if is_cyclic:
-            self._computational_shape = tuple(shape)
             self._fft = functools.partial(
                 rfftn, axes=arange(0, ndims, dtype=int),
                 threads=NUM_THREADS, planner_effort=PLANNER_EFFORT)
@@ -111,9 +116,6 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
                 irfftn, axes=arange(0, ndims, dtype=int), s=shape,
                 threads=NUM_THREADS, planner_effort=PLANNER_EFFORT)
         else:
-            computational_shape = tuple(next_fast_len(2 * dim)
-                                        for dim in shape)
-            self._computational_shape = computational_shape
             axes = arange(0, ndims, dtype=int)
             base_slices = tuple(slice(None, dim) for dim in shape)
 
@@ -184,7 +186,13 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         HomogeneousIsotropicCorrelation
         """
         shape = np.atleast_1d(shape)
-        self = cls(shape, is_cyclic)
+        if is_cyclic:
+            computational_shape = tuple(shape)
+        else:
+            computational_shape = tuple(next_fast_len(2 * dim - 1)
+                                        for dim in shape)
+
+        self = cls(tuple(shape), computational_shape)
         shape = np.asarray(self._computational_shape)
         ndims = len(shape)
 
@@ -234,7 +242,7 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         return self
 
     @classmethod
-    def from_array(cls, corr_array):
+    def from_array(cls, corr_array, is_cyclic=True):
         """Create an instance with the given correlations.
 
         Parameters
@@ -242,17 +250,37 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         corr_array: array_like
             The correlation of the first element of the domain with
             each other element.
+        is_cyclic: bool
 
         Returns
         -------
         HomogeneousIsotropicCorrelation
         """
         corr_array = asarray(corr_array)
-        self = cls(corr_array.shape, is_cyclic=True)
+        shape = corr_array.shape
+        ndims = corr_array.ndim
+
+        if is_cyclic:
+            computational_shape = shape
+            self = cls(shape, computational_shape)
+            corr_fourier = self._fft(corr_array)
+        else:
+            computational_shape = tuple(
+                2 * (dim - 1) for dim in shape)
+            self = cls(shape, computational_shape)
+
+            for axis in reversed(range(ndims)):
+                corr_array = concatenate(
+                    [corr_array, flip(corr_array[1:-1], axis)],
+                    axis=axis)
+
+            corr_fourier = rfftn(
+                corr_array, axes=arange(0, ndims, dtype=int),
+                threads=NUM_THREADS, planner_effort="FFTW_EXHAUSTIVE")
+
         # The fft axes need to be a single chunk for the dask ffts
         # It's in memory already anyway
         # TODO: create a from_spectrum to delegate to
-        corr_fourier = self._fft(corr_array)
         self._corr_fourier = (corr_fourier)
         self._fourier_near_zero = (corr_fourier < FOURIER_NEAR_ZERO)
         return self
@@ -337,7 +365,7 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         """
         # TODO: Test this
         if not self._is_cyclic:
-            raise ValueError(
+            raise NotImplementedError(
                 "HomogeneousIsotropicCorrelation.inv "
                 "does not support acyclic correlations")
         # TODO: Return a HomogeneousIsotropicLinearOperator
@@ -363,7 +391,7 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
             if the instance is acyclic.
         """
         if not self._is_cyclic:
-            raise ValueError(
+            raise NotImplementedError(
                 "HomogeneousIsotropicCorrelation.solve "
                 "does not support acyclic correlations")
         field = asarray(vec).reshape(self._underlying_shape)

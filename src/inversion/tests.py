@@ -789,7 +789,7 @@ class TestCorrelations(unittest2.TestCase):
                                       dist=dist, test_num=i,
                                       inverse="yes"):
                         self.assertRaises(
-                            ValueError, corr_op.solve, test_vec)
+                            NotImplementedError, corr_op.solve, test_vec)
 
     def test_2d_fft_correlation_cyclic(self):
         """Test HomogeneousIsotropicCorrelation for cyclic 2D arrays.
@@ -897,7 +897,7 @@ class TestCorrelations(unittest2.TestCase):
                                       dist=dist, test_num=i,
                                       direction="backward"):
                         self.assertRaises(
-                            ValueError, corr_op.solve, test_vec)
+                            NotImplementedError, corr_op.solve, test_vec)
 
     def test_homogeneous_from_array_cyclic(self):
         """Make sure cyclic from_array can be roundtripped.
@@ -1085,6 +1085,42 @@ class TestCorrelations(unittest2.TestCase):
                     corr_op.inv().dot(ident),
                     la.inv(corr_op.dot(ident)),
                     rtol=1e-5, atol=1e-5)
+
+    def test_acyclic_inv_fails(self):
+        """Test inverse fails for acyclic correlations."""
+        corr_func = (inversion.correlations.
+                     ExponentialCorrelation(1 / np.log(2)))
+        from_function = (
+            inversion.correlations.HomogeneousIsotropicCorrelation.
+            from_function)
+
+        for test_shape in (10, 11, (3, 3), (4, 4)):
+            with self.subTest(test_shape=test_shape):
+                corr_op = from_function(corr_func, test_shape,
+                                        is_cyclic=False)
+                self.assertRaises(
+                    NotImplementedError,
+                    corr_op.inv)
+
+    def test_cyclic_from_array(self):
+        """Test from_array with assumed cyclic correlations."""
+        array = [1, .5, .25, .125, .0625, .125, .25, .5]
+        op = (inversion.correlations.HomogeneousIsotropicCorrelation.
+              from_array(array))
+        mat = scipy.linalg.toeplitz(array)
+
+        np_tst.assert_allclose(op.dot(np.eye(*mat.shape)),
+                               mat)
+
+    def test_acyclic_from_array(self):
+        """Test from_array with correlations assumed acyclic."""
+        array = [1, .5, .25, .125, .0625, .03125]
+        op = (inversion.correlations.HomogeneousIsotropicCorrelation.
+              from_array(array, False))
+        mat = scipy.linalg.toeplitz(array)
+
+        np_tst.assert_allclose(op.dot(np.eye(*mat.shape)),
+                               mat)
 
 
 class TestSchmidtKroneckerProduct(unittest2.TestCase):
@@ -2255,6 +2291,21 @@ class TestLinalgSolve(unittest2.TestCase):
             inversion.linalg.solve,
             test_op[:, :-1],
             test_vec[:-1])
+
+    def test_solve_method_fails(self):
+        """Test that solve still works if a solve method fails."""
+        test_op = (
+            inversion.correlations.HomogeneousIsotropicCorrelation.
+            from_array([1, .5, .25, .125, .0625], is_cyclic=False))
+        ident = np.eye(*test_op.shape)
+        test_mat = test_op.dot(ident)
+
+        for vec in ident:
+            with self.subTest(test_vec=vec):
+                np_tst.assert_allclose(
+                    inversion.linalg.solve(test_op, vec),
+                    np_la.solve(test_mat, vec),
+                    atol=1e-10)
 
 
 class TestLinopSolve(unittest2.TestCase):
