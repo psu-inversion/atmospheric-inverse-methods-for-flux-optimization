@@ -108,38 +108,17 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         self._underlying_shape = tuple(shape)
         self._computational_shape = computational_shape
 
+        self._fft = functools.partial(
+            rfftn, axes=arange(0, ndims, dtype=int), s=computational_shape,
+            threads=NUM_THREADS, planner_effort=PLANNER_EFFORT)
+
         if is_cyclic:
-            self._fft = functools.partial(
-                rfftn, axes=arange(0, ndims, dtype=int),
-                threads=NUM_THREADS, planner_effort=PLANNER_EFFORT)
             self._ifft = functools.partial(
                 irfftn, axes=arange(0, ndims, dtype=int), s=shape,
                 threads=NUM_THREADS, planner_effort=PLANNER_EFFORT)
         else:
             axes = arange(0, ndims, dtype=int)
             base_slices = tuple(slice(None, dim) for dim in shape)
-
-            def _fft(arry):
-                """Find FFT of arry.
-
-                Parameters
-                ----------
-                arry: array_like
-
-                Returns
-                -------
-                spectrum: array_like
-                """
-                required_shape = computational_shape + arry.shape[ndims:]
-                big_array = zeros_aligned(required_shape, dtype=DTYPE,
-                                          order="F")
-                slicer = (
-                    base_slices +
-                    tuple(slice(None) for dim in arry.shape[ndims:])
-                )
-                big_array[slicer] = arry
-                return rfftn(big_array, axes=axes, threads=NUM_THREADS,
-                             planner_effort=PLANNER_EFFORT)
 
             def _ifft(arry):
                 """Find inverse FFT of arry.
@@ -161,7 +140,6 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
                     threads=NUM_THREADS, planner_effort=PLANNER_EFFORT)
                 return big_result[slicer]
 
-            self._fft = _fft
             self._ifft = _ifft
 
     @classmethod
