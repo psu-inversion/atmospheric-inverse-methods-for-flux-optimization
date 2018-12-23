@@ -1,6 +1,8 @@
 """Utility functions for compatibility.
 
-These functions mirror :mod:`numpy` functions but produce dask output.
+Some functions mirror :mod:`numpy` functions but produce :mod:`dask`
+output.  Others map similar functionality across the various methods
+to accomplish that end.
 """
 from __future__ import absolute_import
 import functools
@@ -14,30 +16,6 @@ from numpy import atleast_1d, atleast_2d
 from .linalg import DaskKroneckerProductOperator, kron, solve
 from .linalg_interface import ProductLinearOperator, tolinearoperator
 
-OPTIMAL_ELEMENTS = int(2e5)
-"""Optimal elements per chunk in a dask array.
-
-Magic number, arbitrarily chosen.  Dask documentation mentions many
-chunks should fit easily in memory, but each should contain at least a
-million elements, recommending 10-100MiB per chunk.  This size matrix
-is fast to allocate and fill, but :math:`10^5` gives a memory error.
-A square matrix of float64 with ten thousand elements on a side is 762
-megabytes.
-
-A single level of our domain is 4.6e4 elements.  The calculation
-proceeds much more naturally when this fits in a chunk, since it needs
-to for the FFTs.  This would be for OPTIMAL_ELEMENTS**2.
-
-Leaving this as 1e4 causes memory errors and deadlocks over an hour
-and a half.  5e4 can do the same program twice in ten minutes.
-I don't entirely understand how this works.
-
-I'm going to say these problems have little use for previous results,
-so this can be larger than the dask advice.  This greatly reduces the
-requirements for setting up the graph.
-
-4e4 works for both, I think.  BE VERY CAREFUL CHANGING THIS!!
-"""
 ARRAY_TYPES = (np.ndarray, da.Array)
 """Array types for determining Kronecker product type.
 
@@ -48,15 +26,15 @@ REAL_DTYPE_KINDS = "fiu"
 
 Includes subsets.
 """
-MAX_EXPLICIT_ARRAY = 1 << 25
+MAX_EXPLICIT_ARRAY = 1 << 10
 """Maximum size for an array represented explicitly.
 
 :func:`kronecker_product` will form products smaller than this as an
 explicit matrix using :func:`kron`.  Arrays larger than this will use
-:class:`DaskKroneckerProduct`.
+:class:`.linalg.DaskKroneckerProduct`.
 
 Currently completely arbitrary.
-`2 ** 16` works fine in memory, `2**17` gives a MemoryError.
+`2 ** 16` works fine in memory, `2**17` gives a :class:`MemoryError`.
 Hopefully Dask knows not to try this.
 """
 
@@ -65,17 +43,18 @@ def kronecker_product(operator1, operator2):
     """Form the Kronecker product of the given operators.
 
     Delegates to ``operator1.kron()`` if possible,
-    :func:`kron` if both are :const:`ARRAY_TYPES`, or
-    :class:`inversion.correlations.SchmidtKroneckerProduct` otherwise.
+    :func:`.linalg.kron` if both are :const:`ARRAY_TYPES`, or
+    :class:`~inversion.correlations.SchmidtKroneckerProduct` otherwise.
 
     Parameters
     ----------
-    operator1, operator2: scipy.sparse.linalg.LinearOperator
+    operator1, operator2: ~scipy.sparse.linalg.LinearOperator
         The component operators of the Kronecker product.
 
     Returns
     -------
-    scipy.sparse.linalg.LinearOperator
+    product_operator: ~scipy.sparse.linalg.LinearOperator
+        The kronecker product of the given operators
     """
     if hasattr(operator1, "kron"):
         return operator1.kron(operator2)

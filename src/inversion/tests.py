@@ -54,7 +54,9 @@ except (ImportError, TypeError):
 
 if os.path.exists(".pyfftw.pickle"):
     with open(".pyfftw.pickle", "rb") as wis_in:
-        pyfftw.import_wisdom(pickle.load(wis_in))
+        pyfftw.import_wisdom(
+            [wis.encode("ascii")
+             for wis in pickle.load(wis_in)])
 
     def save_wisdom():
         """Save accumulated pyfftw wisdom.
@@ -63,7 +65,7 @@ if os.path.exists(".pyfftw.pickle"):
         Should help speed subsequent tests.
         """
         with open(".pyfftw.pickle", "wb") as wis_out:
-            pickle.dump(pyfftw.export_wisdom(), wis_out)
+            pickle.dump(pyfftw.export_wisdom(), wis_out, 2)
     atexit.register(save_wisdom)
 
 
@@ -2366,17 +2368,20 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
         tester = np.eye(*result1.shape)
         np_tst.assert_allclose(result1.dot(tester), result2.dot(tester))
 
-    @unittest2.expectedFailure
     def test_semidefinite_array(self):
         """Test that matrix_sqrt works for semidefinite arrays.
 
-        This currently fails due to lazy evaluation.
+        This currently fails due to use of cholesky decomposition.  I
+        would need to rewrite matrix_sqrt to catch the error and use
+        scipy's matrix_sqrt: I'm already assuming symmetric inputs.
+
         """
         mat = np.diag([1, 0])
 
-        proposed = inversion.linalg.matrix_sqrt(mat)
-        # Fun with one and zero
-        np_tst.assert_allclose(proposed, mat)
+        with self.assertRaises(la.LinAlgError):
+            proposed = inversion.linalg.matrix_sqrt(mat)
+            # Fun with one and zero
+            np_tst.assert_allclose(proposed, mat)
 
     def test_delegate(self):
         """Test that matrix_sqrt delegates where possible."""

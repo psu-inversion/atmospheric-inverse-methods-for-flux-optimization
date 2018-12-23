@@ -4,16 +4,36 @@ inversion package
 Submodules
 ----------
 
+Classes for defining covariances
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. toctree::
 
    inversion.correlations
-   inversion.covariance_estimation
-   inversion.noise
+   inversion.covariances
+
+Inversion functions
+~~~~~~~~~~~~~~~~~~~
+
+All inversion functions have the same signature and give similar
+answers: the difference is how they get there.  PSAS and Variational
+methods use iterative solvers. Optimal Interpolation uses a
+Gauss-Jordan solver.  Variational methods use a different but
+equivalent formulation of the problem.
+
+.. toctree::
    inversion.optimal_interpolation
-   inversion.psas
-   inversion.tests
-   inversion.util
    inversion.variational
+   inversion.psas
+
+Other utility functions
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+   inversion.covariance_estimation
+   inversion.linalg
+   inversion.noise
+   inversion.util
 
 Module contents
 ---------------

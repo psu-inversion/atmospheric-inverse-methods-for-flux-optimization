@@ -31,6 +31,7 @@ from inversion.linalg_interface import DaskLinearOperator
 from inversion.linalg_interface import is_odd, tolinearoperator
 
 NUM_THREADS = 8
+"""Number of threads :mod:`pyfftw` should use for each transform."""
 PLANNER_EFFORT = "FFTW_PATIENT"
 pyfftw.interfaces.cache.enable()
 
@@ -252,6 +253,8 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
                     [corr_array, flip(corr_array[1:-1], axis)],
                     axis=axis)
 
+            # Advantages over dctn: guaranteed same format and gets
+            # nice planning done for the later evaluations.
             corr_fourier = rfftn(
                 corr_array, axes=arange(0, ndims, dtype=int),
                 threads=NUM_THREADS, planner_effort="FFTW_EXHAUSTIVE")
@@ -313,7 +316,7 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         """
         _shape = self._underlying_shape
         fields = asarray(mat).reshape(_shape + (-1,))
-        # TODO: Test this
+        # TODO: Distribute columns over dask tasks
 
         spectral_fields = self._fft(fields)
         spectral_fields *= self._corr_fourier[..., np.newaxis]
