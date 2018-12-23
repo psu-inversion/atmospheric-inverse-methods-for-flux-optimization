@@ -386,7 +386,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
                     # Column-major output should speed the
                     # operator2 @ tmp bit
                     order="F"
-                ).reshape(block_size, -1).compute()
+                ).reshape(block_size, -1)
             )
             # Reshape to separate out the block dimension from the
             # original second dim of mat
@@ -412,7 +412,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         ----
 
         Implementation depends on Kronecker structure, using the
-        :meth:`_matmat` algorithm for self @ mat.  If mat is a lazy
+        :meth:`._matmat` algorithm for self @ mat.  If mat is a lazy
         dask array, this implementation will load it multiple times to
         avoid dask keeping it all in memory.
 

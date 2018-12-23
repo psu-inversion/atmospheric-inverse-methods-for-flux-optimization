@@ -30,8 +30,8 @@ MAX_EXPLICIT_ARRAY = 1 << 10
 """Maximum size for an array represented explicitly.
 
 :func:`kronecker_product` will form products smaller than this as an
-explicit matrix using :func:`kron`.  Arrays larger than this will use
-:class:`.linalg.DaskKroneckerProduct`.
+explicit matrix using :func:`.linalg.kron`.  Arrays larger than this will use
+:class:`.linalg.DaskKroneckerProductOperator`.
 
 Currently completely arbitrary.
 `2 ** 16` works fine in memory, `2**17` gives a :class:`MemoryError`.

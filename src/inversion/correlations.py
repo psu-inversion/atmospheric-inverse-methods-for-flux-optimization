@@ -72,7 +72,7 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
 
     See Also
     --------
-    scipy.linalg.solve_circulant
+    :func:`scipy.linalg.solve_circulant`
         I stole the idea from here.
     """
 
@@ -271,9 +271,10 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
 
         Returns
         -------
-        S: HomogeneousLinearOperator
+        S: HomogeneousIsotropicCorrelation
         """
-        result = HomogeneousIsotropicCorrelation(self._underlying_shape)
+        result = HomogeneousIsotropicCorrelation(self._underlying_shape,
+                                                 self._computational_shape)
         result._corr_fourier = sqrt(self._corr_fourier)
         # I still don't much trust these.
         result._fourier_near_zero = self._fourier_near_zero
@@ -564,9 +565,9 @@ def make_matrix(corr_func, shape):
 
     See Also
     --------
-    :func:`statsmodels.stats.correlation_tools.corr_clipped`, which
-    does something similar, and refers to other functions that may
-    give more accurate results.
+    :func:`statsmodels.stats.correlation_tools.corr_clipped`
+        Does something similar, and refers to other functions that may
+        give more accurate results.
 
     Returns
     -------
