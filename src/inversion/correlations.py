@@ -19,8 +19,8 @@ from scipy.special import gamma, kv as K_nu
 from numpy import fromfunction, asarray, hstack, flip
 from numpy import exp, square, fmin, sqrt, zeros
 from numpy import logical_or, concatenate, isnan
-from numpy import sum as da_sum
 from numpy import where
+from numpy import sum as array_sum
 import pyfftw.interfaces.cache
 from pyfftw import next_fast_len, zeros_aligned
 from pyfftw.interfaces.numpy_fft import rfftn, irfftn
@@ -203,7 +203,7 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
             # use the smaller components to get the distance to the
             # closest of the shifted origins
             comp2 = fmin(comp2_1, comp2_2)
-            return corr_func(sqrt(da_sum(comp2, axis=0)))
+            return corr_func(sqrt(array_sum(comp2, axis=0)))
 
         corr_struct = fromfunction(
             corr_from_index, shape=tuple(shape),
