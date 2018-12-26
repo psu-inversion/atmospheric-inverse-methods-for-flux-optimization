@@ -608,6 +608,8 @@ def make_matrix(corr_func, shape):
 class DistanceCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
     """A correlation function that depends only on distance."""
 
+    _distance_scaling = 1
+
     def __init__(self, length):
         """Set up instance.
 
@@ -616,7 +618,19 @@ class DistanceCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
         length: float
             The correlation length in index space. Unitless.
         """
-        self._length = float(length)
+        self._length = self._distance_scaling * float(length)
+
+    def __repr__(self):
+        """Return a string representation of self."""
+        return "{name:s}({length:g})".format(
+            length=self._length / self._distance_scaling,
+            name=type(self).__name__)
+
+    def __str__(self):
+        """Return a string version for printing."""
+        return "{name:s}({length:3.2e})".format(
+            length=self._length / self._distance_scaling,
+            name=type(self).__name__)
 
     @abc.abstractmethod
     def __call__(self, dist):
@@ -652,30 +666,6 @@ class DistanceCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
         point2 = asanyarray(indices[half:])
         dist = norm(point1 - point2, axis=0)
         return self(dist)
-
-
-class GaussianCorrelation(DistanceCorrelationFunction):
-    """A gaussian correlation structure.
-
-    Note
-    ----
-    Correlation given by exp(-dist**2 / (2 * length**2)) where dist is the
-    distance between the points.
-    """
-
-    def __call__(self, dist):
-        """Get the correlation between the points.
-
-        Parameters
-        ----------
-        dist: float
-
-        Returns
-        -------
-        corr: float
-        """
-        scaled_dist2 = square(dist / self._length)
-        return exp(-.5 * scaled_dist2)
 
 
 class ExponentialCorrelation(DistanceCorrelationFunction):
@@ -718,12 +708,7 @@ class BalgovindCorrelation(DistanceCorrelationFunction):
     I have no idea why.  3 and 30 are fine.
     """
 
-    def __init__(self, length):
-        """Set up instance with proper length.
-
-        This folds a constant into the length.
-        """
-        super(BalgovindCorrelation, self).__init__(.5 * length)
+    _distance_scaling = 0.5
 
     def __call__(self, dist):
         """Get the correlation between the points.
@@ -753,6 +738,8 @@ class MaternCorrelation(DistanceCorrelationFunction):
     :math:`K_{\kappa}` is a modified Bessel function of the third kind.
     """
 
+    _distance_scaling = 1.25
+
     def __init__(self, length, kappa=1):
         r"""Set up instance.
 
@@ -765,14 +752,18 @@ class MaternCorrelation(DistanceCorrelationFunction):
             :math:`kappa=\infty` is equivalent to Gaussian correlations
             :math:`kappa=\frac{1}{2}` is equivalent to exponential
             :math:`kappa=1` is Balgovind's recommendation for 2D fields
-            Default value is only for full equivalence with other classes.
-            The default value is entirely arbitrary and may change without
-            notice.
+            The default value is Balgovind's 2D recommendation.
+
+        Note
+        ----
+        The parameterization described in Stein's book may be a better
+        match than the ad-hoc scaling used here.
         """
-        super(MaternCorrelation, self).__init__(length)
         self._kappa = kappa
         # Make sure correlation at zero is one
         self._scale_const = .5 * gamma(kappa)
+        self._distance_scaling = self._distance_scaling * self._scale_const
+        super(MaternCorrelation, self).__init__(length)
 
     def __call__(self, dist):
         """Get the correlation between the points.
@@ -791,3 +782,27 @@ class MaternCorrelation(DistanceCorrelationFunction):
                   K_nu(kappa, scaled_dist) / self._scale_const)
         # K_nu returns nan at zero
         return where(isnan(result), 1, result)
+
+
+class GaussianCorrelation(DistanceCorrelationFunction):
+    """A gaussian correlation structure.
+
+    Note
+    ----
+    Correlation given by exp(-dist**2 / (length**2)) where dist is the
+    distance between the points.
+    """
+
+    def __call__(self, dist):
+        """Get the correlation between the points.
+
+        Parameters
+        ----------
+        dist: float
+
+        Returns
+        -------
+        corr: float
+        """
+        scaled_dist2 = square(dist / self._length)
+        return exp(-scaled_dist2)
