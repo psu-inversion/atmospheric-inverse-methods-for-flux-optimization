@@ -211,13 +211,16 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
 
         # I should be able to generate this sequence with a type-I DCT
         # For some odd reason complex/complex is faster than complex/real
+        # This also ensures the format here is the same as in _matmat
         corr_fourier = rfftn(
             corr_struct, axes=arange(ndims, dtype=int),
             threads=NUM_THREADS, planner_effort="FFTW_EXHAUSTIVE")
         self._corr_fourier = (corr_fourier)
 
         # This is also affected by roundoff
-        self._fourier_near_zero = abs(corr_fourier) < FOURIER_NEAR_ZERO
+        abs_corr_fourier = abs(corr_fourier)
+        self._fourier_near_zero = (
+            abs_corr_fourier < FOURIER_NEAR_ZERO * abs_corr_fourier.max())
         return self
 
     @classmethod
