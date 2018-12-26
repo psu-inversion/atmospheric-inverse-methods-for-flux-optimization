@@ -22,7 +22,7 @@ from numpy import logical_or, concatenate, isnan
 from numpy import where
 from numpy import sum as array_sum
 import pyfftw.interfaces.cache
-from pyfftw import next_fast_len, zeros_aligned
+from pyfftw import next_fast_len
 from pyfftw.interfaces.numpy_fft import rfftn, irfftn
 import six
 

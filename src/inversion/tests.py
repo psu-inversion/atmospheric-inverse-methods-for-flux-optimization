@@ -54,9 +54,13 @@ except (ImportError, TypeError):
 
 if os.path.exists(".pyfftw.pickle"):
     with open(".pyfftw.pickle", "rb") as wis_in:
-        pyfftw.import_wisdom(
-            [wis.encode("ascii")
-             for wis in pickle.load(wis_in)])
+        wisdom = pickle.load(wis_in)
+
+    if isinstance(wisdom[0], str):
+        wisdom = [wis.encode("ascii")
+                  for wis in wisdom]
+    pyfftw.import_wisdom(wisdom)
+    del wisdom, wis_in
 
     def save_wisdom():
         """Save accumulated pyfftw wisdom.
@@ -67,6 +71,7 @@ if os.path.exists(".pyfftw.pickle"):
         with open(".pyfftw.pickle", "wb") as wis_out:
             pickle.dump(pyfftw.export_wisdom(), wis_out, 2)
     atexit.register(save_wisdom)
+    del save_wisdom
 
 
 # If adding other inexact methods to the list tested, be sure to add
