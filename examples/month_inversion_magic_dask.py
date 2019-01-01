@@ -477,6 +477,16 @@ aligned_influences.load()
 print(datetime.datetime.now(UTC).strftime("%c"), "Loaded data")
 flush_output_streams()
 
+######################################################################
+# Get an observation operator for the month
+#
+# To treat the flux as a mean, we need to sum the influence function
+reduced_influences = aligned_influences.resample(flux_time="1M").sum()
+reduced_influences.load()
+print(datetime.datetime.now(UTC).strftime("%c"),
+      "Have influence for monthly average plots")
+flush_output_streams()
+
 posterior_var_atts = aligned_prior_fluxes.attrs.copy()
 posterior_var_atts.update(dict(
     long_name="posterior_fluxes",
@@ -545,6 +555,20 @@ flush_output_streams()
 temporal_correlations = kronecker_product(day_correlations,
                                           hour_correlations_matrix)
 print("Temporal:", type(temporal_correlations))
+temporal_correlation_ds = xarray.DataArray(
+    temporal_correlations,
+    dict(flux_time=aligned_prior_fluxes.indexes["flux_time"],
+         flux_time_adjoint=aligned_prior_fluxes.indexes["flux_time"]),
+    ("flux_time", "flux_time_adjoint"),
+    "temporal_correlations",
+    dict(long_name="temporal_correlations",
+         units="dimensionless")
+)
+# Mean of fluxes, so sum of variances over square of number of
+# elements in the group.  The number of rows and columns for each
+# group will each be the number of elements in that group.
+reduced_temporal_correlation_ds = temporal_correlation_ds.resample(
+    flux_time="1M", flux_time_adjoint="1M").mean()
 print(datetime.datetime.now(UTC).strftime("%c"), "Have temporal correlations")
 flush_output_streams()
 
@@ -573,6 +597,10 @@ flux_stds = (
 
 prior_covariance = kronecker_product(
     temporal_correlations,
+    inversion.covariances.CorrelationStandardDeviation(
+        spatial_correlations, flux_stds))
+reduced_prior_covariance = kronecker_product(
+    reduced_temporal_correlation_ds.data,
     inversion.covariances.CorrelationStandardDeviation(
         spatial_correlations, flux_stds))
 print("Covariance:", type(prior_covariance))
@@ -639,18 +667,21 @@ flush_output_streams()
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Got covariance parts, getting posterior")
 flush_output_streams()
-posterior, correlations = inversion.optimal_interpolation.save_sum(
-    aligned_prior_fluxes.values.reshape(
-        N_GRID_POINTS * len(aligned_prior_fluxes.indexes["flux_time"]),
-        N_REALIZATIONS),
-    prior_covariance,
-    used_observations.values,
-    observation_covariance,
-    (aligned_influences.values
-     .reshape(aligned_influences.shape[0],
-              np.prod(aligned_influences.shape[-3:]))),
-    np.ones((1, 1)),
-    np.ones((used_observations.shape[0], 1)))
+posterior, reduced_posterior_covariances = (
+    inversion.optimal_interpolation.save_sum(
+        aligned_prior_fluxes.values.reshape(
+            N_GRID_POINTS * len(aligned_prior_fluxes.indexes["flux_time"]),
+            N_REALIZATIONS),
+        prior_covariance,
+        used_observations.values,
+        observation_covariance,
+        (aligned_influences.values
+         .reshape(aligned_influences.shape[0],
+                  np.prod(aligned_influences.shape[-3:]))),
+        reduced_prior_covariance,
+        reduced_influences
+    )
+)
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior values, making dataset")
 flush_output_streams()
