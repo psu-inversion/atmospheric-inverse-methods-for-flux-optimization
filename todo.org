@@ -94,11 +94,38 @@
     139GiB mem
     176GiB vmem
     1.6h wall
-    7 towers?, matching July obs
+    7 towers, matching July obs
     7.5h cpu
     160GiB mem
     178GiB vmem
     8.4h wall
+    7-day Gaussian temporal error correlations assumed
+    6h56 cpu
+    159GiB mem
+    176GiB vmem
+    5h39 wall
+    21-day batch inversion, don't calculate B_HT
+    1h53 to load data, 3h7 for inversion
+    5h19 cpu
+    116 GiB mem
+    136 GiB vmem
+    3h11 wall
+    30-day batch inversion
+    4 hours to load data
+    >3 hours for inversion
+    26-day batch inversion
+    5 procs for part of loading
+    2h07 to load data, 4h12 for inversion, 19m to write (wall)
+    7h17 cpu
+    157GiB mem
+    178GiB vmem
+    6h34 wall
+    30-day batch inversion, einsum output F-order, use proper flux times
+    10m to load data, 1h31 for inversion, 9m to write (wall)
+    3h42 cpu
+    111GiB mem
+    133GiB vmem
+    1h51 wall
 ** DONE optimize YMKronecker product sums
   100x100 and 1000x1000 matrices, 100000x10 test vec
   bn.nansum: 662 ms/loop
@@ -111,6 +138,12 @@
   100x100 and 1000x1000 matrices, 100000x10 test vec
   vec.T @ (op @ vec): 263 ms/loop
   op.quadratic_form(vec): 273 ms/loop
+** Test netCDF4 vs. h5netcdf backends
+   netCDF4: half an hour to load data
+   h5netcdf: refuses to work
+   netCDF4: 5 hours to load data
+   netCDF4: 2 hours to load data
+   netCDF4+dask: 1h53 to load
 ** TODO See where I can use np.linalg.multidot
 * TODO Rewrite integrators using wrapper and generators
 * TODO Get a toepelitz matrix implementation using np.as_strided working
