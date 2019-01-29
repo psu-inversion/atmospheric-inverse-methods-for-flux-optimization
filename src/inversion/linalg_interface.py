@@ -483,6 +483,12 @@ class ProductLinearOperator(DaskLinearOperator):
         -------
         array_like
             Solution of self @ x == vec
+
+        See Also
+        --------
+        inversion.util.linop_solve
+            Will likely be faster if there are multiple linear
+            operators in the chain
         """
         from .linalg import solve
         for op in self._operators:
