@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# ~*~ utf8 ~*~
+# ~*~ coding: utf-8 ~*~
 """Plot results from inversion.
 
 Only a single run.  Currently set up for plots from
@@ -30,20 +30,27 @@ YEAR = 2010
 MONTH = 7
 
 NOISE_FUNCTION = "exp"
-NOISE_LENGTH = 100
+NOISE_LENGTH = 200
 NOISE_TIME_FUN = "exp"
-NOISE_TIME_LEN = 14
+NOISE_TIME_LEN = 21
 INV_FUNCTION = "exp"
-INV_LENGTH = 100
+INV_LENGTH = 200
 INV_TIME_FUN = "exp"
-INV_TIME_LEN = 14
+INV_TIME_LEN = 21
 
 FLUX_INTERVAL = 6
 FLUX_RESOLUTION = 27
 
+
+def write_console_message(msg):
+    """Write a message to stdout and flush output streams."""
+    sys.stderr.flush()
+    print(datetime.datetime.now(), msg, flush=True)
+
+
 PRIOR_PATH = (
     "../data_files/"
-    "{year:04d}-{month:02d}_osse_priors_{interval:d}h_{res:02d}km_"
+    "{year:04d}-{month:02d}_osse_bio_priors_{interval:d}h_{res:d}km_"
     "noise_{fun:s}{len:d}km_{time_fun:s}{time_len:d}d_exp3h.nc"
 ).format(
     year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
@@ -209,9 +216,15 @@ for name, var in PRIOR_DS.data_vars.items():
 
 
 NOISE_STD_DS = xarray.open_dataset(
-    "../data_files/{year:04d}-{month:02d}_wrf_flux_rms.nc".format(
-        year=YEAR, month=MONTH)).isel(
-    Time=0, emissions_zdim=0)
+    "../data_files/{year:04d}_MsTMIP_flux_std.nc4".format(
+        year=YEAR, month=MONTH),
+    chunks=dict(Time=21*8)
+)[["E_TRA1"]].rolling(
+    center=True, min_periods=3, Time=8*21
+).mean(dim="Time", keep_attrs=True).sel(
+    Time=slice("2010-06-16", "2010-07-31")
+).mean("Time", keep_attrs=True)
+NOISE_STD_DS["E_TRA1"].attrs["units"] = "umol/m^2/s"
 
 for name, var in NOISE_STD_DS.data_vars.items():
     if name.startswith("E_TRA"):
@@ -230,8 +243,10 @@ for name, var in NOISE_STD_DS.data_vars.items():
 NOISE_STD_DS.coords["south_north"] = PRIOR_DS.coords["dim_y"].data
 NOISE_STD_DS.coords["west_east"] = PRIOR_DS.coords["dim_x"].data
 
+NOISE_STD_DS["E_TRA7"] = NOISE_STD_DS["E_TRA1"]
+
 INVERSION_DS = xarray.open_dataset(POSTERIOR_PATH,
-                                   chunks=dict(realization=1))
+                                   chunks=dict(realization=1, flux_time=8*14))
 PSEUDO_OBS_DS = INVERSION_DS["pseudo_observations"]
 POSTERIOR_DS = INVERSION_DS[["posterior", "prior", "truth"]].rename(
     dict(dim_x="projection_x_coordinate", dim_y="projection_y_coordinate",
@@ -280,22 +295,24 @@ FULL_INFLUENCE_DS = xarray.open_mfdataset(
           "molar_footprints.nc4").format(
              flux_interval=FLUX_INTERVAL, res=FLUX_RESOLUTION)))],
     concat_dim="site",
+    chunks=dict(time_before_observation=4 * 7, observation_time=24),
 ).set_coords(["lpdm_configuration", "wrf_configuration"])
 
-print(datetime.datetime.now(), "Files")
-sys.stdout.flush()
+print(datetime.datetime.now(), "Files", flush=True)
+sys.stderr.flush()
 
 ############################################################
 # Plot standard deviations
 fig, axes = plt.subplots(
     1, 1, figsize=(5.5, 3.3), subplot_kw=dict(projection=WRF_CRS))
-NOISE_STD_DS.E_TRA7.plot.pcolormesh()
+NOISE_STD_DS.E_TRA7.plot.pcolormesh(robust=True)
 axes = fig.axes
 axes[0].coastlines()
 axes[1].set_ylabel("standard deviation of noise (μmol/m$^2$/s)")
 fig.suptitle("Standard deviation of added noise")
 axes[0].set_xlim(PRIOR_DS.coords["dim_x"][[0, -1]])
 axes[0].set_ylim(PRIOR_DS.coords["dim_y"][[0, -1]])
+axes[0].set_title("")
 axes[0].add_feature(cfeat.BORDERS)
 axes[0].add_feature(STATES)
 axes[0].add_feature(BIG_LAKES)

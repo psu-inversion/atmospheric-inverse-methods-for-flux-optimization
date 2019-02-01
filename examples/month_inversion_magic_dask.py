@@ -68,12 +68,12 @@ OBS_FILES = glob.glob(os.path.join(
     "LPDM_concentrations?.nc".format(
         inter=FLUX_INTERVAL, res=FLUX_RESOLUTION)))
 CORR_FUN = "exp"
-CORR_LEN = 100
+CORR_LEN = 200
 TIME_CORR_FUN = "exp"
-TIME_CORR_LEN = 14
+TIME_CORR_LEN = 21
 FLUX_FILES = glob.glob(os.path.join(
     PRIOR_PATH,
-    ("2010-07_osse_priors_{interval:1d}h_{res:02d}km_noise_"
+    ("2010-07_osse_bio_priors_{interval:1d}h_{res:02d}km_noise_"
      "{corr_fun:s}{corr_len:d}km_"
      "{corr_fun_time:s}{corr_len_time:d}d_exp3h.nc").format(
         interval=FLUX_INTERVAL, corr_fun=CORR_FUN, corr_len=CORR_LEN,
@@ -319,12 +319,23 @@ FLUX_DATASET = xarray.open_mfdataset(
     concat_dim="flux_time",
     engine=NC_ENGINE,
 ).isel(realization=slice(0, N_REALIZATIONS))
-OBS_DATASET = xarray.open_mfdataset(
-    OBS_FILES,
+
+OBS_FILES_4 = [name for name in OBS_FILES if "4tower" in name]
+OBS_FILES_5 = [name for name in OBS_FILES if "5tower" in name]
+
+OBS_DATASET_4 = xarray.open_mfdataset(
+    OBS_FILES_4,
     chunks=dict(forecast_reference_time=OBS_CHUNKS_USED),
-    concat_dim="dim1",
     engine=NC_ENGINE,
 )
+OBS_DATASET_5 = xarray.open_mfdataset(
+    OBS_FILES_5,
+    chunks=dict(forecast_reference_time=OBS_CHUNKS_USED),
+    engine=NC_ENGINE,
+)
+OBS_DATASET = xarray.concat([OBS_DATASET_4, OBS_DATASET_5],
+                            dim="dim1")
+
 print(datetime.datetime.now(UTC).strftime("%c"), "Have obs, normalizing")
 flush_output_streams()
 
@@ -481,7 +492,7 @@ flush_output_streams()
 # Get an observation operator for the month
 #
 # To treat the flux as a mean, we need to sum the influence function
-reduced_influences = aligned_influences.resample(flux_time="1M").sum()
+reduced_influences = aligned_influences.resample(flux_time="1M").sum()  # "flux_time")
 reduced_influences.load()
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have influence for monthly average plots")
@@ -519,16 +530,23 @@ posterior_global_atts.update(dict(
 # Define correlation constants and get covariances
 print(datetime.datetime.now(UTC).strftime("%c"), "Getting covariances")
 flush_output_streams()
-CORRELATION_LENGTH = 100
+CORRELATION_LENGTH = 200
 GRID_RESOLUTION = 27
 spatial_correlations = (
     inversion.correlations.HomogeneousIsotropicCorrelation.
-    # First guess at correlation length on the order of previous studies
     from_function(
         inversion.correlations.ExponentialCorrelation(
             CORRELATION_LENGTH / GRID_RESOLUTION),
         (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
          len(TRUE_FLUXES_MATCHED.coords["dim_x"]))))
+spatial_correlation_remapper = np.fill(
+    # Grid points at full resolution, grid points at reduced resolution
+    (spatial_correlations.shape[0], 1),
+    # 1/Number of gridpoints combined in above mapping
+    1. / spatial_correlations.shape[0])
+# reduced_spatial_correlations = (
+#     spatial_correlation_remapper.dot(
+#         spatial_correlations.dot(spatial_correlation_remapper)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have spatial correlations")
 flush_output_streams()
 HOURLY_FLUX_TIMESCALE = 3
@@ -543,7 +561,7 @@ hour_correlations_matrix = hour_correlations.dot(np.eye(
     hour_correlations.shape[0]))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have hourly correlations")
 flush_output_streams()
-DAILY_FLUX_TIMESCALE = 14
+DAILY_FLUX_TIMESCALE = 21
 DAILY_FLUX_FUN = "exp"
 day_correlations = (
     inversion.correlations.make_matrix(
@@ -558,7 +576,7 @@ print("Temporal:", type(temporal_correlations))
 temporal_correlation_ds = xarray.DataArray(
     temporal_correlations,
     dict(flux_time=aligned_prior_fluxes.indexes["flux_time"],
-         flux_time_adjoint=aligned_prior_fluxes.indexes["flux_time"]),
+         flux_time_adjoint=aligned_prior_fluxes.indexes["flux_time"].values),
     ("flux_time", "flux_time_adjoint"),
     "temporal_correlations",
     dict(long_name="temporal_correlations",
@@ -568,7 +586,7 @@ temporal_correlation_ds = xarray.DataArray(
 # elements in the group.  The number of rows and columns for each
 # group will each be the number of elements in that group.
 reduced_temporal_correlation_ds = temporal_correlation_ds.resample(
-    flux_time="1M", flux_time_adjoint="1M").mean()
+    flux_time="1M").mean("flux_time").resample(flux_time_adjoint="1M").mean("flux_time_adjoint")
 print(datetime.datetime.now(UTC).strftime("%c"), "Have temporal correlations")
 flush_output_streams()
 
@@ -582,27 +600,44 @@ flush_output_streams()
 # I would like to add a fixed minimum at some point.
 # full stds would then be sqrt(fixed^2 + varying^2)
 # average seasonal variation (or some fraction thereof) might work.
-FLUX_VARIANCE_VARYING_FRACTION = 1
-flux_std_pattern = xarray.open_dataset("../data_files/wrf_flux_rms.nc",
+FLUX_VARIANCE_VARYING_FRACTION = 2.
+flux_std_pattern = xarray.open_dataset("../data_files/2010_MsTMIP_flux_std.nc4",
                                        engine=NC_ENGINE).get(
-    ["E_TRA{:d}".format(i + 1) for i in range(10)]).isel(emissions_zdim=0)
+    ["E_TRA{:d}".format(i + 1) for i in range(1)])
+
 # Ensure units work out
 for flux_part in flux_std_pattern.data_vars.values():
     unit = (cf_units.Unit(flux_part.attrs["units"]))
     if unit is not FLUX_UNITS:
         flux_part *= unit.convert(1, FLUX_UNITS)
         flux_part.attrs["units"] = str(FLUX_UNITS)
-flux_stds = (
-    FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern[TRUE_FLUX_NAME].data)
 
-prior_covariance = kronecker_product(
-    temporal_correlations,
+flux_stds = (
+    FLUX_VARIANCE_VARYING_FRACTION *
+    flux_std_pattern["E_TRA1"].rolling(
+        center=True, min_periods=3, Time=21 * 8
+    ).mean(dim="Time").sel(
+        Time=temporal_correlation_ds.indexes["flux_time"]
+    ).data)
+reduced_flux_stds = (
+    FLUX_VARIANCE_VARYING_FRACTION *
+    flux_std_pattern["E_TRA1"].sel(
+        Time=reduced_temporal_correlation_ds.indexes["flux_time"]
+    ).mean(dim="Time").data)
+
+reduced_spatial_covariance = spatial_correlation_remapper.T.dot(
     inversion.covariances.CorrelationStandardDeviation(
-        spatial_correlations, flux_stds))
+        spatial_correlations, reduced_flux_stds).dot(
+        spatial_correlation_remapper))
+
+prior_covariance = inversion.covariances.CorrelationStandardDeviation(
+    kronecker_product(
+        temporal_correlations,
+        spatial_correlations),
+    flux_stds)
 reduced_prior_covariance = kronecker_product(
-    reduced_temporal_correlation_ds.data,
-    inversion.covariances.CorrelationStandardDeviation(
-        spatial_correlations, flux_stds))
+        reduced_temporal_correlation_ds.data,
+        reduced_spatial_covariance)
 print("Covariance:", type(prior_covariance))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have covariances")
 flush_output_streams()
@@ -675,11 +710,11 @@ posterior, reduced_posterior_covariances = (
         prior_covariance,
         used_observations.values,
         observation_covariance,
-        (aligned_influences.values
-         .reshape(aligned_influences.shape[0],
-                  np.prod(aligned_influences.shape[-3:]))),
+        aligned_influences.stack(fluxes=("flux_time", "dim_y", "dim_x")).values,
+         # .reshape(aligned_influences.shape[0],
+         #          np.prod(aligned_influences.shape[-3:]))),
         reduced_prior_covariance,
-        reduced_influences
+        reduced_influences.stack(fluxes=("dim_y", "dim_x")).values
     )
 )
 print(datetime.datetime.now(UTC).strftime("%c"),
@@ -693,7 +728,7 @@ posterior_ds = xarray.Dataset(
          prior=(aligned_prior_fluxes.dims, aligned_prior_fluxes,
                 aligned_prior_fluxes.attrs),
          truth=(aligned_true_fluxes.dims, aligned_true_fluxes,
-                aligned_true_fluxes.attrs)
+                aligned_true_fluxes.attrs),
          ),
     aligned_prior_fluxes.coords,
     posterior_global_atts)
@@ -701,10 +736,12 @@ posterior_ds["pseudo_observations"] = used_observations
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior structure, evaluating and writing")
 flush_output_streams()
+
 encoding = {name: {"_FillValue": -99}
             for name in posterior_ds.data_vars}
 encoding.update({name: {"_FillValue": False}
                  for name in posterior_ds.coords})
+
 posterior_ds.to_netcdf(
     ("2010-07_monthly_inversion_{flux_interval:02d}h_027km_"
      "noise{ncorr_fun:s}{ncorr_len:d}km{ncorr_fun_time:s}{ncorr_len_time:d}d_"
@@ -716,4 +753,37 @@ posterior_ds.to_netcdf(
             ncorr_fun_time=TIME_CORR_FUN, ncorr_len_time=TIME_CORR_LEN),
     encoding=encoding, engine=NC_ENGINE)
 print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior")
+flush_output_streams()
+
+posterior_covariance_ds = xarray.Dataset(
+    dict(
+        reduced_posterior_covariance=(
+            list(aligned_prior_fluxes.dims) +
+            ["{0:s}_adjoint".format(dim) for dim in reduced_prior_fluxes.dims],
+            reduced_posterior_covariances.reshape(tuple(aligned_prior_fluxes.shape) * 2),
+            dict(long_name="reduced_covariance_matrix_for_posterior_fluxes",
+                 units=(FLUX_UNITS ** 2).format(),
+            ),
+        )
+    ),
+    aligned_prior_fluxes.coords,
+    posterior_global_atts
+)
+
+encoding = {name: {"_FillValue": -99}
+            for name in posterior_ds.data_vars}
+encoding.update({name: {"_FillValue": False}
+                 for name in posterior_ds.coords})
+
+posterior_covariance_ds.to_netcdf(
+    ("2010-07_monthly_inversion_{flux_interval:02d}h_027km_"
+     "noise{ncorr_fun:s}{ncorr_len:d}km{ncorr_fun_time:s}{ncorr_len_time:d}d_"
+     "icov{icorr_fun:s}{icorr_len:d}km{icorr_fun_time:s}{icorr_len_time:d}d_"
+     "covariance_output.nc4")
+    .format(flux_interval=FLUX_INTERVAL, ncorr_fun=CORR_FUN,
+            ncorr_len=CORR_LEN, icorr_len=CORRELATION_LENGTH, icorr_fun="exp",
+            icorr_len_time=DAILY_FLUX_TIMESCALE, icorr_fun_time=DAILY_FLUX_FUN,
+            ncorr_fun_time=TIME_CORR_FUN, ncorr_len_time=TIME_CORR_LEN),
+    encoding=encoding, engine=NC_ENGINE)
+print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior covariance")
 flush_output_streams()

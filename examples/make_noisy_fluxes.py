@@ -79,7 +79,7 @@ FLUX_CHUNKS = HOURS_PER_DAY * 31 // FLUX_INTERVAL
 
 Must be a multiple of day length.
 """
-N_REALIZATIONS = 40
+N_REALIZATIONS = 80
 """Number of realizations of the gaussian noise process to include.
 
 This is used for calculating both the prior and observations fed to
@@ -137,8 +137,8 @@ sys.stdout.flush(); sys.stderr.flush()
 # This difference is irrelevant here.
 wrf_times = FLUX_DATASET["XTIME"].to_index().round("S")
 timestamps = list(wrf_times)
-timestamps[-1] += datetime.timedelta(hours=FLUX_INTERVAL / 2 - 1)
-timestamps[0] -= datetime.timedelta(hours=1)
+timestamps[-1] += datetime.timedelta(hours=FLUX_INTERVAL / 4)
+# timestamps[0] -= datetime.timedelta(hours=1)
 wrf_new_times = pd.DatetimeIndex(timestamps,
                                  name="XTIME")
 FLUX_DATASET.coords["Time"] = wrf_new_times
@@ -173,6 +173,11 @@ for flux_part, flux_orig in zip(TRUE_FLUXES_MATCHED.data_vars.values(),
 # Define correlation constants and get covariances
 print(datetime.datetime.now(UTC).strftime("%c"), "Getting covariances")
 sys.stdout.flush(); sys.stderr.flush()
+
+DAILY_FLUX_TIMESCALE = 21
+HOURLY_FLUX_TIMESCALE = 3
+INTERVALS_PER_DAY = HOURS_PER_DAY // FLUX_INTERVAL
+
 spatial_correlations = (
     inversion.correlations.HomogeneousIsotropicCorrelation.
     # First guess at correlation length on the order of previous studies
@@ -183,8 +188,6 @@ spatial_correlations = (
          len(TRUE_FLUXES_MATCHED.coords["dim_x"]))))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have spatial correlations")
 sys.stdout.flush(); sys.stderr.flush()
-HOURLY_FLUX_TIMESCALE = 3
-INTERVALS_PER_DAY = HOURS_PER_DAY // FLUX_INTERVAL
 hour_correlations = (
     inversion.correlations.HomogeneousIsotropicCorrelation.
     from_function(
@@ -195,12 +198,12 @@ hour_correlations_matrix = hour_correlations.dot(np.eye(
     hour_correlations.shape[0]))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have hourly correlations")
 sys.stdout.flush(); sys.stderr.flush()
-DAILY_FLUX_TIMESCALE = 14
+
 day_correlations = (
     inversion.correlations.make_matrix(
         inversion.correlations.ExponentialCorrelation(DAILY_FLUX_TIMESCALE),
         (len(TRUE_FLUXES_MATCHED.coords["flux_time"]) *
-         FLUX_INTERVAL // HOURS_PER_DAY,)))
+        FLUX_INTERVAL // HOURS_PER_DAY,)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have daily correlations")
 sys.stdout.flush(); sys.stderr.flush()
 temporal_correlations = kronecker_product(day_correlations,
@@ -212,10 +215,12 @@ sys.stdout.flush(); sys.stderr.flush()
 # I would like to add a fixed minimum at some point.
 # full stds would then be sqrt(fixed^2 + varying^2)
 # average seasonal variation (or some fraction thereof) might work.
-FLUX_VARIANCE_VARYING_FRACTION = 1.
+FLUX_VARIANCE_VARYING_FRACTION = 2.
 flux_std_pattern = xarray.open_dataset(
-    "../data_files/2010-07_wrf_flux_rms.nc").get(
-    ["E_TRA{:d}".format(i + 1) for i in range(10)]).isel(emissions_zdim=0)
+    "../data_files/2010_MsTMIP_flux_std.nc4", chunks=dict(Time=8*21)).get(
+    ["E_TRA{:d}".format(i + 1) for i in range(1)])  # .isel(emissions_zdim=0)
+
+
 # Ensure units work out
 for flux_part in flux_std_pattern.data_vars.values():
     unit = cf_units.Unit(flux_part.attrs["units"])
@@ -225,17 +230,23 @@ for flux_part in flux_std_pattern.data_vars.values():
     flux_part.attrs["units"] = str(FLUX_UNITS)
 
 osse_prior_dataset = TRUE_FLUXES_MATCHED.copy()
+flux_stds = FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern["E_TRA1"].rolling(
+    center=True, min_periods=3, Time=21 * 8
+).mean().sel(
+    Time=TRUE_FLUXES_MATCHED.indexes["flux_time"]
+)
 
 # Save to ensure I have only one realization
 for flux_name, flux_vals in TRUE_FLUXES_MATCHED.data_vars.items():
-    if not any(flux_name.endswith(char) for char in "1267"):
+    if not any(flux_name.endswith(char) for char in "167"):
         continue
-    flux_stds = FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern[flux_name]
+    
 
-    prior_covariance = kronecker_product(
-        temporal_correlations,
-        CorrelationStandardDeviation(
-            spatial_correlations, flux_stds.data))
+    prior_covariance = CorrelationStandardDeviation(
+        kronecker_product(
+            temporal_correlations,
+            spatial_correlations),
+        flux_stds.data)
     print("Covariance:", type(prior_covariance))
     print(datetime.datetime.now(UTC).strftime("%c"), "Have covariances")
     sys.stdout.flush(); sys.stderr.flush()
@@ -264,10 +275,12 @@ for flux_name, flux_vals in TRUE_FLUXES_MATCHED.data_vars.items():
         attrs=prior_var_atts
     ).transpose(
         "realization", "flux_time", "dim_y", "dim_x")
-    osse_prior_dataset[flux_name + "_stds"] = flux_stds
+    flux_stds.attrs["cell_methods"] = "standard_deviation: MsTMIP_realization"
+    osse_prior_dataset[flux_name + "_stds"] = flux_stds.rename(
+        realization="MsTMIP_realization")
 
 osse_prior_dataset.coords["realization"] = np.arange(
-    N_REALIZATIONS, dtype=np.uint8)
+    N_REALIZATIONS, dtype=np.int8)
 osse_prior_dataset.coords["realization"].attrs.update(dict(
     standard_name="realization",
     long_name="realization_of_the_noise_process"))
@@ -287,7 +300,7 @@ print(datetime.datetime.now(UTC).strftime("%c"),
       "Noisy fluxes chunked, saving")
 sys.stdout.flush(); sys.stderr.flush()
 osse_prior_dataset.to_netcdf(
-    "../data_files/2010-07_osse_priors_{interval:d}h_{res:d}km"
+    "../data_files/2010-07_osse_bio_priors_{interval:d}h_{res:d}km"
     "_noise_{sp_fun:s}{length:g}km_exp{day_time:d}d_exp{hour_time:d}h.nc"
     .format(
         interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
