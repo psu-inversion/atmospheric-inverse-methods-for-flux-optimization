@@ -672,7 +672,9 @@ class BalgovindCorrelation(DistanceCorrelationFunction):
 class MaternCorrelation(DistanceCorrelationFunction):
     r"""A Matern correlation structure.
 
-    Follows Matern (1986) *Spatial Variation*
+    Follows Matern (1986) *Spatial Variation*.  The specific
+    definition seems to be similar to the parameterization in Stern's
+    *Interpolation of Spatial Data*
 
     Note
     ----
@@ -680,6 +682,12 @@ class MaternCorrelation(DistanceCorrelationFunction):
     :math:`[2^{\kappa-1}\Gamma(\kappa)]^{-1} (d/L)^{\kappa} K_{\kappa}(d/L)`
     where :math:`\kappa` is a smoothness parameter and
     :math:`K_{\kappa}` is a modified Bessel function of the third kind.
+
+    References
+    ----------
+    Stein, Michael L. *Interpolation of Spatial Data: Some Theory for Kridging*
+    Springer-Verlag New York.  Part of Springer Series in Statistics (issn: 0172-7397)
+    isbn: 978-1-4612-7166-6.  doi: 10.1007/978-1-4612-1494-6
     """
 
     def __init__(self, length, kappa=1):
@@ -694,6 +702,7 @@ class MaternCorrelation(DistanceCorrelationFunction):
             :math:`kappa=\infty` is equivalent to Gaussian correlations
             :math:`kappa=\frac{1}{2}` is equivalent to exponential
             :math:`kappa=1` is Balgovind's recommendation for 2D fields
+            :math:`kappa=\frac{3}{2}` is Balgovind's recommendation for 3D fields
             Default value is only for full equivalence with other classes.
             The default value is entirely arbitrary and may change without
             notice.
