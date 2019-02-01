@@ -19,6 +19,4 @@ setup(
     author=authors,
     author_email="dfw5129@psu.edu",
     test_suite="inversion.tests",
-    package_dir={"": "src"},
-    packages=find_packages("src"),
 )

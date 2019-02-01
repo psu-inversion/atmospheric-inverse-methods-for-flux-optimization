@@ -1,7 +1,7 @@
 Software License Agreement
 
-By downloading the ________________________ software you agree to the
-following terms of use:
+By downloading the atmospheric-inverse-methods-for-flux-optimization
+software you agree to the following terms of use:
 
 Copyright (c) 2019, The Pennsylvania State University
 All rights reserved.
