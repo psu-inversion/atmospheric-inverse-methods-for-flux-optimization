@@ -3,7 +3,8 @@
 Copied from :mod:`scipy.sparse.linalg.interface`
 """
 import numpy as np
-from numpy import hstack, asarray, atleast_2d
+from numpy import promote_types
+from numpy import empty, asarray, atleast_2d
 
 from scipy.sparse.linalg import aslinearoperator
 from scipy.sparse.linalg.interface import (
@@ -118,12 +119,19 @@ class DaskLinearOperator(LinearOperator):
     def _matmat(self, X):
         """Multiply self by matrix X using basic algorithm.
 
-        Default matrix-matrix multiplication handler.
+        Default matrix-matrix multiplication handler.  Optimized for numpy.
 
         Falls back on the user-defined _matvec method, so defining that will
         define matrix multiplication (though in a very suboptimal way).
         """
-        return hstack([self.matvec(col.reshape(-1, 1)) for col in X.T])
+        # return hstack([self.matvec(col.reshape(-1, 1)) for col in X.T])
+        ncols = X.shape[1]
+        result = empty((self.shape[0], ncols),
+                       order="F",
+                       dtype=promote_types(self.dtype, X.dtype))
+        for i in range(ncols):
+            result[:, i] = self.matvec(X[:, i])
+        return result
 
     def matvec(self, x):
         """
