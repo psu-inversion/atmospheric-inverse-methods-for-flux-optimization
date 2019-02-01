@@ -20,7 +20,10 @@ from scipy.linalg import cholesky
 import numpy.linalg as la
 from numpy.linalg import svd, LinAlgError
 
-# See if this will speed up inversions.
+# See if this will speed up inversions.  I call `.compute()` on the
+# output to keep the rest of the code numpy-only.  I think this is
+# implicitly called on the operator2.dot(chunk) that usually follows
+# this.
 from dask.array import einsum
 
 from .linalg_interface import (
@@ -386,7 +389,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
                     # Column-major output should speed the
                     # operator2 @ tmp bit
                     order="F"
-                ).reshape(block_size, -1)
+                ).reshape(block_size, -1).compute()
             )
             # Reshape to separate out the block dimension from the
             # original second dim of mat
@@ -448,7 +451,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
             # Having the chunk be fortran-contiguous should speed the
             # next steps (operator2 @ chunk)
             chunk = einsum("j,jkl->kl", operator1[row1, :],
-                           mat.reshape(in_chunk), order="F")
+                           mat.reshape(in_chunk), order="F").compute()
             result += mat[row_start:(row_start + block_size)].T.dot(
                 operator2.dot(chunk))
         return result
