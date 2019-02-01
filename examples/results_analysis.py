@@ -125,7 +125,7 @@ def plot_realizations(data_array):
     x_dim = [dim for dim in data_array.dims if "_x" in dim][0]
     y_dim = [dim for dim in data_array.dims if "_y" in dim][0]
     xarray.plot.pcolormesh(
-        data_array.isel(**{time_dim: slice(None, None, 96),
+        data_array.isel(**{time_dim: slice(3, None, 96),
                            "realization": slice(3)}),
         x_dim, y_dim,
         col=time_dim, row="realization", cmap="RdBu_r", center=0,
@@ -158,7 +158,7 @@ def plot_fluxes(data_array):
     x_dim = [dim for dim in data_array.dims if "_x" in dim][0]
     y_dim = [dim for dim in data_array.dims if "_y" in dim][0]
     xarray.plot.pcolormesh(
-        data_array.isel(**{time_dim: slice(None, None, 32)}),
+        data_array.isel(**{time_dim: slice(3, None, 32)}),
         x_dim, y_dim,
         col=time_dim, col_wrap=3, cmap="RdBu_r", center=0,
         aspect=1.35, size=1.8,
@@ -191,9 +191,9 @@ sys.stdout.flush()
 
 PRIOR_CUBES = iris.load(PRIOR_PATH)
 PRIOR_DS = xarray.open_dataset(
-    PRIOR_PATH, chunks=dict(realization=1)).rename(
-    dict(south_north="dim_y", west_east="dim_x")).set_coords(
-        "lambert_conformal_conic")
+    PRIOR_PATH, chunks=dict(realization=1, flux_time=8*7)).set_coords(
+        "lambert_conformal_conic")  # .rename(
+    # dict(south_north="dim_y", west_east="dim_x"))
 
 PRIOR_CUBES.sort(key=lambda cube: cube.name())
 PRIOR_CUBES.sort(key=lambda cube: len(cube.name()))
@@ -271,7 +271,9 @@ SMALL_PRIOR_DS = PRIOR_DS.sel(
 
 PSEUDO_OBS_DS = xarray.open_mfdataset(
     "observation_realizations_for_06h_0?.nc4",
-    concat_dim="observation").set_index(
+    concat_dim="observation",
+    chunks=dict(observation=24*7),
+).set_index(
     observation=("observation_time", "site")).transpose(
     "realization", "observation")
 
@@ -320,12 +322,14 @@ axes[0].add_feature(BIG_LAKES)
 fig.savefig("{year:04d}-{month:02d}_noise_standard_deviation.png".format(
     year=YEAR, month=MONTH))
 plt.close(fig)
+write_console_message("Made std plot")
 
 ############################################################
 # Plot pseudo-observations
 fig, axes = plt.subplots(len(PSEUDO_OBS_DS.site),
                          sharex=True,
                          figsize=(8, 1.5 * len(PSEUDO_OBS_DS.site)))
+write_console_message("Made figure")
 fig.autofmt_xdate()
 pseudo_obs = PSEUDO_OBS_DS.pseudo_observations
 for i, site in enumerate(set(PSEUDO_OBS_DS.site.values)):
@@ -345,6 +349,7 @@ fig.savefig(
         noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
         noise_time_len=NOISE_TIME_LEN))
 plt.close(fig)
+write_console_message("Made pseudo-obs plot")
 
 ############################################################
 # Plot "truth", prior, and posterior side-by-side
@@ -363,7 +368,7 @@ for_plotting.persist()
 xlim = for_plotting.coords["projection_x_coordinate"][[0, -1]]
 ylim = for_plotting.coords["projection_y_coordinate"][[0, -1]]
 
-plots = for_plotting.isel(time=slice(72, None, 40)).plot.pcolormesh(
+plots = for_plotting.isel(time=slice(71, None, 40)).plot.pcolormesh(
     "projection_x_coordinate", "projection_y_coordinate",
     col="type", row="time", subplot_kws=dict(projection=WRF_CRS),
     aspect=1.3, size=1.8,
@@ -377,8 +382,8 @@ for ax in plots.axes.flat:
 
 plots.cbar.ax.set_ylabel("CO$_2$ Flux (μmol/m$^2$/s)")
 plots.axes[0, 0].set_title('"Truth"')
-plots.axes[0, 1].set_title("Initial estimate")
-plots.axes[0, 2].set_title("Final estimate")
+plots.axes[0, 1].set_title("Prior")
+plots.axes[0, 2].set_title("Posterior")
 
 plots.fig.savefig(
     "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
@@ -391,6 +396,7 @@ plots.fig.savefig(
         inv_time_len=INV_TIME_LEN),
     dpi=400)
 plt.close(plots.fig)
+write_console_message("Done realization plot")
 
 ############################################################
 # Plot tower locations
@@ -407,12 +413,14 @@ ax.scatter(pseudo_obs.tower_lon, pseudo_obs.tower_lat,
 fig.suptitle("WRF domain and tower locations")
 fig.savefig("tower_locations.pdf")
 plt.close(fig)
+write_console_message("Done tower loc plot")
 
 ############################################################
 # Plot differences
 differences = (for_plotting.isel(type=slice(1, None)) -
                for_plotting.isel(type=0))
-plots = differences.isel(time=slice(68, None, 40)).plot.pcolormesh(
+differences.persist()
+plots = differences.isel(time=slice(68-1, None, 40)).plot.pcolormesh(
     "projection_x_coordinate", "projection_y_coordinate",
     col="type", row="time", subplot_kws=dict(projection=WRF_CRS),
     aspect=1.3, size=1.8,
@@ -438,6 +446,7 @@ plots.fig.savefig(
         inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
         inv_time_len=INV_TIME_LEN))
 plt.close(plots.fig)
+write_console_message("Done error plot")
 
 ############################################################
 # Plot gain over time
@@ -445,8 +454,9 @@ gain = 1 - (da.fabs(differences.sel(type="Posterior")) /
             da.fabs(differences.sel(type="Prior")))
 gain.attrs["long_name"] = "inversion_gain"
 gain.attrs["units"] = "1"
+# gain.load()
 
-plots = gain.isel(time=slice(68, None, 20)).plot.pcolormesh(
+plots = gain.isel(time=slice(68-1, None, 20)).plot.pcolormesh(
     "projection_x_coordinate", "projection_y_coordinate",
     row="time", col_wrap=3, subplot_kws=dict(projection=WRF_CRS),
     aspect=1.3, size=1.8,
@@ -468,6 +478,7 @@ plots.fig.savefig(
         inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
         inv_time_len=INV_TIME_LEN))
 plt.close(plots.fig)
+write_console_message("Done pointwise gain")
 
 ############################################################
 # Find and plot gains for all realizations
@@ -479,8 +490,7 @@ all_differences.coords["type"] = ["prior_error", "posterior_error"]
 
 print(datetime.datetime.now(), "Getting January means east of line")
 sys.stdout.flush()
-time_mean_error = all_differences.sel(
-    time=slice(datetime.datetime(YEAR, MONTH, 1, 0, 0), None)).mean("time")
+time_mean_error = all_differences.mean("time")
 time_mean_error.load()
 all_mean_error = time_mean_error.mean(
     ("projection_x_coordinate", "projection_y_coordinate"))
@@ -513,6 +523,7 @@ fig.savefig(
         inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
         inv_time_len=INV_TIME_LEN))
 plt.close(fig)
+write_console_message("Done large gain plot")
 
 small_gain = 1 - (da.fabs(small_mean_error.sel(type="posterior_error")) /
                   da.fabs(small_mean_error.sel(type="prior_error")))
@@ -533,6 +544,7 @@ fig.savefig(
         inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
         inv_time_len=INV_TIME_LEN))
 plt.close(fig)
+write_console_message("Done small gain plot")
 
 ############################################################
 # Describe the distribution
@@ -565,6 +577,7 @@ with open(
 
     print(small_gain.quantile((0, .2, .25, .4, .5, .6, .75, .8, 1)),
           file=result_file)
+write_console_message("Done gain statistics files")
 
 ############################################################
 # Plot timeseries of mean flux
@@ -584,12 +597,12 @@ spatial_avg_differences.sel(
 
 ax.set_xlim(mpl.dates.datestr2num(
     ["2010-06-18T00:00:00Z", "2010-08-01T00:00:00Z"]))
-for xval, color in (zip(
-        mpl.dates.datestr2num(
-            ["2010-07-01T00:00:00Z", "2010-07-03T00:00:00Z",
-             "2010-07-17T00:00:00Z"]),
-        ["red", "gray", "red"])):
-    ax.axvline(xval, color=color)
+# for xval, color in (zip(
+#         mpl.dates.datestr2num(
+#             ["2010-07-01T00:00:00Z", "2010-07-03T00:00:00Z",
+#              "2010-07-17T00:00:00Z"]),
+#         ["red", "gray", "red"])):
+#     ax.axvline(xval, color=color)
 ax.axhline(0, color="black", linewidth=.75)
 
 plt.legend()
@@ -608,6 +621,7 @@ fig.savefig(
         inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
         inv_time_len=INV_TIME_LEN))
 plt.close(fig)
+write_console_message("Done timeseries")
 
 
 small_spatial_avg_differences = all_differences.sel(
@@ -628,12 +642,12 @@ small_spatial_avg_differences.sel(
 
 ax.set_xlim(mpl.dates.datestr2num(
     ["2010-06-18T00:00:00Z", "2010-08-01T00:00:00Z"]))
-for xval, color in (zip(
-        mpl.dates.datestr2num(
-            ["2010-07-01T00:00:00Z", "2010-07-03T00:00:00Z",
-             "2010-07-17T00:00:00Z"]),
-        ["red", "gray", "red"])):
-    ax.axvline(xval, color=color)
+# for xval, color in (zip(
+#         mpl.dates.datestr2num(
+#             ["2010-07-01T00:00:00Z", "2010-07-03T00:00:00Z",
+#              "2010-07-17T00:00:00Z"]),
+#         ["red", "gray", "red"])):
+#     ax.axvline(xval, color=color)
 
 ax.axhline(0, color="black", linewidth=.75)
 
@@ -653,6 +667,7 @@ fig.savefig(
         inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
         inv_time_len=INV_TIME_LEN))
 plt.close(fig)
+write_console_message("Done small timeseries")
 
 
 ############################################################
@@ -665,16 +680,16 @@ fig = plt.figure(figsize=(5, 3.4))
 fig.autofmt_xdate()
 plt.subplots_adjust(left=.18)
 ax = plt.gca()
-spatial_avg_increment.isel(realization=0).plot.line('-')
-
 ax.set_xlim(mpl.dates.datestr2num(
     ["2010-06-18T00:00:00Z", "2010-08-01T00:00:00Z"]))
-for xval, color in (zip(
-        mpl.dates.datestr2num(
-            ["2010-07-01T00:00:00Z", "2010-07-03T00:00:00Z",
-             "2010-07-17T00:00:00Z"]),
-        ["red", "gray", "red"])):
-    ax.axvline(xval, color=color)
+spatial_avg_increment.isel(realization=0).plot.line('-')
+
+# for xval, color in (zip(
+#         mpl.dates.datestr2num(
+#             ["2010-07-01T00:00:00Z", "2010-07-03T00:00:00Z",
+#              "2010-07-17T00:00:00Z"]),
+#         ["red", "gray", "red"])):
+#     ax.axvline(xval, color=color)
 
 ax.axhline(0, color="black", linewidth=.75)
 ax.set_ylabel("Average increment over whole domain\n(μmol/m²/s)")
@@ -702,16 +717,21 @@ fig = plt.figure(figsize=(5, 3.4))
 fig.autofmt_xdate()
 plt.subplots_adjust(left=.18)
 ax = plt.gca()
-small_spatial_avg_increment.isel(realization=0).plot.line('-')
+try:
+    ax.set_xlim(mpl.dates.datestr2num(
+        ["2010-06-18T00:00:00Z", "2010-08-01T00:00:00Z"]))
+    small_spatial_avg_increment.isel(realization=0).plot.line('-')
+except ValueError:
+    ax.set_xlim(mpl.dates.datestr2num(
+        ["2010-06-18T00:00:00Z", "2010-08-01T00:00:00Z"]))
+    small_spatial_avg_increment.isel(realization=0).plot.line('-')
 
-ax.set_xlim(mpl.dates.datestr2num(
-    ["2010-06-18T00:00:00Z", "2010-08-01T00:00:00Z"]))
-for xval, color in (zip(
-        mpl.dates.datestr2num(
-            ["2010-07-01T00:00:00Z", "2010-07-03T00:00:00Z",
-             "2010-07-17T00:00:00Z"]),
-        ["red", "gray", "red"])):
-    ax.axvline(xval, color=color)
+# for xval, color in (zip(
+#         mpl.dates.datestr2num(
+#             ["2010-07-01T00:00:00Z", "2010-07-03T00:00:00Z",
+#              "2010-07-17T00:00:00Z"]),
+#         ["red", "gray", "red"])):
+#     ax.axvline(xval, color=color)
 
 ax.axhline(0, color="black", linewidth=.75)
 ax.set_ylabel("Average increment over West Virginia\n(μmol/m²/s)")
@@ -729,6 +749,7 @@ fig.savefig(
         inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
         inv_time_len=INV_TIME_LEN))
 plt.close(fig)
+write_console_message("Done increment plots")
 
 ############################################################
 # Plot histogram of average flux errors
@@ -739,17 +760,22 @@ fig, ax = plt.subplots(1, 1)
 #              all_mean_error.sel(type="posterior_error")],
 #             range=[-.1, .1],
 #             label=["Prior", "Posterior"])
-all_mean_error.sel(
-    type=["prior_error", "posterior_error"]
-).plot.kde(
-    ax=ax, subplots=False, xlim=(-.1, .1),
+all_mean_error.to_dataframe(
+    name="error"
+).loc[:, "error"].unstack(0).loc[
+    :, ["prior_error", "posterior_error"]
+].plot.kde(
+    ax=ax, subplots=False, xlim=(-.1, .1), ylim=(0, None),
 )
-ax.legend(["Prior", "Posterior"])
+# sns.kdeplot(all_mean_error.sel(type="prior_error"), ax=ax,
+#             shade=True, label="Prior")
+# sns.kdeplot(all_mean_error.sel(type="posterior_error"), ax=ax,
+#             shade=True, label="Posterior")
+ax.legend(["Prior Means", "Posterior Means"])
 ax.set_ylabel("Density")
-ax.set_xlabel("Error in estimate (μmol/m$^2$/s)")
+ax.set_xlabel("Error in mean estimate (μmol/m$^2$/s)")
 
 
-plt.legend()
 fig.savefig(
     "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
     "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
@@ -769,15 +795,17 @@ fig, ax = plt.subplots(1, 1)
 #          small_mean_error.sel(type="posterior_error")],
 #         range=[-4, 4],
 #         label=["Prior", "Posterior"])
-ax.set_xlabel("West Virginia flux error (μmol/m$^2$/s)")
-small_mean_error.sel(
-    type=["prior_error", "posterior_error"]
-).plot.kde(
-    ax=ax, subplots=False, xlim=(-4, 4)
+ax.set_xlabel("West Virginia mean flux error (μmol/m$^2$/s)")
+small_mean_error.to_dataframe(
+    name="error"
+).loc[:, "error"].unstack(0).loc[
+    :, ["prior_error", "posterior_error"]
+].plot.kde(
+    ax=ax, subplots=False, xlim=(-4, 4), ylim=(0, None),
 )
+ax.legend(["Prior Means", "Posterior Means"])
 ax.set_ylabel("Density")
 
-plt.legend()
 fig.savefig(
     "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
     "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
@@ -788,6 +816,7 @@ fig.savefig(
         inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
         inv_time_len=INV_TIME_LEN))
 plt.close(fig)
+write_console_message("Wrote error densities")
 
 ############################################################
 # Gain vs. magnitude of prior error
@@ -863,7 +892,7 @@ plt.close(fig)
 fig, axes = plt.subplots(
     1, 1, figsize=(5, 3), subplot_kw=dict(projection=LPDM_PROJ))
 
-COLLAPSED_INFLUENCE_DS.H.plot()
+COLLAPSED_INFLUENCE_DS.H.plot(robust=True)
 plt.scatter(FULL_INFLUENCE_DS.coords["site_lons"],
             FULL_INFLUENCE_DS.coords["site_lats"],
             transform=LPDM_PROJ.as_geodetic(), color="red")
@@ -882,3 +911,4 @@ axes.add_feature(STATES)
 fig.savefig("{year:04d}-{month:02d}_integrated_influence_functions.png".format(
     year=YEAR, month=MONTH), dpi=400)
 plt.close(fig)
+write_console_message("Done all figures")
