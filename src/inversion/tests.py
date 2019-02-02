@@ -562,12 +562,15 @@ class TestCorrelations(unittest2.TestCase):
         """Test make_matrix for 2D correlations.
 
         Checks against original value.
+
+        This test is really slow.
         """
         # 30x25 Gaussian 10 not close
         test_nx = 30
         test_ny = 20
         test_points = test_ny * test_nx
 
+        # TODO: speed up
         for corr_class in (
                 inversion.correlations.DistanceCorrelationFunction.
                 __subclasses__()):

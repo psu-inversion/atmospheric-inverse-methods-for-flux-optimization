@@ -103,6 +103,13 @@ class DaskLinearOperator(LinearOperator):
     # Everything below here essentially copied from the original LinearOperator
     # scipy.sparse.linalg.interface
     def __new__(cls, *args, **kwargs):
+        """Create a new DaskLinearOperator.
+
+        If called directly, expects matvec and/or matmul arguments.
+        If called from a subclass, checks that one of `_matvec` and
+        `_matmat` is defined since the default definitions call each
+        other.
+        """
         if cls is DaskLinearOperator:
             # Operate as _DaskCustomLinearOperator factory.
             return _DaskCustomLinearOperator(*args, **kwargs)
@@ -312,7 +319,7 @@ class DaskLinearOperator(LinearOperator):
                                  % x)
 
     def _adjoint(self):
-        """Default implementation of _adjoint; defers to rmatvec."""
+        """Return adjoint of self; defers to rmatvec."""
         shape = (self.shape[1], self.shape[0])
         return _DaskCustomLinearOperator(shape, matvec=self.rmatvec,
                                          rmatvec=self.matvec,
@@ -338,16 +345,19 @@ class DaskMatrixLinearOperator(MatrixLinearOperator, DaskLinearOperator):
     """
 
     def __init__(self, A):
+        """Wrap A in a LinearOperator."""
         super(DaskMatrixLinearOperator, self).__init__(A)
         self.__transp = None
         self.__adj = None
 
     def _transpose(self):
+        """Return the transpose."""
         if self.__transp is None:
             self.__transp = _DaskTransposeLinearOperator(self)
         return self.__transp
 
     def _adjoint(self):
+        """Return the Hermitian adjoint of self."""
         if self.__adj is None:
             self.__adj = _DaskAdjointLinearOperator(self)
         return self.__adj
@@ -455,7 +465,7 @@ class ProductLinearOperator(DaskLinearOperator):
         return vector
 
     def _matmat(self, matrix):
-        """The matrix-matrix product.
+        """Calculate the matrix-matrix product.
 
         Parameters
         ----------
@@ -471,12 +481,12 @@ class ProductLinearOperator(DaskLinearOperator):
         return matrix
 
     def _adjoint(self):
-        """The Hermitian adjoint of the operator."""
+        """Return the Hermitian adjoint of the operator."""
         return ProductLinearOperator(
             *[op.H for op in reversed(self._operators)])
 
     def _transpose(self):
-        """The transpose of the operator."""
+        """Return the transpose of the operator."""
         return ProductLinearOperator(
             *[op.T for op in reversed(self._operators)])
 

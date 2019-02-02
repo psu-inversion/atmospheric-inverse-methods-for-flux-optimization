@@ -6,7 +6,7 @@ from __future__ import print_function, division
 import os.path
 import sys
 
-from setuptools import setup, find_packages
+from setuptools import setup
 
 sys.path.append(os.path.join(
     os.path.abspath(os.path.dirname(__file__)),
