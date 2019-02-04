@@ -20,7 +20,10 @@ from scipy.linalg import cholesky
 import numpy.linalg as la
 from numpy.linalg import svd, LinAlgError
 
-# See if this will speed up inversions.
+# See if this will speed up inversions.  I call `.compute()` on the
+# output to keep the rest of the code numpy-only.  I think this is
+# implicitly called on the operator2.dot(chunk) that usually follows
+# this.
 from dask.array import einsum
 
 from .linalg_interface import (
@@ -38,6 +41,12 @@ than this are reset to zero.
 See Also
 --------
 inversion.correlations.NEAR_ZERO
+"""
+OPTIMAL_ELEMENTS = 2 ** 16
+"""Maximum size for the approximate square root of a LinearOperator.
+
+Bounding the eigenvector matrix by this should keep everything in
+memory.
 """
 
 
@@ -213,7 +222,8 @@ def matrix_sqrt(mat):
 
     Raises
     ------
-    ValueError: if mat is not symmetric
+    ValueError
+        if mat is not symmetric
     """
     if mat.shape[0] != mat.shape[1]:
         raise ValueError("Matrix square root only defined for square arrays")
@@ -228,7 +238,6 @@ def matrix_sqrt(mat):
         )
 
     if isinstance(mat, (LinearOperator, DaskLinearOperator)):
-        from inversion.util import OPTIMAL_ELEMENTS
         warnings.warn("The square root will be approximate.")
         vals, vecs = linop_eigsh(
             mat, min(mat.shape[0] // 2, OPTIMAL_ELEMENTS // mat.shape[0]))
@@ -254,7 +263,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
     V. Yadav and A.M. Michalak. "Improving computational efficiency in
     large linear inverse problems: an example from carbon dioxide flux
     estimation" *Geosci. Model Dev.* 2013. Vol 6, pp. 583--590.
-    URL: http://www.geosci-model-dev.net/6/583/2013
+    URL: https://www.geosci-model-dev.net/6/583/2013
     DOI: 10.5194/gmd-6-583-2013.
     """
 
@@ -310,7 +319,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
 
         Returns
         -------
-        S: KroneckerProductOperator
+        S: DaskKroneckerProductOperator
 
         Raises
         ------
@@ -365,6 +374,8 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         element of :math:`A`, adding them up, and multiplying by
         :math:`B`.
 
+        This function uses :mod:`dask` for the splitting, multiplication, and
+        addition, which defaults to using all available cores.
         """
         block_size = self._block_size
         operator1 = self._operator1
@@ -404,9 +415,12 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         ----
 
         Implementation depends on Kronecker structure, using the
-        :meth:`_matmat` algorithm for self @ mat.  If mat is a lazy
+        :meth:`._matmat` algorithm for self @ mat.  If mat is a lazy
         dask array, this implementation will load it multiple times to
         avoid dask keeping it all in memory.
+
+        This function uses :mod:`dask` for the splitting, multiplication, and
+        addition, which defaults to using all available cores.
         """
         if not isinstance(mat, ARRAY_TYPES) or self.shape[0] != self.shape[1]:
             # TODO: test failure mode
@@ -437,7 +451,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
             # Having the chunk be fortran-contiguous should speed the
             # next steps (operator2 @ chunk)
             chunk = einsum("j,jkl->kl", operator1[row1, :],
-                           mat.reshape(in_chunk), order="F")
+                           mat.reshape(in_chunk), order="F").compute()
             result += mat[row_start:(row_start + block_size)].T.dot(
                 operator2.dot(chunk))
         return result

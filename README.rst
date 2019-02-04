@@ -1,4 +1,6 @@
-Inversion
-=========
+Atmospheric Inverse Methods for Flux Optimization
+=================================================
 
-Python package for geophysical inversions and data assimilation.
+Python package containing functions for the application of inverse
+methods to the optimization of surface fluxes to be consistent with
+atmospheric optimizations.

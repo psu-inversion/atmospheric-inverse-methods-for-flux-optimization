@@ -1,7 +1,7 @@
-inversion\.tests module
+inversion.linalg module
 =======================
 
-.. automodule:: inversion.tests
+.. automodule:: inversion.linalg
     :members:
     :undoc-members:
     :show-inheritance:

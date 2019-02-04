@@ -16,14 +16,14 @@ from numpy.linalg import eigh, norm
 from numpy import arange, newaxis, asanyarray
 from scipy.special import gamma, kv as K_nu
 
-from numpy import fromfunction, asarray, hstack
+from numpy import fromfunction, asarray, hstack, flip
 from numpy import exp, square, fmin, sqrt, zeros
 from numpy import logical_or, concatenate, isnan
-from numpy import sum as da_sum
 from numpy import where
+from numpy import sum as array_sum
 import pyfftw.interfaces.cache
-from pyfftw.interfaces.numpy_fft import rfft, rfft2, rfftn
-from pyfftw.interfaces.numpy_fft import irfft, irfft2, irfftn
+from pyfftw import next_fast_len
+from pyfftw.interfaces.numpy_fft import rfftn, irfftn
 import six
 
 from inversion.linalg import schmidt_decomposition, kron
@@ -31,6 +31,7 @@ from inversion.linalg_interface import DaskLinearOperator
 from inversion.linalg_interface import is_odd, tolinearoperator
 
 NUM_THREADS = 8
+"""Number of threads :mod:`pyfftw` should use for each transform."""
 PLANNER_EFFORT = "FFTW_PATIENT"
 pyfftw.interfaces.cache.enable()
 
@@ -71,11 +72,11 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
 
     See Also
     --------
-    scipy.linalg.solve_circulant
+    :func:`scipy.linalg.solve_circulant`
         I stole the idea from here.
     """
 
-    def __init__(self, shape):
+    def __init__(self, shape, computational_shape=None):
         """Set up the instance.
 
         .. note::
@@ -86,77 +87,93 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
 
         Parameters
         ----------
-        corr_func: callable(float) -> float[-1, 1]
         shape: tuple of int
             The state is formally input as a vector, but the correlations
             depend on the layout in some other shape, usually related to the
             physical layout. This is that shape.
+        computational_shape: tuple of int
+            The shape of the embedding computational domain.  Defaults
+            to shape.  May be larger to induce non-periodic correlations
         """
         state_size = np.prod(shape)
+        ndims = len(shape)
 
         super(HomogeneousIsotropicCorrelation, self).__init__(
             dtype=DTYPE, shape=(state_size, state_size))
 
-        self._fft, self._ifft = self._rfft_irfft(shape)
+        if computational_shape is None:
+            computational_shape = shape
+
+        is_cyclic = (shape == computational_shape)
+        self._is_cyclic = is_cyclic
         self._underlying_shape = tuple(shape)
+        self._computational_shape = computational_shape
 
-    # noqa W0212
-    @staticmethod
-    def _rfft_irfft(shape):
-        """Get the forward and inverse rffts for the given dimensions.
+        self._fft = functools.partial(
+            rfftn, axes=arange(0, ndims, dtype=int), s=computational_shape,
+            threads=NUM_THREADS, planner_effort=PLANNER_EFFORT)
 
-        Parameters
-        ----------
-        ndim: int
-
-        Returns
-        -------
-        fft, ifft: callable
-        """
-        ndims = len(shape)
-        if ndims == 1:
-            fft = functools.partial(rfft, axis=0, threads=NUM_THREADS,
-                                    planner_effort=PLANNER_EFFORT)
-            ifft = functools.partial(irfft, n=shape[0], axis=0,
-                                     threads=NUM_THREADS,
-                                     planner_effort=PLANNER_EFFORT)
-        elif ndims == 2:
-            fft = functools.partial(rfft2, axes=(0, 1),
-                                    threads=NUM_THREADS,
-                                    planner_effort=PLANNER_EFFORT)
-            ifft = functools.partial(irfft2, s=shape, axes=(0, 1),
-                                     threads=NUM_THREADS,
-                                     planner_effort=PLANNER_EFFORT)
-        else:
-            fft = functools.partial(
-                rfftn, axes=arange(0, ndims, dtype=int),
-                threads=NUM_THREADS, planner_effort=PLANNER_EFFORT)
-            ifft = functools.partial(
+        if is_cyclic:
+            self._ifft = functools.partial(
                 irfftn, axes=arange(0, ndims, dtype=int), s=shape,
                 threads=NUM_THREADS, planner_effort=PLANNER_EFFORT)
-        return fft, ifft
+        else:
+            axes = arange(0, ndims, dtype=int)
+            base_slices = tuple(slice(None, dim) for dim in shape)
 
-    # noqa W0212
+            def _ifft(arry):
+                """Find inverse FFT of arry.
+
+                Parameters
+                ----------
+                spectrum: array_like
+
+                Returns
+                -------
+                result: array_like
+                """
+                slicer = (
+                    base_slices +
+                    tuple(slice(None) for dim in arry.shape[ndims:])
+                )
+                big_result = irfftn(
+                    arry, axes=axes, s=computational_shape,
+                    threads=NUM_THREADS, planner_effort=PLANNER_EFFORT)
+                return big_result[slicer]
+
+            self._ifft = _ifft
+
     @classmethod
-    def from_function(cls, corr_func, shape):
+    def from_function(cls, corr_func, shape, is_cyclic=True):
         """Create an instance to apply the correlation function.
 
         Parameters
         ----------
         corr_func: callable(dist) -> float
+            The correlation of the first element of the domain with
+            each other element.
         shape: tuple of int
             The state is formally a vector, but the correlations are
             assumed to depend on the layout in some other shape,
             usually related to the physical layout. This is the other
             shape.
+        is_cyclic: bool
+            Whether to assume the domain is periodic in all directions.
 
         Returns
         -------
         HomogeneousIsotropicCorrelation
         """
         shape = np.atleast_1d(shape)
+        if is_cyclic:
+            computational_shape = tuple(shape)
+        else:
+            computational_shape = tuple(next_fast_len(2 * dim - 1)
+                                        for dim in shape)
+
+        self = cls(tuple(shape), computational_shape)
+        shape = np.asarray(self._computational_shape)
         ndims = len(shape)
-        self = cls(shape)
 
         broadcastable_shape = shape[:, newaxis]
         while broadcastable_shape.ndim < ndims + 1:
@@ -186,39 +203,68 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
             # use the smaller components to get the distance to the
             # closest of the shifted origins
             comp2 = fmin(comp2_1, comp2_2)
-            return corr_func(sqrt(da_sum(comp2, axis=0)))
+            return corr_func(sqrt(array_sum(comp2, axis=0)))
 
         corr_struct = fromfunction(
             corr_from_index, shape=tuple(shape),
             dtype=DTYPE)
 
-        # The dask fft functions require all relevant axes to be in
-        # memory already, so keeping the array in memory won't hurt.
-        # TODO delegate to from_array
-        corr_fourier = (self._fft(corr_struct))
+        # I should be able to generate this sequence with a type-I DCT
+        # For some odd reason complex/complex is faster than complex/real
+        # This also ensures the format here is the same as in _matmat
+        corr_fourier = rfftn(
+            corr_struct, axes=arange(ndims, dtype=int),
+            threads=NUM_THREADS, planner_effort="FFTW_EXHAUSTIVE")
         self._corr_fourier = (corr_fourier)
+
         # This is also affected by roundoff
-        self._fourier_near_zero = abs(corr_fourier) < FOURIER_NEAR_ZERO
+        abs_corr_fourier = abs(corr_fourier)
+        self._fourier_near_zero = (
+            abs_corr_fourier < FOURIER_NEAR_ZERO * abs_corr_fourier.max())
         return self
 
     @classmethod
-    def from_array(cls, corr_array):
+    def from_array(cls, corr_array, is_cyclic=True):
         """Create an instance with the given correlations.
 
         Parameters
         ----------
         corr_array: array_like
+            The correlation of the first element of the domain with
+            each other element.
+        is_cyclic: bool
 
         Returns
         -------
         HomogeneousIsotropicCorrelation
         """
         corr_array = asarray(corr_array)
-        self = cls(corr_array.shape)
+        shape = corr_array.shape
+        ndims = corr_array.ndim
+
+        if is_cyclic:
+            computational_shape = shape
+            self = cls(shape, computational_shape)
+            corr_fourier = self._fft(corr_array)
+        else:
+            computational_shape = tuple(
+                2 * (dim - 1) for dim in shape)
+            self = cls(shape, computational_shape)
+
+            for axis in reversed(range(ndims)):
+                corr_array = concatenate(
+                    [corr_array, flip(corr_array[1:-1], axis)],
+                    axis=axis)
+
+            # Advantages over dctn: guaranteed same format and gets
+            # nice planning done for the later evaluations.
+            corr_fourier = rfftn(
+                corr_array, axes=arange(0, ndims, dtype=int),
+                threads=NUM_THREADS, planner_effort="FFTW_EXHAUSTIVE")
+
         # The fft axes need to be a single chunk for the dask ffts
         # It's in memory already anyway
         # TODO: create a from_spectrum to delegate to
-        corr_fourier = (self._fft(corr_array))
         self._corr_fourier = (corr_fourier)
         self._fourier_near_zero = (corr_fourier < FOURIER_NEAR_ZERO)
         return self
@@ -228,9 +274,10 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
 
         Returns
         -------
-        S: HomogeneousLinearOperator
+        S: HomogeneousIsotropicCorrelation
         """
-        result = HomogeneousIsotropicCorrelation(self._underlying_shape)
+        result = HomogeneousIsotropicCorrelation(self._underlying_shape,
+                                                 self._computational_shape)
         result._corr_fourier = sqrt(self._corr_fourier)
         # I still don't much trust these.
         result._fourier_near_zero = self._fourier_near_zero
@@ -273,7 +320,7 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         """
         _shape = self._underlying_shape
         fields = asarray(mat).reshape(_shape + (-1,))
-        # TODO: Test this
+        # TODO: Distribute columns over dask tasks
 
         spectral_fields = self._fft(fields)
         spectral_fields *= self._corr_fourier[..., np.newaxis]
@@ -290,8 +337,22 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
     # Correlation matrices are also real
 
     def inv(self):
-        """Construct the matrix inverse of this operator."""
+        """Construct the matrix inverse of this operator.
+
+        Returns
+        -------
+        LinearOperator
+
+        Raises
+        ------
+        ValueError
+            if the instance is acyclic
+        """
         # TODO: Test this
+        if not self._is_cyclic:
+            raise NotImplementedError(
+                "HomogeneousIsotropicCorrelation.inv "
+                "does not support acyclic correlations")
         # TODO: Return a HomogeneousIsotropicLinearOperator
         return DaskLinearOperator(
             shape=self.shape, dtype=self.dtype,
@@ -308,7 +369,16 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         -------
         array_like[N]
             Solution of `self @ x = vec`
+
+        Raises
+        ------
+        ValueError
+            if the instance is acyclic.
         """
+        if not self._is_cyclic:
+            raise NotImplementedError(
+                "HomogeneousIsotropicCorrelation.solve "
+                "does not support acyclic correlations")
         field = asarray(vec).reshape(self._underlying_shape)
 
         spectral_field = self._fft(field)
@@ -334,7 +404,8 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         -------
         scipy.sparse.linalg.LinearOperator
         """
-        if not isinstance(other, HomogeneousIsotropicCorrelation):
+        if ((not isinstance(other, HomogeneousIsotropicCorrelation) or
+             self._is_cyclic != other._is_cyclic)):
             return SchmidtKroneckerProduct(self, other)
         shape = self._underlying_shape + other._underlying_shape
         shift = len(self._underlying_shape)
@@ -497,9 +568,9 @@ def make_matrix(corr_func, shape):
 
     See Also
     --------
-    :func:`statsmodels.stats.correlation_tools.corr_clipped`, which
-    does something similar, and refers to other functions that may
-    give more accurate results.
+    :func:`statsmodels.stats.correlation_tools.corr_clipped`
+        Does something similar, and refers to other functions that may
+        give more accurate results.
 
     Returns
     -------
@@ -537,6 +608,8 @@ def make_matrix(corr_func, shape):
 class DistanceCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
     """A correlation function that depends only on distance."""
 
+    _distance_scaling = 1
+
     def __init__(self, length):
         """Set up instance.
 
@@ -545,7 +618,19 @@ class DistanceCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
         length: float
             The correlation length in index space. Unitless.
         """
-        self._length = float(length)
+        self._length = self._distance_scaling * float(length)
+
+    def __repr__(self):
+        """Return a string representation of self."""
+        return "{name:s}({length:g})".format(
+            length=self._length / self._distance_scaling,
+            name=type(self).__name__)
+
+    def __str__(self):
+        """Return a string version for printing."""
+        return "{name:s}({length:3.2e})".format(
+            length=self._length / self._distance_scaling,
+            name=type(self).__name__)
 
     @abc.abstractmethod
     def __call__(self, dist):
@@ -581,30 +666,6 @@ class DistanceCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
         point2 = asanyarray(indices[half:])
         dist = norm(point1 - point2, axis=0)
         return self(dist)
-
-
-class GaussianCorrelation(DistanceCorrelationFunction):
-    """A gaussian correlation structure.
-
-    Note
-    ----
-    Correlation given by exp(-dist**2 / (2 * length**2)) where dist is the
-    distance between the points.
-    """
-
-    def __call__(self, dist):
-        """Get the correlation between the points.
-
-        Parameters
-        ----------
-        dist: float
-
-        Returns
-        -------
-        corr: float
-        """
-        scaled_dist2 = square(dist / self._length)
-        return exp(-.5 * scaled_dist2)
 
 
 class ExponentialCorrelation(DistanceCorrelationFunction):
@@ -647,12 +708,7 @@ class BalgovindCorrelation(DistanceCorrelationFunction):
     I have no idea why.  3 and 30 are fine.
     """
 
-    def __init__(self, length):
-        """Set up instance with proper length.
-
-        This folds a constant into the length.
-        """
-        super(BalgovindCorrelation, self).__init__(.5 * length)
+    _distance_scaling = 0.5
 
     def __call__(self, dist):
         """Get the correlation between the points.
@@ -690,6 +746,8 @@ class MaternCorrelation(DistanceCorrelationFunction):
     isbn: 978-1-4612-7166-6.  doi: 10.1007/978-1-4612-1494-6
     """
 
+    _distance_scaling = 1.25
+
     def __init__(self, length, kappa=1):
         r"""Set up instance.
 
@@ -707,10 +765,11 @@ class MaternCorrelation(DistanceCorrelationFunction):
             The default value is entirely arbitrary and may change without
             notice.
         """
-        super(MaternCorrelation, self).__init__(length)
         self._kappa = kappa
         # Make sure correlation at zero is one
         self._scale_const = .5 * gamma(kappa)
+        self._distance_scaling = self._distance_scaling * self._scale_const
+        super(MaternCorrelation, self).__init__(length)
 
     def __call__(self, dist):
         """Get the correlation between the points.
@@ -729,3 +788,27 @@ class MaternCorrelation(DistanceCorrelationFunction):
                   K_nu(kappa, scaled_dist) / self._scale_const)
         # K_nu returns nan at zero
         return where(isnan(result), 1, result)
+
+
+class GaussianCorrelation(DistanceCorrelationFunction):
+    """A gaussian correlation structure.
+
+    Note
+    ----
+    Correlation given by exp(-dist**2 / (length**2)) where dist is the
+    distance between the points.
+    """
+
+    def __call__(self, dist):
+        """Get the correlation between the points.
+
+        Parameters
+        ----------
+        dist: float
+
+        Returns
+        -------
+        corr: float
+        """
+        scaled_dist2 = square(dist / self._length)
+        return exp(-scaled_dist2)

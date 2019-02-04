@@ -5,8 +5,11 @@ different methods agree for simple problems.
 
 """
 from __future__ import print_function, division
-import itertools
 import fractions
+import itertools
+import os.path
+import atexit
+import pickle
 import math
 try:
     from functools import reduce
@@ -22,6 +25,7 @@ import scipy.linalg
 import scipy.sparse
 import scipy.optimize
 import unittest2
+import pyfftw
 
 import dask
 import dask.array as da
@@ -46,6 +50,28 @@ try:
 except (ImportError, TypeError):
     from dask.config import set as config_set
     config_set(scheduler="single-threaded")
+
+
+if os.path.exists(".pyfftw.pickle"):
+    with open(".pyfftw.pickle", "rb") as wis_in:
+        wisdom = pickle.load(wis_in)
+
+    if isinstance(wisdom[0], str):
+        wisdom = [wis.encode("ascii")
+                  for wis in wisdom]
+    pyfftw.import_wisdom(wisdom)
+    del wisdom, wis_in
+
+    def save_wisdom():
+        """Save accumulated pyfftw wisdom.
+
+        Saves in hidden file in current directory.
+        Should help speed subsequent tests.
+        """
+        with open(".pyfftw.pickle", "wb") as wis_out:
+            pickle.dump(pyfftw.export_wisdom(), wis_out, 2)
+    atexit.register(save_wisdom)
+    del save_wisdom
 
 
 # If adding other inexact methods to the list tested, be sure to add
@@ -522,7 +548,10 @@ class TestCorrelations(unittest2.TestCase):
                 corr_mat = corr.reshape((np.prod(test_size),) * 2)
 
                 # test postitive definite
-                chol_upper = cholesky(corr_mat)
+                try:
+                    chol_upper = cholesky(corr_mat)
+                except la.LinAlgError:
+                    self.fail("corr_mat not positive definite")
 
                 # test symmetry
                 np_tst.assert_allclose(chol_upper.T.dot(chol_upper),
@@ -533,12 +562,15 @@ class TestCorrelations(unittest2.TestCase):
         """Test make_matrix for 2D correlations.
 
         Checks against original value.
+
+        This test is really slow.
         """
         # 30x25 Gaussian 10 not close
         test_nx = 30
         test_ny = 20
         test_points = test_ny * test_nx
 
+        # TODO: speed up
         for corr_class in (
                 inversion.correlations.DistanceCorrelationFunction.
                 __subclasses__()):
@@ -643,27 +675,31 @@ class TestCorrelations(unittest2.TestCase):
             for test_shape in ((300,), (20, 30)):
                 test_size = int(np.prod(test_shape, dtype=int))
                 for dist in (1, 3, 10, 30):
-                    corr_fun = corr_class(dist)
+                    for is_cyclic in (True, False):
+                        corr_fun = corr_class(dist)
 
-                    corr_op = (
-                        inversion.correlations.HomogeneousIsotropicCorrelation.
-                        from_function(corr_fun, test_shape))
-                    # This is the fastest way to get column-major
-                    # order from da.eye.
-                    corr_mat = corr_op.dot(np.eye(test_size).T)
+                        corr_op = (
+                            inversion.correlations.
+                            HomogeneousIsotropicCorrelation.
+                            from_function(corr_fun, test_shape, is_cyclic))
+                        # This is the fastest way to get column-major
+                        # order from da.eye.
+                        corr_mat = corr_op.dot(np.eye(test_size).T)
 
-                    with self.subTest(corr_class=getname(corr_class),
-                                      dist=dist, test_shape=test_shape,
-                                      test="symmetry"):
-                        np_tst.assert_allclose(corr_mat, corr_mat.T,
-                                               rtol=1e-14, atol=1e-15)
-                    with self.subTest(corr_class=getname(corr_class),
-                                      dist=dist, test_shape=test_shape,
-                                      test="self-correlation"):
-                        np_tst.assert_allclose(np.diag(corr_mat), 1)
+                        with self.subTest(
+                                corr_class=getname(corr_class), dist=dist,
+                                test_shape=test_shape, is_cyclic=is_cyclic,
+                                test="symmetry"):
+                            np_tst.assert_allclose(corr_mat, corr_mat.T,
+                                                   rtol=1e-14, atol=1e-15)
+                        with self.subTest(
+                                corr_class=getname(corr_class), dist=dist,
+                                test_shape=test_shape, is_cyclic=is_cyclic,
+                                test="self-correlation"):
+                            np_tst.assert_allclose(np.diag(corr_mat), 1)
 
-    def test_1d_fft_correlation(self):
-        """Test HomogeneousIsotropicCorrelation for 1D arrays.
+    def test_1d_fft_correlation_cyclic(self):
+        """Test HomogeneousIsotropicCorrelation for cyclic 1D arrays.
 
         Check against `make_matrix` and ignore values near the edges
         of the domain where the two methods are different.
@@ -725,8 +761,48 @@ class TestCorrelations(unittest2.TestCase):
                                 test_vec)[noncorr_dist:-noncorr_dist],
                             rtol=1e-3, atol=1e-5)
 
-    def test_2d_fft_correlation(self):
-        """Test HomogeneousIsotropicCorrelation for 2D arrays.
+    def test_1d_fft_correlation_acyclic(self):
+        """Test HomogeneousIsotropicCorrelation for acyclic 1D arrays.
+
+        Check against `make_matrix` and ignore values near the edges
+        of the domain where the two methods are different.
+        """
+        test_nt = 512
+        test_lst = (np.zeros(test_nt), np.ones(test_nt), np.arange(test_nt),
+                    np.eye(100, test_nt)[-1])
+
+        for corr_class in (
+                inversion.correlations.DistanceCorrelationFunction.
+                __subclasses__()):
+            for dist in (1, 3, 10):
+                # Magic numbers
+                # May need to increase for larger test_nt
+                corr_fun = corr_class(dist)
+
+                corr_mat = inversion.correlations.make_matrix(
+                    corr_fun, test_nt)
+                corr_op = (
+                    inversion.correlations.HomogeneousIsotropicCorrelation.
+                    from_function(corr_fun, test_nt, False))
+
+                for i, test_vec in enumerate(test_lst):
+                    with self.subTest(corr_class=getname(corr_class),
+                                      dist=dist, test_num=i,
+                                      inverse="no"):
+                        np_tst.assert_allclose(
+                            corr_op.dot(test_vec),
+                            corr_mat.dot(test_vec),
+                            rtol=1e-3, atol=1e-5)
+
+                for i, test_vec in enumerate(test_lst):
+                    with self.subTest(corr_class=getname(corr_class),
+                                      dist=dist, test_num=i,
+                                      inverse="yes"):
+                        self.assertRaises(
+                            NotImplementedError, corr_op.solve, test_vec)
+
+    def test_2d_fft_correlation_cyclic(self):
+        """Test HomogeneousIsotropicCorrelation for cyclic 2D arrays.
 
         Check against `make_matrix` and ignore values near the edges
         where the two methods differ.
@@ -790,8 +866,51 @@ class TestCorrelations(unittest2.TestCase):
                              noncorr_dist:-noncorr_dist],
                             rtol=1e-3, atol=1e-5)
 
-    def test_homogeneous_from_array(self):
-        """Make sure from_array can be roundtripped.
+    def test_2d_fft_correlation_acyclic(self):
+        """Test HomogeneousIsotropicCorrelation for acyclic 2D arrays.
+
+        Check against `make_matrix` and ignore values near the edges
+        where the two methods differ.
+        """
+        test_shape = (20, 30)
+        test_size = np.prod(test_shape)
+        test_lst = (np.zeros(test_size),
+                    np.ones(test_size),
+                    np.arange(test_size),
+                    np.eye(10 * test_shape[0], test_size)[-1])
+
+        for corr_class in (
+                inversion.correlations.DistanceCorrelationFunction.
+                __subclasses__()):
+            for dist in (1, 3):
+                # Magic numbers
+                # May need to increase for larger domains
+                corr_fun = corr_class(dist)
+
+                corr_mat = inversion.correlations.make_matrix(
+                    corr_fun, test_shape)
+                corr_op = (
+                    inversion.correlations.HomogeneousIsotropicCorrelation.
+                    from_function(corr_fun, test_shape, False))
+
+                for i, test_vec in enumerate(test_lst):
+                    with self.subTest(corr_class=getname(corr_class),
+                                      dist=dist, test_num=i,
+                                      direction="forward"):
+                        np_tst.assert_allclose(
+                            corr_op.dot(test_vec).reshape(test_shape),
+                            corr_mat.dot(test_vec).reshape(test_shape),
+                            rtol=1e-3, atol=1e-5)
+
+                for i, test_vec in enumerate(test_lst):
+                    with self.subTest(corr_class=getname(corr_class),
+                                      dist=dist, test_num=i,
+                                      direction="backward"):
+                        self.assertRaises(
+                            NotImplementedError, corr_op.solve, test_vec)
+
+    def test_homogeneous_from_array_cyclic(self):
+        """Make sure cyclic from_array can be roundtripped.
 
         Also tests that odd state sizes work.
         """
@@ -803,7 +922,7 @@ class TestCorrelations(unittest2.TestCase):
                 corr_fun = corr_class(dist)
                 corr_op1 = (
                     inversion.correlations.HomogeneousIsotropicCorrelation.
-                    from_function(corr_fun, test_size))
+                    from_function(corr_fun, test_size, True))
                 first_column = corr_op1.dot(np.eye(test_size, 1)[:, 0])
 
                 corr_op2 = (
@@ -918,8 +1037,24 @@ class TestCorrelations(unittest2.TestCase):
             from_function)
         toeplitz = scipy.linalg.toeplitz
 
+        with self.subTest(is_cyclic=False, nd=1):
+            corr_op = from_function(corr_func, [10], False)
+            np_tst.assert_allclose(
+                corr_op.dot(np.eye(10)),
+                toeplitz(0.5 ** np.arange(10)))
+
+        with self.subTest(is_cyclic=False, nd=2):
+            corr_op = from_function(corr_func, [2, 3], False)
+            same_row = toeplitz(0.5 ** np.array([0, 1, 2]))
+            other_row = toeplitz(
+                0.5 ** np.array([1, np.sqrt(2), np.sqrt(5)]))
+            np_tst.assert_allclose(
+                corr_op.dot(np.eye(6)),
+                np.block([[same_row, other_row],
+                          [other_row, same_row]]))
+
         with self.subTest(is_cyclic=True, nd=1):
-            corr_op = from_function(corr_func, [10])
+            corr_op = from_function(corr_func, [10], True)
             np_tst.assert_allclose(
                 corr_op.dot(np.eye(10)),
                 toeplitz(
@@ -960,6 +1095,42 @@ class TestCorrelations(unittest2.TestCase):
                     corr_op.inv().dot(ident),
                     la.inv(corr_op.dot(ident)),
                     rtol=1e-5, atol=1e-5)
+
+    def test_acyclic_inv_fails(self):
+        """Test inverse fails for acyclic correlations."""
+        corr_func = (inversion.correlations.
+                     ExponentialCorrelation(1 / np.log(2)))
+        from_function = (
+            inversion.correlations.HomogeneousIsotropicCorrelation.
+            from_function)
+
+        for test_shape in (10, 11, (3, 3), (4, 4)):
+            with self.subTest(test_shape=test_shape):
+                corr_op = from_function(corr_func, test_shape,
+                                        is_cyclic=False)
+                self.assertRaises(
+                    NotImplementedError,
+                    corr_op.inv)
+
+    def test_cyclic_from_array(self):
+        """Test from_array with assumed cyclic correlations."""
+        array = [1, .5, .25, .125, .0625, .125, .25, .5]
+        op = (inversion.correlations.HomogeneousIsotropicCorrelation.
+              from_array(array))
+        mat = scipy.linalg.toeplitz(array)
+
+        np_tst.assert_allclose(op.dot(np.eye(*mat.shape)),
+                               mat)
+
+    def test_acyclic_from_array(self):
+        """Test from_array with correlations assumed acyclic."""
+        array = [1, .5, .25, .125, .0625, .03125]
+        op = (inversion.correlations.HomogeneousIsotropicCorrelation.
+              from_array(array, False))
+        mat = scipy.linalg.toeplitz(array)
+
+        np_tst.assert_allclose(op.dot(np.eye(*mat.shape)),
+                               mat)
 
 
 class TestSchmidtKroneckerProduct(unittest2.TestCase):
@@ -2131,6 +2302,21 @@ class TestLinalgSolve(unittest2.TestCase):
             test_op[:, :-1],
             test_vec[:-1])
 
+    def test_solve_method_fails(self):
+        """Test that solve still works if a solve method fails."""
+        test_op = (
+            inversion.correlations.HomogeneousIsotropicCorrelation.
+            from_array([1, .5, .25, .125, .0625], is_cyclic=False))
+        ident = np.eye(*test_op.shape)
+        test_mat = test_op.dot(ident)
+
+        for vec in ident:
+            with self.subTest(test_vec=vec):
+                np_tst.assert_allclose(
+                    inversion.linalg.solve(test_op, vec),
+                    np_la.solve(test_mat, vec),
+                    atol=1e-10)
+
 
 class TestLinopSolve(unittest2.TestCase):
     """Test the abilities of linop_solve."""
@@ -2190,17 +2376,20 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
         tester = np.eye(*result1.shape)
         np_tst.assert_allclose(result1.dot(tester), result2.dot(tester))
 
-    @unittest2.expectedFailure
     def test_semidefinite_array(self):
         """Test that matrix_sqrt works for semidefinite arrays.
 
-        This currently fails due to lazy evaluation.
+        This currently fails due to use of cholesky decomposition.  I
+        would need to rewrite matrix_sqrt to catch the error and use
+        scipy's matrix_sqrt: I'm already assuming symmetric inputs.
+
         """
         mat = np.diag([1, 0])
 
-        proposed = inversion.linalg.matrix_sqrt(mat)
-        # Fun with one and zero
-        np_tst.assert_allclose(proposed, mat)
+        with self.assertRaises(la.LinAlgError):
+            proposed = inversion.linalg.matrix_sqrt(mat)
+            # Fun with one and zero
+            np_tst.assert_allclose(proposed, mat)
 
     def test_delegate(self):
         """Test that matrix_sqrt delegates where possible."""

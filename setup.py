@@ -6,7 +6,7 @@ from __future__ import print_function, division
 import os.path
 import sys
 
-from setuptools import setup, find_packages
+from setuptools import setup
 
 sys.path.append(os.path.join(
     os.path.abspath(os.path.dirname(__file__)),
@@ -20,5 +20,4 @@ setup(
     author_email="dfw5129@psu.edu",
     test_suite="inversion.tests",
     package_dir={"": "src"},
-    packages=find_packages("src"),
 )

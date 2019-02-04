@@ -40,7 +40,7 @@ as being a close approximation for :math:`\vec{x}` near
 
     The many submodules use a `from module import names` pattern to
     get needed functions. This is to allow a substitution from other
-    libraries (:func:`np.exp` instead of :func:`math.exp` for
+    libraries (:func:`numpy.exp` instead of :func:`math.exp` for
     vectorization, :func:`dask.array.exp` instead for out-of-core
     evaluation, ...)
 
