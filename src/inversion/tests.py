@@ -19,7 +19,6 @@ except ImportError:
 
 import numpy as np
 import numpy.linalg as np_la
-import numpy.random as np_rand
 import numpy.testing as np_tst
 import scipy.linalg
 import scipy.sparse
@@ -33,7 +32,6 @@ import numpy.linalg as la
 # Import from scipy.linalg if not using dask
 from scipy.linalg import cholesky
 
-import inversion.covariance_estimation
 import inversion.optimal_interpolation
 import inversion.correlations
 import inversion.covariances
@@ -1498,127 +1496,6 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
             combined_op, inversion.correlations.SchmidtKroneckerProduct)
         self.assertSequenceEqual(combined_op.shape,
                                  tuple(np.multiply(op1.shape, mat2.shape)))
-
-
-class TestCovarianceEstimation(unittest2.TestCase):
-    """Test the background error covariance estimators.
-
-    Not quite a true unit test, since it uses inversion.correlations.
-    """
-
-    def test_nmc_identity(self):
-        """Test the NMC method for a simple case.
-
-        Uses stationary noise on top of a forecast of zero.
-        """
-        test_sample = int(1e6)
-        state_size = 8
-        sample_cov = np.eye(state_size)
-
-        sim_forecasts = np_rand.multivariate_normal(
-            np.zeros(state_size),
-            sample_cov,
-            (test_sample, 2))
-
-        for assume_homogeneous in (False, True):
-            with self.subTest(assume_homogeneous=assume_homogeneous):
-                estimated_cov = (
-                    inversion.covariance_estimation.nmc_covariances(
-                        sim_forecasts, 4, assume_homogeneous))
-                np_tst.assert_allclose(estimated_cov, sample_cov,
-                                       rtol=1e-2, atol=3e-3)
-
-    def test_nmc_generated(self):
-        """Test NMC method for a more complicated case.
-
-        Gaussian correlations are still a bad choice.
-        """
-        test_sample = int(1e6)
-        state_size = 5
-
-        corr_class = inversion.correlations.ExponentialCorrelation
-        for dist in (1, 3):
-            corr_fun = corr_class(dist)
-
-            # corr_mat = inversion.correlations.make_matrix(corr_fun,
-            #                                               state_size)
-            corr_op = (
-                inversion.correlations.HomogeneousIsotropicCorrelation.
-                from_function(
-                    corr_fun, state_size))
-            corr_mat = corr_op.dot(np.eye(state_size))
-
-            sim_forecasts = np_rand.multivariate_normal(
-                np.zeros(state_size),
-                corr_mat,
-                (test_sample, 2))
-
-            for assume_homogeneous in (False, True):
-                with self.subTest(assume_homogeneous=assume_homogeneous,
-                                  corr_class=getname(corr_class),
-                                  dist=dist):
-                    estimated_cov = (
-                        inversion.covariance_estimation.nmc_covariances(
-                            sim_forecasts, 4, assume_homogeneous))
-
-                    # 1/sqrt(test_sample) would be roughly the
-                    # standard error for the mean. I don't know the
-                    # characteristics of the distribution for
-                    # covariance matrices, but they tend to be more
-                    # finicky.
-                    np_tst.assert_allclose(estimated_cov, corr_mat,
-                                           rtol=1e-2, atol=3e-3)
-
-    def test_cq_identity(self):
-        """Test Canadian Quick covariances for identity."""
-        state_size = 7
-        sample_size = int(1e6)
-        state_cov = np.eye(state_size) / 2
-
-        forecast_tendencies = np_rand.standard_normal(
-            (sample_size, state_size))
-        climatology = np.cumsum(forecast_tendencies, axis=0)
-
-        for assume_homogeneous in (False, True):
-            with self.subTest(assume_homogeneous=assume_homogeneous):
-                estimated_covariances = (
-                    inversion.covariance_estimation.canadian_quick_covariances(
-                        climatology, assume_homogeneous))
-
-                np_tst.assert_allclose(estimated_covariances, state_cov,
-                                       rtol=2e-3, atol=2e-3)
-
-    def test_cq_expon(self):
-        """Test Canadian Quick covariances with exponential truth."""
-        state_size = 5
-        sample_size = int(1e6)
-
-        corr_cls = inversion.correlations.ExponentialCorrelation
-        for dist in (1, 3):
-            corr_fun = corr_cls(dist)
-
-            # assume_homogeneous forces this structure
-            # using it simplifies the tests
-            corr_op = (
-                inversion.correlations.HomogeneousIsotropicCorrelation.
-                from_function(corr_fun, state_size))
-            corr_mat = corr_op.dot(np.eye(state_size))
-
-            forecast_tendencies = np_rand.multivariate_normal(
-                np.zeros(state_size), corr_mat * 2,
-                sample_size)
-            climatology = np.cumsum(forecast_tendencies, axis=0)
-
-            for assume_homogeneous in (False, True):
-                with self.subTest(assume_homogeneous=assume_homogeneous,
-                                  dist=dist):
-                    estimated_covariances = (
-                        inversion.covariance_estimation.
-                        canadian_quick_covariances(
-                            climatology, assume_homogeneous))
-
-                    np_tst.assert_allclose(estimated_covariances, corr_mat,
-                                           rtol=3e-3, atol=3e-3)
 
 
 class TestUtilSchmidtDecomposition(unittest2.TestCase):

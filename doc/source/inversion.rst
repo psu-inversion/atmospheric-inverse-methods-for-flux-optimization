@@ -30,7 +30,6 @@ Other utility functions
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 .. toctree::
-   inversion.covariance_estimation
    inversion.linalg
    inversion.noise
    inversion.util
