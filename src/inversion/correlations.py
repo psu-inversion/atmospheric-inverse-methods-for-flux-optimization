@@ -741,9 +741,10 @@ class MaternCorrelation(DistanceCorrelationFunction):
 
     References
     ----------
-    Stein, Michael L. *Interpolation of Spatial Data: Some Theory for Kridging*
-    Springer-Verlag New York.  Part of Springer Series in Statistics (issn: 0172-7397)
-    isbn: 978-1-4612-7166-6.  doi: 10.1007/978-1-4612-1494-6
+    Stein, Michael L. *Interpolation of Spatial Data: Some Theory for
+    Kridging* Springer-Verlag New York.  Part of Springer Series in
+    Statistics (issn:0172-7397) isbn:978-1-4612-7166-6.
+    doi:10.1007/978-1-4612-1494-6
     """
 
     _distance_scaling = 1.25
@@ -760,7 +761,7 @@ class MaternCorrelation(DistanceCorrelationFunction):
             :math:`kappa=\infty` is equivalent to Gaussian correlations
             :math:`kappa=\frac{1}{2}` is equivalent to exponential
             :math:`kappa=1` is Balgovind's recommendation for 2D fields
-            :math:`kappa=\frac{3}{2}` is Balgovind's recommendation for 3D fields
+            :math:`kappa=\frac{3}{2}` matches Balgovind's advice for 3D fields
             Default value is only for full equivalence with other classes.
             The default value is entirely arbitrary and may change without
             notice.
