@@ -527,7 +527,7 @@ flush_output_streams()
 DAILY_FLUX_TIMESCALE = 7
 day_correlations = (
     inversion.correlations.make_matrix(
-        inversion.correlations.GaussianCorrelation(DAILY_FLUX_TIMESCALE),
+        inversion.correlations.ExponentialCorrelation(DAILY_FLUX_TIMESCALE),
         ((FLUX_WINDOW) // HOURS_PER_DAY + OBS_WINDOW,)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have daily correlations")
 flush_output_streams()
@@ -696,7 +696,7 @@ for i, inversion_period in enumerate(grouper(
     # Calculate temporal covariances having same number of days as the fluxes
     day_correlations = (
         inversion.correlations.make_matrix(
-            inversion.correlations.ExponentialCorrelation(
+            inversion.correlations.GaussianCorrelation(
                 DAILY_FLUX_TIMESCALE),
             (len(aligned_fluxes.indexes["flux_time"]) *
              FLUX_INTERVAL // HOURS_PER_DAY,)))
