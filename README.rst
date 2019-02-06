@@ -26,3 +26,9 @@ To run only code correctness tests for the current interpreter:
 .. code::
 
     python setup.py test
+
+License
+-------
+
+By downloading this software you agree to the terms of use of the
+`3-clause BSD license <LICENSE.txt>`_.
