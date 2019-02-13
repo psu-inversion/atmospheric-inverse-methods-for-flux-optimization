@@ -188,6 +188,7 @@ spatial_correlations = (
          len(TRUE_FLUXES_MATCHED.coords["dim_x"]))))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have spatial correlations")
 sys.stdout.flush(); sys.stderr.flush()
+# Look into prescribing negative correlations between day and night
 hour_correlations = (
     inversion.correlations.HomogeneousIsotropicCorrelation.
     from_function(
@@ -215,7 +216,9 @@ sys.stdout.flush(); sys.stderr.flush()
 # I would like to add a fixed minimum at some point.
 # full stds would then be sqrt(fixed^2 + varying^2)
 # average seasonal variation (or some fraction thereof) might work.
-FLUX_VARIANCE_VARYING_FRACTION = 2.
+# x2 for MsTMIP fluxes not getting full uncertainty
+# x5 for MsTMIP representing monthly fluxes, where I'm working with sub-daily
+FLUX_VARIANCE_VARYING_FRACTION = 2. * 5.
 flux_std_pattern = xarray.open_dataset(
     "../data_files/2010_MsTMIP_flux_std.nc4", chunks=dict(Time=8*21)).get(
     ["E_TRA{:d}".format(i + 1) for i in range(1)])  # .isel(emissions_zdim=0)
