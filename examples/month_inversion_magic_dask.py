@@ -34,7 +34,7 @@ import inversion.variational
 import inversion.correlations
 import inversion.covariances
 from inversion.util import kronecker_product
-from inversion.linalg import asarray
+from inversion.linalg import asarray, kron
 from inversion.noise import gaussian_noise
 import cf_acdd
 
@@ -492,8 +492,11 @@ flush_output_streams()
 # Get an observation operator for the month
 #
 # To treat the flux as a mean, we need to sum the influence function
-reduced_influences = aligned_influences.resample(flux_time="1M").sum()
-# "flux_time")
+reduced_influences = (
+    aligned_influences
+    .resample(flux_time="1M").sum("flux_time")
+    .sum(["dim_y", "dim_x"])
+)
 reduced_influences.load()
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have influence for monthly average plots")
@@ -540,7 +543,7 @@ spatial_correlations = (
             CORRELATION_LENGTH / GRID_RESOLUTION),
         (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
          len(TRUE_FLUXES_MATCHED.coords["dim_x"]))))
-spatial_correlation_remapper = np.fill(
+spatial_correlation_remapper = np.full(
     # Grid points at full resolution, grid points at reduced resolution
     (spatial_correlations.shape[0], 1),
     # 1/Number of gridpoints combined in above mapping
@@ -571,12 +574,12 @@ day_correlations = (
          FLUX_INTERVAL // HOURS_PER_DAY,)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have daily correlations")
 flush_output_streams()
-temporal_correlations = kronecker_product(day_correlations,
-                                          hour_correlations_matrix)
+temporal_correlations = kron(day_correlations,
+                             hour_correlations_matrix)
 print("Temporal:", type(temporal_correlations))
 temporal_correlation_ds = xarray.DataArray(
     temporal_correlations,
-    dict(flux_time=aligned_prior_fluxes.indexes["flux_time"],
+    dict(flux_time=aligned_prior_fluxes.indexes["flux_time"].values,
          flux_time_adjoint=aligned_prior_fluxes.indexes["flux_time"].values),
     ("flux_time", "flux_time_adjoint"),
     "temporal_correlations",
@@ -767,24 +770,23 @@ flush_output_streams()
 posterior_covariance_ds = xarray.Dataset(
     dict(
         reduced_posterior_covariance=(
-            list(aligned_prior_fluxes.dims) +
-            ["{0:s}_adjoint".format(dim) for dim in aligned_prior_fluxes.dims],
+            reduced_temporal_correlation_ds.dims,
             reduced_posterior_covariances.reshape(
-                2 * tuple(aligned_prior_fluxes.shape)),
+                reduced_temporal_correlation_ds.shape),
             dict(
                 long_name="reduced_covariance_matrix_for_posterior_fluxes",
                 units=(FLUX_UNITS ** 2).format(),
             ),
         )
     ),
-    aligned_prior_fluxes.coords,
+    reduced_temporal_correlation_ds.coords,
     posterior_global_atts
 )
 
 encoding = {name: {"_FillValue": -99}
-            for name in posterior_ds.data_vars}
+            for name in posterior_covariance_ds.data_vars}
 encoding.update({name: {"_FillValue": False}
-                 for name in posterior_ds.coords})
+                 for name in posterior_covariance_ds.coords})
 
 posterior_covariance_ds.to_netcdf(
     ("2010-07_monthly_inversion_{flux_interval:02d}h_027km_"
