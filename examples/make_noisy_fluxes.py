@@ -31,7 +31,7 @@ sys.path.append(THIS_DIR)
 
 import inversion.correlations
 import inversion.covariances
-from inversion.linalg import asarray
+from inversion.linalg import asarray, kron
 from inversion.util import kronecker_product
 from inversion.covariances import CorrelationStandardDeviation
 from inversion.noise import gaussian_noise
@@ -207,8 +207,8 @@ day_correlations = (
         FLUX_INTERVAL // HOURS_PER_DAY,)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have daily correlations")
 sys.stdout.flush(); sys.stderr.flush()
-temporal_correlations = kronecker_product(day_correlations,
-                                          hour_correlations_matrix)
+temporal_correlations = kron(day_correlations,
+                             hour_correlations_matrix)
 print("Temporal:", type(temporal_correlations))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have temporal correlations")
 sys.stdout.flush(); sys.stderr.flush()
