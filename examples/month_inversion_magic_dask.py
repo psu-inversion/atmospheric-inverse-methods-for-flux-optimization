@@ -542,7 +542,8 @@ spatial_correlations = (
         inversion.correlations.ExponentialCorrelation(
             CORRELATION_LENGTH / GRID_RESOLUTION),
         (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
-         len(TRUE_FLUXES_MATCHED.coords["dim_x"]))))
+         len(TRUE_FLUXES_MATCHED.coords["dim_x"])),
+        is_cyclic=False))
 spatial_correlation_remapper = np.full(
     # Grid points at full resolution, grid points at reduced resolution
     (spatial_correlations.shape[0], 1),
@@ -560,7 +561,8 @@ hour_correlations = (
     from_function(
         inversion.correlations.ExponentialCorrelation(
             HOURLY_FLUX_TIMESCALE / FLUX_INTERVAL),
-        (INTERVALS_PER_DAY,)))
+        (INTERVALS_PER_DAY,),
+        is_cyclic=True))
 hour_correlations_matrix = hour_correlations.dot(np.eye(
     hour_correlations.shape[0]))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have hourly correlations")

@@ -185,7 +185,9 @@ spatial_correlations = (
         SPATIAL_CORRELATION_FUNCTION(
             CORRELATION_LENGTH / GRID_RESOLUTION),
         (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
-         len(TRUE_FLUXES_MATCHED.coords["dim_x"]))))
+         len(TRUE_FLUXES_MATCHED.coords["dim_x"])),
+        is_cyclic=False,
+))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have spatial correlations")
 sys.stdout.flush(); sys.stderr.flush()
 # Look into prescribing negative correlations between day and night
@@ -194,7 +196,9 @@ hour_correlations = (
     from_function(
         inversion.correlations.ExponentialCorrelation(
             HOURLY_FLUX_TIMESCALE / FLUX_INTERVAL),
-        (INTERVALS_PER_DAY,)))
+        (INTERVALS_PER_DAY,),
+        is_cyclic=True
+))
 hour_correlations_matrix = hour_correlations.dot(np.eye(
     hour_correlations.shape[0]))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have hourly correlations")
