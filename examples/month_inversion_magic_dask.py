@@ -597,6 +597,7 @@ reduced_temporal_correlation_ds = (
     .resample(flux_time_adjoint="1M").mean("flux_time_adjoint")
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have temporal correlations")
+print(reduced_temporal_correlation_ds.values)
 flush_output_streams()
 
 full_correlations = kronecker_product(
@@ -609,7 +610,9 @@ flush_output_streams()
 # I would like to add a fixed minimum at some point.
 # full stds would then be sqrt(fixed^2 + varying^2)
 # average seasonal variation (or some fraction thereof) might work.
-FLUX_VARIANCE_VARYING_FRACTION = 2.
+# x2 since MsTMIP spread does not represent full uncertainty
+# x5 since MsTMIP spread only represents monthly values and this uses sub-daily
+FLUX_VARIANCE_VARYING_FRACTION = 2. * 5.
 flux_std_pattern = xarray.open_dataset(
     "../data_files/2010_MsTMIP_flux_std.nc4",
     engine=NC_ENGINE
@@ -641,17 +644,21 @@ reduced_spatial_covariance = spatial_correlation_remapper.T.dot(
     inversion.covariances.CorrelationStandardDeviation(
         spatial_correlations, reduced_flux_stds).dot(
         spatial_correlation_remapper))
+print(datetime.datetime.now(UTC).strftime("%c"), "Have spatial covariances")
+print(reduced_spatial_covariance)
+flush_output_streams()
 
 prior_covariance = inversion.covariances.CorrelationStandardDeviation(
     kronecker_product(
         temporal_correlations,
         spatial_correlations),
     flux_stds)
-reduced_prior_covariance = kronecker_product(
+reduced_prior_covariance = kron(
     reduced_temporal_correlation_ds.data,
     reduced_spatial_covariance)
 print("Covariance:", type(prior_covariance))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have covariances")
+print(reduced_prior_covariance)
 flush_output_streams()
 
 # I realize this isn't quite the intended use for OBS_CHUNK
@@ -668,7 +675,7 @@ here_obs = WRF_OBS_SITE[TRACER_NAME].sel_points(
               points="observation"))
 print(here_obs)
 
-OBSERVATION_STD = 0.4
+OBSERVATION_STD = 2.
 """Standard deviation of observations
 
 This assumes similar deviations can be expected at each site.
@@ -779,7 +786,16 @@ posterior_covariance_ds = xarray.Dataset(
                 long_name="reduced_covariance_matrix_for_posterior_fluxes",
                 units=(FLUX_UNITS ** 2).format(),
             ),
-        )
+        ),
+        reduced_prior_covariance=(
+            reduced_temporal_correlation_ds.dims,
+            reduced_prior_covariance.reshape(
+                reduced_temporal_correlation_ds.shape),
+            dict(
+                long_name="reduced_covariance_matrix_for_prior_fluxes",
+                units=(FLUX_UNITS ** 2).format(),
+            ),
+        ),
     ),
     reduced_temporal_correlation_ds.coords,
     posterior_global_atts
