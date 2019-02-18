@@ -1,11 +1,13 @@
 * DONE Yadav and Michalak (2013) Kronecker products
+** TODO Y&M (2013)-style linops for 3 operators
+** TODO Y&M (2013)-style linops for two arrays
 * TODO Y&M2013 reduced posterior uncertainties
   We don't usually care about uncertainties at a three-hour scale.
   Summing the first axis of B to monthly time scale and reporting that
   should be plenty.  We don't often care about sub-monthly fluxes
   either, but the flexibility can be useful.
 ** DONE Implement
-** TODO Test implementation
+** DONE Test implementation
 * DONE Compare performance for different input chunk-sizes
   Doing everything in memory is only slightly slower, so there should
   be some optimum where caching is still good but I'm not spending so
