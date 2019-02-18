@@ -68,6 +68,19 @@ POSTERIOR_PATH = (
          invfun=INV_FUNCTION, invlen=INV_LENGTH,
          inv_time_fun=INV_TIME_FUN, inv_time_len=INV_TIME_LEN)
 
+COVARIANCE_DS = xarray.open_dataset(
+    "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
+    "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d_"
+    "icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d_"
+    "covariance_output.nc4".format(
+        year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
+        noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
+        noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
+        invfun=INV_FUNCTION, invlen=INV_LENGTH,
+        inv_time_fun=INV_TIME_FUN, inv_time_len=INV_TIME_LEN
+    )
+)
+
 WRF_CRS = ccrs.LambertConformal(
     standard_parallels=(30, 60), central_latitude=40,
     central_longitude=-96, false_easting=0, false_northing=0,
@@ -218,10 +231,8 @@ for name, var in PRIOR_DS.data_vars.items():
 NOISE_STD_DS = xarray.open_dataset(
     "../data_files/{year:04d}_MsTMIP_flux_std.nc4".format(
         year=YEAR, month=MONTH),
-    chunks=dict(Time=21*8)
-)[["E_TRA1"]].rolling(
-    center=True, min_periods=3, Time=8*21
-).mean(dim="Time", keep_attrs=True).sel(
+    chunks=dict(Time=21 * 8)
+)[["E_TRA1"]].sel(
     Time=slice("2010-06-16", "2010-07-31")
 ).mean("Time", keep_attrs=True)
 NOISE_STD_DS["E_TRA1"].attrs["units"] = "umol/m^2/s"
@@ -240,13 +251,15 @@ for name, var in NOISE_STD_DS.data_vars.items():
         var /= 3.6e3
         var.attrs["units"] = "μmol/m^2/s"
 
-NOISE_STD_DS.coords["south_north"] = PRIOR_DS.coords["dim_y"].data
-NOISE_STD_DS.coords["west_east"] = PRIOR_DS.coords["dim_x"].data
+# NOISE_STD_DS.coords["south_north"] = PRIOR_DS.coords["dim_y"].data
+# NOISE_STD_DS.coords["west_east"] = PRIOR_DS.coords["dim_x"].data
 
 NOISE_STD_DS["E_TRA7"] = NOISE_STD_DS["E_TRA1"]
 
-INVERSION_DS = xarray.open_dataset(POSTERIOR_PATH,
-                                   chunks=dict(realization=1, flux_time=8*14))
+INVERSION_DS = xarray.open_dataset(
+    POSTERIOR_PATH,
+    chunks=dict(realization=1, flux_time=8 * 14)
+)
 PSEUDO_OBS_DS = INVERSION_DS["pseudo_observations"]
 POSTERIOR_DS = INVERSION_DS[["posterior", "prior", "truth"]].rename(
     dict(dim_x="projection_x_coordinate", dim_y="projection_y_coordinate",
@@ -261,18 +274,25 @@ for var in POSTERIOR_DS.data_vars.values():
     var *= 1e6
     var.attrs["units"] = "μ" + var.attrs["units"]
 
+NOISE_STD_DS.coords["south_north"] = (
+    POSTERIOR_DS.coords["projection_y_coordinate"].data
+)
+NOISE_STD_DS.coords["west_east"] = (
+    POSTERIOR_DS.coords["projection_x_coordinate"].data
+)
+
 SMALL_POSTERIOR_DS = POSTERIOR_DS.sel(
     projection_x_coordinate=slice(WEST_BOUNDARY_WRF, EAST_BOUNDARY_WRF),
     projection_y_coordinate=slice(SOUTH_BOUNDARY_WRF, NORTH_BOUNDARY_WRF),
 )
-SMALL_PRIOR_DS = PRIOR_DS.sel(
-    dim_x=slice(WEST_BOUNDARY_WRF, EAST_BOUNDARY_WRF),
-    dim_y=slice(SOUTH_BOUNDARY_WRF, NORTH_BOUNDARY_WRF))
+# SMALL_PRIOR_DS = PRIOR_DS.sel(
+#     dim_x=slice(WEST_BOUNDARY_WRF, EAST_BOUNDARY_WRF),
+#     dim_y=slice(SOUTH_BOUNDARY_WRF, NORTH_BOUNDARY_WRF))
 
 PSEUDO_OBS_DS = xarray.open_mfdataset(
     "observation_realizations_for_06h_0?.nc4",
     concat_dim="observation",
-    chunks=dict(observation=24*7),
+    chunks=dict(observation=24 * 7),
 ).set_index(
     observation=("observation_time", "site")).transpose(
     "realization", "observation")
@@ -307,13 +327,13 @@ sys.stderr.flush()
 # Plot standard deviations
 fig, axes = plt.subplots(
     1, 1, figsize=(5.5, 3.3), subplot_kw=dict(projection=WRF_CRS))
-NOISE_STD_DS.E_TRA7.plot.pcolormesh(robust=True)
+(2. * 5. * NOISE_STD_DS.E_TRA7).plot.pcolormesh(robust=True)
 axes = fig.axes
 axes[0].coastlines()
-axes[1].set_ylabel("standard deviation of noise (μmol/m$^2$/s)")
+axes[1].set_ylabel("standard deviation of noise (mol/m$^2$/s)")
 fig.suptitle("Standard deviation of added noise")
-axes[0].set_xlim(PRIOR_DS.coords["dim_x"][[0, -1]])
-axes[0].set_ylim(PRIOR_DS.coords["dim_y"][[0, -1]])
+axes[0].set_xlim(POSTERIOR_DS.coords["projection_x_coordinate"][[0, -1]])
+axes[0].set_ylim(POSTERIOR_DS.coords["projection_y_coordinate"][[0, -1]])
 axes[0].set_title("")
 axes[0].add_feature(cfeat.BORDERS)
 axes[0].add_feature(STATES)
@@ -372,7 +392,7 @@ plots = for_plotting.isel(time=slice(71, None, 40)).plot.pcolormesh(
     "projection_x_coordinate", "projection_y_coordinate",
     col="type", row="time", subplot_kws=dict(projection=WRF_CRS),
     aspect=1.3, size=1.8,
-    center=0, vmin=-10, vmax=10,
+    center=0, vmin=-40, vmax=40,
     cmap="RdBu_r", levels=None)
 
 for ax in plots.axes.flat:
@@ -420,7 +440,7 @@ write_console_message("Done tower loc plot")
 differences = (for_plotting.isel(type=slice(1, None)) -
                for_plotting.isel(type=0))
 differences.persist()
-plots = differences.isel(time=slice(68-1, None, 40)).plot.pcolormesh(
+plots = differences.isel(time=slice(68 - 1, None, 40)).plot.pcolormesh(
     "projection_x_coordinate", "projection_y_coordinate",
     col="type", row="time", subplot_kws=dict(projection=WRF_CRS),
     aspect=1.3, size=1.8,
@@ -456,7 +476,7 @@ gain.attrs["long_name"] = "inversion_gain"
 gain.attrs["units"] = "1"
 # gain.load()
 
-plots = gain.isel(time=slice(68-1, None, 20)).plot.pcolormesh(
+plots = gain.isel(time=slice(68 - 1, None, 20)).plot.pcolormesh(
     "projection_x_coordinate", "projection_y_coordinate",
     row="time", col_wrap=3, subplot_kws=dict(projection=WRF_CRS),
     aspect=1.3, size=1.8,
@@ -765,13 +785,24 @@ all_mean_error.to_dataframe(
 ).loc[:, "error"].unstack(0).loc[
     :, ["prior_error", "posterior_error"]
 ].plot.kde(
-    ax=ax, subplots=False, xlim=(-.1, .1), ylim=(0, None),
+    ax=ax, subplots=False, xlim=(-2, 2), ylim=(0, None),
 )
 # sns.kdeplot(all_mean_error.sel(type="prior_error"), ax=ax,
 #             shade=True, label="Prior")
 # sns.kdeplot(all_mean_error.sel(type="posterior_error"), ax=ax,
 #             shade=True, label="Posterior")
-ax.legend(["Prior Means", "Posterior Means"])
+
+prior_theoretical_variance = (
+    COVARIANCE_DS["reduced_prior_covariance"].mean() * 1e12
+).values
+sample_fluxes = np.linspace(-2, 2, 50)
+flux_densities = (
+    np.exp(-0.5 * sample_fluxes ** 2 / prior_theoretical_variance) /
+    np.sqrt(2 * np.pi * prior_theoretical_variance)
+)
+ax.plot(sample_fluxes, flux_densities, 'r--')
+
+ax.legend(["Prior Means", "Posterior Means", "PDF for Prior Means"])
 ax.set_ylabel("Density")
 ax.set_xlabel("Error in mean estimate (μmol/m$^2$/s)")
 
@@ -801,7 +832,7 @@ small_mean_error.to_dataframe(
 ).loc[:, "error"].unstack(0).loc[
     :, ["prior_error", "posterior_error"]
 ].plot.kde(
-    ax=ax, subplots=False, xlim=(-4, 4), ylim=(0, None),
+    ax=ax, subplots=False, xlim=(-10, 10), ylim=(0, None),
 )
 ax.legend(["Prior Means", "Posterior Means"])
 ax.set_ylabel("Density")
