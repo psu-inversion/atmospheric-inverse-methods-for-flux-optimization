@@ -483,6 +483,10 @@ class SchmidtKroneckerProduct(DaskLinearOperator):
         self._operator1 = operator1
         self._operator2 = operator2
 
+    def _transpose(self):
+        """Return the transpose of the operator."""
+        return type(self)(self._operator1.T, self._operator2.T)
+
     def _matvec(self, vector):
         """Evaluate the indicated matrix-vector product.
 

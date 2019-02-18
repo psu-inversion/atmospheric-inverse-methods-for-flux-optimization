@@ -1213,6 +1213,19 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
             full_mat.dot(test_vec),
             np.eye(6, 1)[:, 0])
 
+    def test_transpose(self):
+        """Test that SchmidtKroneckerProduct can be transposed."""
+        mat1 = np.eye(2)
+        mat2 = np.eye(3)
+
+        op = inversion.correlations.SchmidtKroneckerProduct(mat1, mat2)
+
+        op_transpose = op.T
+
+        np_tst.assert_allclose(
+            op_transpose.dot(np.eye(6)),
+            np.eye(6))
+
 
 class TestYMKroneckerProduct(unittest2.TestCase):
     """Test the YM13 Kronecker product implementation for LinearOperators.
