@@ -26,8 +26,8 @@ equivalent formulation of the problem.
    inversion.variational
    inversion.psas
 
-Other utility functions
-~~~~~~~~~~~~~~~~~~~~~~~
+Other utilities
+~~~~~~~~~~~~~~~
 
 .. toctree::
    inversion.linalg

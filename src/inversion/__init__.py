@@ -29,7 +29,7 @@ as being a close approximation for :math:`\vec{x}` near
 
 .. math::
 
-    H := \frac{d h}{d\vec{x}} \big|_{\vec{x}=\vec{x}_0}
+    H := \frac{d h}{d\vec{x}} \bigg|_{\vec{x}=\vec{x}_0}
 
 .. Note::
 
@@ -38,14 +38,14 @@ as being a close approximation for :math:`\vec{x}` near
 
 .. Note::
 
-    The many submodules use a `from module import names` pattern to
-    get needed functions. This is to allow a substitution from other
-    libraries (:func:`numpy.exp` instead of :func:`math.exp` for
-    vectorization, :func:`dask.array.exp` instead for out-of-core
-    evaluation, ...)
-
+    The many submodules use a :code:`from module import names`
+    pattern to get needed functions. This is to allow a substitution
+    from other libraries (e.g., using :func:`dask.array.exp` instead
+    of :func:`numpy.exp` for out-of-core evaluation, ...)
 """
 
+#############################################################
+# Test tolerances will likely require updates if these change
 MAX_ITERATIONS = 40
 """Max. iterations allowed during minimizations.
 
@@ -53,10 +53,6 @@ I think 40 is what the operational centers use.
 
 Used by variational and PSAS schemes to constrain iterative
 minimization.
-
-Note
-----
-Must change test tolerances if this changes
 """
 GRAD_TOL = 1e-5
 """How small the gradient norm must be to declare convergence.
@@ -66,10 +62,6 @@ From `gtol` option to the BFGS method of
 
 Used by variational and PSAS schemes to constrain iterative
 minimization.
-
-Note
-----
-Must change test tolerances if this changes.
 """
 
 
@@ -79,7 +71,6 @@ class ConvergenceError(ValueError):
     The idea is that those who want good answers or nothing will get
     them, and those who want to take a chance with a bad one can do
     so.  I feel good or nothing is the better default.
-
     """
 
     def __init__(self, msg, result, guess=None, hess_inv=None):
