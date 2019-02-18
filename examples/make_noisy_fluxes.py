@@ -237,23 +237,22 @@ for flux_part in flux_std_pattern.data_vars.values():
     flux_part.attrs["units"] = str(FLUX_UNITS)
 
 osse_prior_dataset = TRUE_FLUXES_MATCHED.copy()
-flux_stds = FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern["E_TRA1"].rolling(
-    center=True, min_periods=3, Time=21 * 8
-).mean().sel(
+flux_stds = FLUX_VARIANCE_VARYING_FRACTION * flux_std_pattern["E_TRA1"].sel(
     Time=TRUE_FLUXES_MATCHED.indexes["flux_time"]
+).mean("Time")
+spatial_covariance = CorrelationStandardDeviation(
+    spatial_correlations, flux_stds.data
 )
 
 # Save to ensure I have only one realization
 for flux_name, flux_vals in TRUE_FLUXES_MATCHED.data_vars.items():
     if not any(flux_name.endswith(char) for char in "167"):
         continue
-    
 
-    prior_covariance = CorrelationStandardDeviation(
-        kronecker_product(
-            temporal_correlations,
-            spatial_correlations),
-        flux_stds.data)
+    prior_covariance = kronecker_product(
+        temporal_correlations,
+        spatial_covariance
+    )
     print("Covariance:", type(prior_covariance))
     print(datetime.datetime.now(UTC).strftime("%c"), "Have covariances")
     sys.stdout.flush(); sys.stderr.flush()

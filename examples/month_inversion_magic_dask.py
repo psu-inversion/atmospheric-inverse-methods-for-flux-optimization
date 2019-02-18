@@ -627,32 +627,32 @@ for flux_part in flux_std_pattern.data_vars.values():
         flux_part *= unit.convert(1, FLUX_UNITS)
         flux_part.attrs["units"] = str(FLUX_UNITS)
 
-flux_stds = (
-    FLUX_VARIANCE_VARYING_FRACTION *
-    flux_std_pattern["E_TRA1"].rolling(
-        center=True, min_periods=3, Time=21 * 8
-    ).mean(dim="Time").sel(
-        Time=temporal_correlation_ds.indexes["flux_time"]
-    ).data)
+# flux_stds = (
+#     FLUX_VARIANCE_VARYING_FRACTION *
+#     flux_std_pattern["E_TRA1"].rolling(
+#         center=True, min_periods=3, Time=21 * 8
+#     ).mean(dim="Time").sel(
+#         Time=temporal_correlation_ds.indexes["flux_time"]
+#     ).data)
 reduced_flux_stds = (
     FLUX_VARIANCE_VARYING_FRACTION *
     flux_std_pattern["E_TRA1"].sel(
         Time=reduced_temporal_correlation_ds.indexes["flux_time"]
     ).mean(dim="Time").data)
 
+spatial_covariance = inversion.covariances.CorrelationStandardDeviation(
+    spatial_correlations, reduced_flux_stds)
+
 reduced_spatial_covariance = spatial_correlation_remapper.T.dot(
-    inversion.covariances.CorrelationStandardDeviation(
-        spatial_correlations, reduced_flux_stds).dot(
+    spatial_covariance.dot(
         spatial_correlation_remapper))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have spatial covariances")
 print(reduced_spatial_covariance)
 flush_output_streams()
 
-prior_covariance = inversion.covariances.CorrelationStandardDeviation(
-    kronecker_product(
-        temporal_correlations,
-        spatial_correlations),
-    flux_stds)
+prior_covariance = kronecker_product(
+    temporal_correlations,
+    spatial_covariance)
 reduced_prior_covariance = kron(
     reduced_temporal_correlation_ds.data,
     reduced_spatial_covariance)
