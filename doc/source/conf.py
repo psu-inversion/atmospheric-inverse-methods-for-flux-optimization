@@ -279,4 +279,5 @@ intersphinx_mapping = {
     'xarray': ("http://xarray.pydata.org/en/stable/", None),
     'pyfftw': ("https://pyfftw.readthedocs.io/en/latest", None),
     'statsmodels': ("http://www.statsmodels.org/stable", None),
+    'pylops': ("https://pylops.readthedocs.io/en/latest/", None),
 }

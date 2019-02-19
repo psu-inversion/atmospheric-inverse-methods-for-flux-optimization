@@ -12,6 +12,8 @@ Classes for defining covariances
    inversion.correlations
    inversion.covariances
 
+The classes provided by :mod:`pylops` may also be useful.
+
 Inversion functions
 ~~~~~~~~~~~~~~~~~~~
 
@@ -25,6 +27,12 @@ equivalent formulation of the problem.
    inversion.optimal_interpolation
    inversion.variational
    inversion.psas
+
+High-level wrappers
+~~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+   inversion.wrapper
 
 Other utilities
 ~~~~~~~~~~~~~~~
