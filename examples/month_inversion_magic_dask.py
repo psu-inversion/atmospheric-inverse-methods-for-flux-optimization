@@ -805,6 +805,10 @@ encoding = {name: {"_FillValue": -99}
             for name in posterior_covariance_ds.data_vars}
 encoding.update({name: {"_FillValue": False}
                  for name in posterior_covariance_ds.coords})
+posterior_covariance_ds.load()
+print(posterior_covariance_ds)
+print(posterior_covariance_ds["reduced_posterior_covariance"].values)
+print(posterior_covariance_ds["reduced_prior_covariance"].values)
 
 posterior_covariance_ds.to_netcdf(
     ("2010-07_monthly_inversion_{flux_interval:02d}h_027km_"
