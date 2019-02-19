@@ -67,7 +67,7 @@ if os.path.exists(".pyfftw.pickle"):
         """Save accumulated pyfftw wisdom.
 
         Saves in hidden file in current directory.
-        Should help speed subsequent tests.
+        Should help speed up subsequent test runs.
         """
         with open(".pyfftw.pickle", "wb") as wis_out:
             pickle.dump(pyfftw.export_wisdom(), wis_out, 2)

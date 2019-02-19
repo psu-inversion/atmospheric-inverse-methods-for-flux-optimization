@@ -32,7 +32,8 @@ from inversion.linalg_interface import is_odd, tolinearoperator
 
 NUM_THREADS = 8
 """Number of threads :mod:`pyfftw` should use for each transform."""
-PLANNER_EFFORT = "FFTW_PATIENT"
+PLANNER_EFFORT = "FFTW_ESTIMATE"
+ADVANCE_PLANNER_EFFORT = "FFTW_MEASURE"
 pyfftw.interfaces.cache.enable()
 
 ROUNDOFF = 1e-13
@@ -214,7 +215,7 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         # This also ensures the format here is the same as in _matmat
         corr_fourier = rfftn(
             corr_struct, axes=arange(ndims, dtype=int),
-            threads=NUM_THREADS, planner_effort="FFTW_EXHAUSTIVE")
+            threads=NUM_THREADS, planner_effort=ADVANCE_PLANNER_EFFORT)
         self._corr_fourier = (corr_fourier)
 
         # This is also affected by roundoff
@@ -260,7 +261,7 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
             # nice planning done for the later evaluations.
             corr_fourier = rfftn(
                 corr_array, axes=arange(0, ndims, dtype=int),
-                threads=NUM_THREADS, planner_effort="FFTW_EXHAUSTIVE")
+                threads=NUM_THREADS, planner_effort=ADVANCE_PLANNER_EFFORT)
 
         # The fft axes need to be a single chunk for the dask ffts
         # It's in memory already anyway
