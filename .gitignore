@@ -54,6 +54,8 @@ dask-worker-space
 monthly_inversion*_output.nc4
 ????-??_monthly_inversion_??h_???km_*_output*.nc4
 ????-??_observation_realizations_for_??h_???km_*.nc4
+.pyfftw.pickle*
+*_profile*
 
 # Filesystem artifacts?
 .nfs*
