@@ -29,6 +29,8 @@ import pyfftw
 import dask
 import dask.array as da
 import numpy.linalg as la
+import pandas as pd
+import xarray
 # Import from scipy.linalg if not using dask
 from scipy.linalg import cholesky
 
@@ -36,6 +38,7 @@ import inversion.optimal_interpolation
 import inversion.correlations
 import inversion.covariances
 import inversion.variational
+import inversion.wrapper
 import inversion.linalg
 import inversion.noise
 import inversion.psas
@@ -2452,6 +2455,264 @@ class TestReducedUncertainties(unittest2.TestCase):
                 ValueError, ALL_METHODS[0],
                 bg, bg_cov, obs, obs_cov, obs_op,
                 reduced_background_covariance=bg_cov_red)
+
+
+class TestWrapperMetadata(unittest2.TestCase):
+    """Test the metadata provided for the wrapper."""
+
+    def test_cf(self):
+        """Test metadata for CF attributes I can guess."""
+        metadata = inversion.wrapper.global_attributes_dict()
+
+        self.assertIn("Conventions", metadata)
+        self.assertIn("CF", metadata.get("Conventions", ""))
+        self.assertIn("history", metadata)
+
+    def test_acdd(self):
+        """Test metadata for ACDD attributes I can guess."""
+        metadata = inversion.wrapper.global_attributes_dict()
+
+        self.assertIn("Conventions", metadata)
+        self.assertIn("standard_name_vocabulary", metadata)
+        self.assertIn("date_created", metadata)
+        self.assertIn("date_modified", metadata)
+        self.assertIn("date_metadata_modified", metadata)
+        self.assertIn("creator_name", metadata)
+
+    def test_modules_list(self):
+        """Test the list of installed modules.
+
+        Will fail if neither pip nor conda is installed.
+        """
+        metadata = inversion.wrapper.global_attributes_dict()
+
+        self.assertIn("installed_modules", metadata)
+        installed_modules = metadata["installed_modules"]
+        self.assertGreater(len(installed_modules), 0)
+
+        for name_version in installed_modules:
+            self.assertIn("=", name_version)
+
+
+class TestWrapperUniform(unittest2.TestCase):
+    """Test the wrapper functions."""
+
+    def test_simple_site(self):
+        """Test the wrapper for a temporally uniform inversion."""
+        prior_fluxes = xarray.DataArray(
+            np.zeros((40, 10, 20), dtype=DTYPE),
+            coords=dict(
+                flux_time=pd.date_range(start="2010-06-01", periods=40,
+                                        freq="1D"),
+                dim_y=np.arange(10, dtype=DTYPE),
+                dim_x=np.arange(20, dtype=DTYPE),
+            ),
+            dims=("flux_time", "dim_y", "dim_x"),
+            name="prior_fluxes",
+            attrs=dict(units="umol/m^2/s"),
+        )
+        observations = xarray.DataArray(
+            np.ones((20, 3), dtype=DTYPE),
+            coords=dict(
+                observation_time=prior_fluxes.coords["flux_time"][-20:].values,
+                site=["here", "there", "somewhere"],
+            ),
+            dims=("observation_time", "site"),
+            name="observations",
+            attrs=dict(units="ppm"),
+        )
+        influence_function = xarray.DataArray(
+            np.full((20, 3, 40, 10, 20), 1. / 8e3, dtype=DTYPE),
+            coords=dict(
+                observation_time=observations.coords["observation_time"],
+                site=observations.coords["site"],
+                flux_time=prior_fluxes.coords["flux_time"],
+                dim_y=prior_fluxes.coords["dim_y"],
+                dim_x=prior_fluxes.coords["dim_x"],
+            ),
+            dims=("observation_time", "site",
+                  "flux_time", "dim_y", "dim_x"),
+            name="influence_functions",
+            attrs=dict(units="ppm/(umol/m^2/s)"),
+        )
+        prior_flux_standard_deviations = xarray.DataArray(
+            np.ones((10, 20), dtype=DTYPE),
+            coords=dict(
+                dim_y=prior_fluxes.coords["dim_y"],
+                dim_x=prior_fluxes.coords["dim_x"],
+            ),
+            dims=("dim_y", "dim_x"),
+            name="prior_flux_standard_deviations",
+            attrs=dict(units="umol/m^2/s"),
+        )
+        result = inversion.wrapper.invert_uniform(
+            prior_fluxes,
+            observations,
+            influence_function,
+            5,
+            inversion.correlations.ExponentialCorrelation,
+            10,
+            3,
+            prior_flux_standard_deviations,
+            3,
+            inversion.optimal_interpolation.save_sum,
+        )
+
+        self.assertIn("prior", result)
+        self.assertIn("increment", result)
+        self.assertIn("posterior", result)
+        self.assertIn("posterior_covariance", result)
+
+        for dim in result.dims:
+            self.assertIn(dim, result.coords)
+
+    def test_site_more_data(self):
+        """Test the wrapper for a temporally uniform inversion."""
+        prior_fluxes = xarray.DataArray(
+            np.zeros((40, 10, 20), dtype=DTYPE),
+            coords=dict(
+                flux_time=pd.date_range(start="2010-06-01", periods=40,
+                                        freq="1D"),
+                dim_y=np.arange(10, dtype=DTYPE),
+                dim_x=np.arange(20, dtype=DTYPE),
+            ),
+            dims=("flux_time", "dim_y", "dim_x"),
+            name="prior_fluxes",
+            attrs=dict(units="umol/m^2/s"),
+        )
+        observations = xarray.DataArray(
+            np.ones((20, 3), dtype=DTYPE),
+            coords=dict(
+                observation_time=prior_fluxes.coords["flux_time"][-20:].values,
+                site=["here", "there", "somewhere"],
+                site_heights=(("site",), [100, 110, 120]),
+            ),
+            dims=("observation_time", "site"),
+            name="observations",
+            attrs=dict(units="ppm"),
+        )
+        influence_function = xarray.DataArray(
+            np.full((20, 3, 40, 10, 20), 1. / 8e3, dtype=DTYPE),
+            coords=dict(
+                observation_time=observations.coords["observation_time"],
+                site=observations.coords["site"],
+                flux_time=prior_fluxes.coords["flux_time"],
+                dim_y=prior_fluxes.coords["dim_y"],
+                dim_x=prior_fluxes.coords["dim_x"],
+            ),
+            dims=("observation_time", "site",
+                  "flux_time", "dim_y", "dim_x"),
+            name="influence_functions",
+            attrs=dict(units="ppm/(umol/m^2/s)"),
+        )
+        prior_flux_standard_deviations = xarray.DataArray(
+            np.ones((10, 20), dtype=DTYPE),
+            coords=dict(
+                dim_y=prior_fluxes.coords["dim_y"],
+                dim_x=prior_fluxes.coords["dim_x"],
+            ),
+            dims=("dim_y", "dim_x"),
+            name="prior_flux_standard_deviations",
+            attrs=dict(units="umol/m^2/s"),
+        )
+        result = inversion.wrapper.invert_uniform(
+            prior_fluxes,
+            observations,
+            influence_function,
+            5,
+            inversion.correlations.ExponentialCorrelation,
+            10,
+            3,
+            prior_flux_standard_deviations,
+            3,
+            inversion.optimal_interpolation.save_sum,
+        )
+
+        self.assertIn("prior", result)
+        self.assertIn("increment", result)
+        self.assertIn("posterior", result)
+        self.assertIn("posterior_covariance", result)
+
+        for dim in result.dims:
+            self.assertIn(dim, result.coords)
+
+    def test_site_as_aux_coord(self):
+        """Test the wrapper for a temporally uniform inversion."""
+        prior_fluxes = xarray.DataArray(
+            np.zeros((40, 10, 20), dtype=DTYPE),
+            coords=dict(
+                flux_time=pd.date_range(start="2010-06-01", periods=40,
+                                        freq="1D"),
+                dim_y=np.arange(10, dtype=DTYPE),
+                dim_x=np.arange(20, dtype=DTYPE),
+            ),
+            dims=("flux_time", "dim_y", "dim_x"),
+            name="prior_fluxes",
+            attrs=dict(units="umol/m^2/s"),
+        )
+        observations = xarray.DataArray(
+            np.ones((20, 3), dtype=DTYPE),
+            coords=dict(
+                observation_time=prior_fluxes.coords["flux_time"][-20:].values,
+                site_names=(("site",), ["here", "there", "somewhere"]),
+                site_heights=(("site",), [100, 110, 120]),
+            ),
+            dims=("observation_time", "site"),
+            name="observations",
+            attrs=dict(units="ppm"),
+        ).set_index(site="site_names")
+        influence_function = xarray.DataArray(
+            np.full((20, 3, 40, 10, 20), 1. / 8e3, dtype=DTYPE),
+            coords=dict(
+                observation_time=observations.coords["observation_time"],
+                site=observations.coords["site"],
+                flux_time=prior_fluxes.coords["flux_time"],
+                dim_y=prior_fluxes.coords["dim_y"],
+                dim_x=prior_fluxes.coords["dim_x"],
+            ),
+            dims=("observation_time", "site",
+                  "flux_time", "dim_y", "dim_x"),
+            name="influence_functions",
+            attrs=dict(units="ppm/(umol/m^2/s)"),
+        )
+        prior_flux_standard_deviations = xarray.DataArray(
+            np.ones((10, 20), dtype=DTYPE),
+            coords=dict(
+                dim_y=prior_fluxes.coords["dim_y"],
+                dim_x=prior_fluxes.coords["dim_x"],
+            ),
+            dims=("dim_y", "dim_x"),
+            name="prior_flux_standard_deviations",
+            attrs=dict(units="umol/m^2/s"),
+        )
+
+        observations = observations.stack(dict(
+            observation=("observation_time", "site")
+        ))
+        influence_function = influence_function.stack(dict(
+            observation=("observation_time", "site")
+        ))
+
+        result = inversion.wrapper.invert_uniform(
+            prior_fluxes,
+            observations,
+            influence_function,
+            5,
+            inversion.correlations.ExponentialCorrelation,
+            10,
+            3,
+            prior_flux_standard_deviations,
+            3,
+            inversion.optimal_interpolation.save_sum,
+        )
+
+        self.assertIn("prior", result)
+        self.assertIn("increment", result)
+        self.assertIn("posterior", result)
+        self.assertIn("posterior_covariance", result)
+
+        for dim in result.dims:
+            self.assertIn(dim, result.coords)
 
 
 if __name__ == "__main__":

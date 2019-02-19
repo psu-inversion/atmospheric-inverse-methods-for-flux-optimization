@@ -7,27 +7,32 @@ import subprocess
 import datetime
 import sys
 import os
-from shlex import quote
+try:
+    from shlex import quote
+except ImportError:
+    from pipes import quote
 from pwd import getpwuid
 
 import numpy as np
 import dateutil.tz
 
+import pandas as pd
 import xarray
 
 import inversion.optimal_interpolation
-import inversion.correlations
+import inversion.correlations as inv_corr
 import inversion.covariances
 import inversion.util
 
 HOURS_PER_DAY = 24
 OBSERVATION_TEMPORAL_CORRELATION_FUNCTION = (
-    inversion.correlations.ExponentialCorrelation)
+    inv_corr.ExponentialCorrelation)
 UTC = dateutil.tz.tzutc()
 UDUNITS_DATE = "%Y-%m-%d %H:%M:%S%z"
 ACDD_DATE = "%Y-%m-%dT%H:%M:%S%z"
 CALENDAR = "standard"
 RUN_DATE = datetime.datetime.now(tz=UTC)
+_PACKAGE_INFO = None
 
 
 def invert_uniform(prior_fluxes, observations,
@@ -53,7 +58,7 @@ def invert_uniform(prior_fluxes, observations,
         observations.
     prior_correlation_length: float
         The lengthscale for the spatial correlations in the prior.
-    prior_correlation_structure: inversion.correlations.DistanceCorrelationFunction
+    prior_correlation_structure: inv_corr.DistanceCorrelationFunction
         The structure of the spatial correlations in the prior.
     prior_correlation_time_days: float
         The correlation timescale for fluxes across different days.
@@ -83,29 +88,51 @@ def invert_uniform(prior_fluxes, observations,
         posterior[flux_time, y, x],
     ]
     """
-    x_index_name = [name for name in prior_fluxes.coords
-                    if "x" in name.lower()][0]
-    y_index_name = x_index_name.replace("x", "y")
-    obs_time_index_name = [name for name in observations.coords
-                           if "time" in name.lower()][0]
+    y_index_name = [name for name in prior_fluxes.coords
+                    if "y" in name.lower()][0]
+    x_index_name = y_index_name.replace("y", "x")
     flux_time_index_name = [name for name in prior_fluxes.coords
                             if "time" in name.lower()][0]
     site_index_names = [name for name in observations.coords
                         if "site" in name.lower()]
+    obs_time_index_names = [name for name in observations.coords
+                            if "time" in name.lower()]
+
+    obs_is_multi = False
+    for index_name, index in observations.indexes.items():
+        if isinstance(index, pd.MultiIndex):
+            obs_is_multi = True
+            obs_time_index_names.extend([name for name in index.names
+                                         if "time" in name])
+            site_index_names.extend([name for name in index.names
+                                     if "site" in name])
+            observations = observations.rename(
+                {index_name: "observations"})
+            observation_operator = observation_operator.rename(
+                {index_name: "observations"})
 
     if len(site_index_names) == 1:
         site_index_name = site_index_names[0]
     elif "site" in site_index_names:
         site_index_name = "site"
-    elif any("name" in name.lower() for name in site_index_names):
-        site_index_name = [name for name in site_index_names
-                           if "name" in name.lower()][0]
+
+    obs_time_index_name = obs_time_index_names[0]
 
     x_index = prior_fluxes[x_index_name]
     y_index = prior_fluxes[y_index_name]
-    obs_time_index = observations.indexes[obs_time_index_name]
+    obs_time_index = observations.coords[obs_time_index_name]
     flux_time_index = prior_fluxes.indexes[flux_time_index_name]
-    site_index = observations.indexes[site_index_name]
+
+    site_names = list(set(observations.coords[site_index_name].values))
+
+    if not obs_is_multi:
+        observations_for_inversion = observations.stack(dict(
+            observations=[obs_time_index_name, site_index_name]
+        ))
+    else:
+        observations_for_inversion = observations
+    long_obs_times = observations_for_inversion.coords[obs_time_index_name]
+    long_site = observations_for_inversion.coords[site_index_name]
 
     flux_time_adjoint_index = flux_time_index.copy()
     flux_time_adjoint_index.name += "_adjoint"
@@ -118,75 +145,98 @@ def invert_uniform(prior_fluxes, observations,
         inversion.correlations.HomogeneousIsotropicCorrelation.from_function(
             prior_correlation_structure(prior_correlation_length / dx),
             prior_fluxes.shape[1:]))
-    sqrt_spatial_variances = inversion.covariances.DiagonalOperator(
-        prior_flux_stds.reshape(-1))
-    spatial_covariances = inversion.util.ProductLinearOperator(
-        sqrt_spatial_variances, spatial_correlations, sqrt_spatial_variances)
+    sqrt_spatial_variances = prior_flux_stds.transpose(
+        y_index_name, x_index_name)
+    spatial_covariances = inversion.covariances.CorrelationStandardDeviation(
+        spatial_correlations, sqrt_spatial_variances.data)
 
     hour_correlations = (
         inversion.correlations.HomogeneousIsotropicCorrelation.from_function(
             inversion.correlations.ExponentialCorrelation(
-                prior_correlation_time_hours / flux_interval),
-            HOURS_PER_DAY // flux_interval))
+                pd.Timedelta(hours=prior_correlation_time_hours) /
+                flux_interval),
+            pd.Timedelta(hours=HOURS_PER_DAY) // flux_interval))
     day_correlations = (
         inversion.correlations.make_matrix(
             inversion.correlations.ExponentialCorrelation(
                 prior_correlation_time_days),
             prior_fluxes.shape[0]))
-    temporal_covariances = (
-        inversion.util.kronecker_product(day_correlations, hour_correlations))
+    temporal_covariances = inversion.util.kron(
+        day_correlations.dot(np.eye(*day_correlations.shape)),
+        hour_correlations.dot(np.eye(*hour_correlations.shape))
+    )
 
     temporal_covariance_dataset = xarray.DataArray(
-        ((flux_time_index_name, flux_time_adjoint_index.name),
-         temporal_covariances,
-         dict(long_name="temporal_covariances")),
-        {flux_time_index_name: flux_time_index,
-         flux_time_adjoint_index.name: flux_time_adjoint_index})
+        dims=(flux_time_index_name, flux_time_adjoint_index.name),
+        data=temporal_covariances,
+        attrs=dict(long_name="temporal_covariances"),
+        coords={flux_time_index_name: flux_time_index,
+                flux_time_adjoint_index.name: flux_time_adjoint_index}
+    )
 
-    if output_uncertainty_frequency is not None:
-        reduced_temp_cov_ds = temporal_covariance_dataset.resample(**{
-            flux_time_adjoint_index.name: output_uncertainty_frequency
-        }).sum(axis=1).resample(**{
-            flux_time_index_name: output_uncertainty_frequency
-        }).sum(axis=0)
-        reduced_obs_op = observation_operator.resample(**{
-            flux_time_index_name: output_uncertainty_frequency
-        }).sum(axis=2)
-    else:
-        reduced_temp_cov_ds = None
-        reduced_obs_op = None
+    reduced_temp_cov_ds = temporal_covariance_dataset.resample(**{
+        flux_time_adjoint_index.name: output_uncertainty_frequency
+    }).sum(flux_time_adjoint_index.name).resample(**{
+        flux_time_index_name: output_uncertainty_frequency
+    }).sum(flux_time_index_name)
+
+    reduced_obs_op = observation_operator.resample(**{
+        flux_time_index_name: output_uncertainty_frequency
+    }).sum(flux_time_index_name)
 
     prior_covariances = (
         inversion.util.kronecker_product(temporal_covariances,
-                                         spatial_covariances))
+                                         spatial_covariances)
+    )
+    reduced_prior_covariances = (
+        inversion.util.kron(
+            reduced_temp_cov_ds.data,
+            spatial_covariances.dot(np.eye(*spatial_covariances.shape))
+        )
+    )
 
     observation_temporal_correlations = (
         OBSERVATION_TEMPORAL_CORRELATION_FUNCTION(
-            abs(obs_time_index[:, np.newaxis] -
-                obs_time_index[np.newaxis, :]) /
-            observation_correlation_time))
+            observation_correlation_time)
+    )(abs(
+        long_obs_times.values[:, np.newaxis] -
+        long_obs_times.values[np.newaxis, :]
+    ).astype("m8[h]").astype(int))
     observation_site_correlations = (
-        site_index[:, np.newaxis] == site_index[np.newaxis, :])
+        long_site.values[:, np.newaxis] == long_site.values[np.newaxis, :])
     observation_correlations = (
         observation_temporal_correlations * observation_site_correlations)
     observation_covariance = observation_correlations
 
+    if not obs_is_multi:
+        obs_stack_dict = dict(
+            observations=[obs_time_index_name, site_index_name],
+            fluxes=[flux_time_index_name, y_index_name, x_index_name]
+        )
+    else:
+        obs_stack_dict = dict(
+            fluxes=[flux_time_index_name, y_index_name, x_index_name]
+        )
+
     posterior_fluxes, posterior_covariance = method(
-        prior_fluxes.data.reshape(prior_covariances.shape[0], -1),
+        prior_fluxes.data.reshape(prior_covariances.shape[0]),
         prior_covariances,
-        observations.data.reshape(observation_covariance.shape[0], -1),
+        observations.data.reshape(observation_covariance.shape[0]),
         observation_covariance,
         # Question: should this transpose obs_op to ensure the proper
         # dimension order?
-        observation_operator.reshape(observation_covariance.shape[0],
-                                     prior_covariances.shape[0]),
-        reduced_temp_cov_ds.data, reduced_obs_op.data
-    ).reshape(prior_fluxes.shape)
+        observation_operator.stack(obs_stack_dict).transpose(
+            "observations", "fluxes"),
+        reduced_prior_covariances,
+        reduced_obs_op.stack(obs_stack_dict).transpose(
+            "observations", "fluxes"),
+    )
+    posterior_fluxes = posterior_fluxes.reshape(prior_fluxes.shape)
 
     posterior_var_atts = prior_fluxes.attrs.copy()
     posterior_var_atts.update(dict(
         long_name="posterior_fluxes",
-        description="posterior fluxes obtained using inversion package",
+        description="posterior mean fluxes obtained using inversion package",
         origin="inversion package",
         units=prior_fluxes.attrs["units"],
     ))
@@ -197,6 +247,14 @@ def invert_uniform(prior_fluxes, observations,
         description="Change from prior to posterior using dask",
         origin="OI and dask",
     ))
+    posterior_covariance_attributes = prior_fluxes.attrs.copy()
+    posterior_covariance_attributes.update(dict(
+        long_name="inversion_posterior_covariance",
+        units="({units:s})^2".format(units=prior_fluxes.attrs["units"]),
+        description=("Posterior flux covariance"
+                     "obtained using inversion package"),
+        origin="inversion package",
+    ))
     posterior_global_atts = global_attributes_dict()
     posterior_global_atts.update(dict(
         title="Bayesian flux inversion results",
@@ -205,25 +263,60 @@ def invert_uniform(prior_fluxes, observations,
         cdm_data_type="grid",
         source="Inversion package",
         # Descriptions of the inversion that may be hard to get later
-        prior_flux_long_name=prior_fluxes.attrs["long_name"],
+        prior_flux_long_name=prior_fluxes.attrs.get("long_name", ""),
         correlation_length=prior_correlation_length,
         correlation_time_day=prior_correlation_time_days,
         correlation_time_hour=prior_correlation_time_hours,
-        spatial_correlation_structure=prior_correlation_structure.__name__
+        spatial_correlation_structure=prior_correlation_structure.__name__,
+        observation_interval=obs_interval,
+        observation_sites_used=site_names,
     ))
 
     posterior_ds = xarray.Dataset(
-        dict(posterior=(prior_fluxes.dims, posterior_fluxes,
-                        posterior_var_atts),
-             prior=prior_fluxes,
-             increment=(prior_fluxes.dims, posterior_fluxes - prior_fluxes,
-                        increment_var_atts),
-             # posterior_covariance=(
-             #     prior_fluxes.dims * 2, posterior_covariance,
-             #     posterior_covariance_attributes),
-             ),
+        dict(
+            posterior=(
+                prior_fluxes.dims,
+                posterior_fluxes.reshape(prior_fluxes.shape),
+                posterior_var_atts
+            ),
+            prior=prior_fluxes,
+            increment=(
+                prior_fluxes.dims,
+                posterior_fluxes - prior_fluxes,
+                increment_var_atts
+            ),
+            posterior_covariance=(
+                ["{dim:s}_adjoint".format(dim=dim)
+                 if "time" not in dim else
+                 "reduced_{dim:s}_adjoint".format(dim=dim)
+                 for dim in prior_fluxes.dims] +
+                [dim if "time" not in dim else
+                 "reduced_{dim:s}".format(dim=dim)
+                 for dim in prior_fluxes.dims],
+                posterior_covariance.reshape(
+                    (reduced_temp_cov_ds.shape[0],
+                     len(y_index),
+                     len(x_index)) * 2
+                ),
+                posterior_covariance_attributes
+            ),
+        ),
         prior_fluxes.coords,
         posterior_global_atts)
+
+    coord_list = set(posterior_ds.coords)
+    for coord in coord_list:
+        if "time" in coord:
+            continue
+        posterior_ds.coords["{coord:s}_adjoint".format(coord=coord)] = (
+            posterior_ds.coords[coord]
+        )
+
+    for coord in reduced_temp_cov_ds.coords:
+        posterior_ds.coords["reduced_{coord:s}".format(coord=coord)] = (
+            reduced_temp_cov_ds.coords[coord]
+        )
+
     return posterior_ds
 
 
@@ -237,27 +330,38 @@ def get_installed_modules():
         available or pip if it is not.  List of two-element strings
         giving name-version pairs.
     """
-    try:
-        output = subprocess.check_output(
-            ["conda", "list", "--export" "--no-show-channel-urls"],
-            universal_newlines=True)
+    global _PACKAGE_INFO
+    if _PACKAGE_INFO is not None:
+        return _PACKAGE_INFO
+
+    try:  # no branch
+        with open(os.devnull, "wb") as stderr:
+            output = subprocess.check_output(
+                ["conda", "list", "--export", "--no-show-channel-urls"],
+                universal_newlines=True, stderr=stderr)
         package_info = [line.split("=")[:2] for line in output.split("\n")
-                        if not line.startswith("#")]
+                        if line and not line.startswith("#")]
+
+        _PACKAGE_INFO = package_info
         return package_info
-    except OSError:
+    except (subprocess.CalledProcessError, OSError):
         # file not found
         pip_args = []
         if sys.executable is not None:
             pip_args = [sys.executable, "-m"]
         pip_args.extend(["pip", "freeze"])
-        try:
+        try:  # no branch
             output = subprocess.check_output(
                 pip_args,
                 universal_newlines=True)
-            package_info = [line.split("==") for line in output.split("\n")]
+            package_info = [line.split("==") for line in output.split("\n")
+                            if line]
+
+            _PACKAGE_INFO = package_info
             return package_info
         except OSError:
-            return []
+            _PACKAGE_INFO = []    # no cover
+            return _PACKAGE_INFO  # no cover
 
 
 def global_attributes_dict():
