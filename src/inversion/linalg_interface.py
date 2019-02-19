@@ -35,10 +35,12 @@ def is_odd(num):
     Parameters
     ----------
     num: int
+        The number to test.
 
     Returns
     -------
     bool
+        Whether the number is odd
     """
     return num & 1 == 1
 

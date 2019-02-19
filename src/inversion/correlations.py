@@ -14,21 +14,23 @@ import numpy as np
 from numpy.linalg import eigh, norm
 # arange changes signature
 from numpy import arange, newaxis, asanyarray
-from scipy.special import gamma, kv as K_nu
 
 from numpy import fromfunction, asarray, hstack, flip
 from numpy import exp, square, fmin, sqrt, zeros
 from numpy import logical_or, concatenate, isnan
 from numpy import where
 from numpy import sum as array_sum
+from scipy.special import gamma, kv as K_nu
+from scipy.sparse.linalg.interface import LinearOperator
+
 import pyfftw.interfaces.cache
 from pyfftw import next_fast_len
 from pyfftw.interfaces.numpy_fft import rfftn, irfftn
 import six
 
-from inversion.linalg import schmidt_decomposition, kron
-from inversion.linalg_interface import DaskLinearOperator
-from inversion.linalg_interface import is_odd, tolinearoperator
+from .linalg import schmidt_decomposition, kron, SelfAdjointLinearOperator
+from .linalg_interface import is_odd, tolinearoperator
+from .linalg_interface import DaskLinearOperator
 
 NUM_THREADS = 8
 """Number of threads :mod:`pyfftw` should use for each transform."""
@@ -65,7 +67,7 @@ FOURIER_NEAR_ZERO = 1e-15
 DTYPE = np.float64
 
 
-class HomogeneousIsotropicCorrelation(DaskLinearOperator):
+class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):
     """Homogeneous isotropic correlations using FFTs.
 
     Assumes periodic domain.  Use padding or a larger domain to avoid
@@ -110,6 +112,10 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
         self._underlying_shape = tuple(shape)
         self._computational_shape = computational_shape
 
+        # Tell pylint these will be present
+        self._corr_fourier = None
+        self._fourier_near_zero = None
+
         self._fft = functools.partial(
             rfftn, axes=arange(0, ndims, dtype=int), s=computational_shape,
             threads=NUM_THREADS, planner_effort=PLANNER_EFFORT)
@@ -128,10 +134,12 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
                 Parameters
                 ----------
                 spectrum: array_like
+                    The spectrum of a real-valued signal
 
                 Returns
                 -------
-                result: array_like
+                array_like
+                    The spectrum transformed back to physical space
                 """
                 slicer = (
                     base_slices +
@@ -193,6 +201,7 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
             Returns
             -------
             float[-1, 1]
+                The correlation of the given index with the origin.
 
             See Also
             --------
@@ -355,7 +364,7 @@ class HomogeneousIsotropicCorrelation(DaskLinearOperator):
                 "HomogeneousIsotropicCorrelation.inv "
                 "does not support acyclic correlations")
         # TODO: Return a HomogeneousIsotropicLinearOperator
-        return DaskLinearOperator(
+        return LinearOperator(
             shape=self.shape, dtype=self.dtype,
             matvec=self.solve, rmatvec=self.solve)
 
@@ -644,10 +653,12 @@ class DistanceCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
         Parameters
         ----------
         dist: float
+            The distance at which the correlation is requested.
 
         Returns
         -------
         correlation: float[-1, 1]
+            The correlation at points that distance apart
         """
         pass  # pragma: no cover
 
@@ -664,7 +675,8 @@ class DistanceCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
         Returns
         -------
         float
-
+            Find the correlation of the point contained in the first
+            half of the indices with that contained in the second.
         """
         half = len(indices) // 2
         point1 = asanyarray(indices[:half])
@@ -676,8 +688,8 @@ class DistanceCorrelationFunction(six.with_metaclass(abc.ABCMeta)):
 class ExponentialCorrelation(DistanceCorrelationFunction):
     """A exponential correlation structure.
 
-    Note
-    ----
+    Notes
+    -----
     Correlation given by exp(-dist/length)
     where dist is the distance between the points.
     """
@@ -703,12 +715,10 @@ class BalgovindCorrelation(DistanceCorrelationFunction):
     modified so the correlation length better matches that used by
     other correlation functions.
 
-    Note
-    ----
+    Notes
+    -----
     Correlation given by :math:`(1 + 2*dist/length) exp(-2*dist/length)`
 
-    Note
-    ----
     This implementation has problems for length == 10.
     I have no idea why.  3 and 30 are fine.
     """
@@ -721,10 +731,12 @@ class BalgovindCorrelation(DistanceCorrelationFunction):
         Parameters
         ----------
         dist: float
+            The distance between the points
 
         Returns
         -------
-        corr: float
+        float
+            The correlation between points the given distance apart.
         """
         scaled_dist = dist / self._length
         return (1 + scaled_dist) * exp(-scaled_dist)
@@ -737,8 +749,8 @@ class MaternCorrelation(DistanceCorrelationFunction):
     definition seems to be similar to the parameterization in Stern's
     *Interpolation of Spatial Data*
 
-    Note
-    ----
+    Notes
+    -----
     Correlation given by
     :math:`[2^{\kappa-1}\Gamma(\kappa)]^{-1} (d/L)^{\kappa} K_{\kappa}(d/L)`
     where :math:`\kappa` is a smoothness parameter and
@@ -799,8 +811,8 @@ class MaternCorrelation(DistanceCorrelationFunction):
 class GaussianCorrelation(DistanceCorrelationFunction):
     """A gaussian correlation structure.
 
-    Note
-    ----
+    Notes
+    -----
     Correlation given by exp(-dist**2 / (length**2)) where dist is the
     distance between the points.
     """

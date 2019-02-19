@@ -19,20 +19,20 @@ except ImportError:
 
 import numpy as np
 import numpy.linalg as np_la
+import numpy.linalg as la
 import numpy.testing as np_tst
 import scipy.linalg
 import scipy.sparse
 import scipy.optimize
+# Import from scipy.linalg if not using dask
+from scipy.linalg import cholesky
+from scipy.sparse.linalg.interface import LinearOperator, MatrixLinearOperator
+
 import unittest2
 import pyfftw
 
-import dask
-import dask.array as da
-import numpy.linalg as la
 import pandas as pd
 import xarray
-# Import from scipy.linalg if not using dask
-from scipy.linalg import cholesky
 
 import inversion.optimal_interpolation
 import inversion.correlations
@@ -45,6 +45,9 @@ import inversion.psas
 import inversion.util
 from inversion.linalg import tolinearoperator
 
+import dask
+import dask.array as da
+
 try:
     from dask import set_options as config_set
     config_set(get=dask.get)
@@ -55,13 +58,13 @@ except (ImportError, TypeError):
 
 if os.path.exists(".pyfftw.pickle"):
     with open(".pyfftw.pickle", "rb") as wis_in:
-        wisdom = pickle.load(wis_in)
+        WISDOM = pickle.load(wis_in)
 
-    if isinstance(wisdom[0], str):
-        wisdom = [wis.encode("ascii")
-                  for wis in wisdom]
-    pyfftw.import_wisdom(wisdom)
-    del wisdom, wis_in
+    if isinstance(WISDOM[0], str):
+        WISDOM = [wis.encode("ascii")
+                  for wis in WISDOM]
+    pyfftw.import_wisdom(WISDOM)
+    del WISDOM, wis_in
 
     def save_wisdom():
         """Save accumulated pyfftw wisdom.
@@ -1233,7 +1236,7 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
 class TestYMKroneckerProduct(unittest2.TestCase):
     """Test the YM13 Kronecker product implementation for LinearOperators.
 
-    This tests the :class:`~inversion.linalg.DaskKroneckerProduct`
+    This tests the :class:`~inversion.linalg.DaskKroneckerProductOperator`
     implementation based on the algorithm in Yadav and Michalak (2013)
     """
 
@@ -1482,6 +1485,22 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
                                  tuple(np.multiply(mat1.shape, mat2.shape)))
         np_tst.assert_allclose(combined_op, scipy.linalg.kron(mat1, mat2))
 
+    def test_large_array_array(self):
+        """Test large array-array Kronecker products.
+
+        At some point it becomes faster to use Y&M kronecker
+        representation than the dense one.
+        """
+        mat1 = np.eye(1 << 5)
+        mat2 = np.eye(1 << 6)
+
+        combined = inversion.util.kronecker_product(mat1, mat2)
+
+        self.assertIsInstance(
+            combined, inversion.linalg.DaskKroneckerProductOperator)
+        self.assertSequenceEqual(combined.shape,
+                                 tuple(np.multiply(mat1.shape, mat2.shape)))
+
     def test_array_sparse(self):
         """Test array-sparse matrix Kronecker products."""
         mat1 = np.eye(3)
@@ -1682,7 +1701,6 @@ class TestUtilToLinearOperator(unittest2.TestCase):
     def test_tolinearoperator(self):
         """Test that tolinearoperator returns LinearOperators."""
         tolinearoperator = inversion.linalg.tolinearoperator
-        LinearOperator = inversion.linalg_interface.DaskLinearOperator
 
         for trial in (0, 1., (0, 1), [0, 1], ((1, 0), (0, 1)),
                       [[0, 1.], [1., 0]], np.arange(5),
@@ -1914,7 +1932,7 @@ class TestUtilProduct(unittest2.TestCase):
         self.assertEqual(result.shape, (3, 3))
         self.assertEqual(result._operators, (op2.T, op1.T))
 
-    def test_adjoinst(self):
+    def test_adjoint(self):
         """Test that adjoint works."""
         mat1 = np.eye(3)
         mat1[1, 0] = 1
@@ -1930,13 +1948,13 @@ class TestUtilProduct(unittest2.TestCase):
     def test_bad_shapes(self):
         """Test that the product fails if the shapes are incompatible."""
         self.assertRaises(
-            ValueError, inversion.linalg_interface.ProductLinearOperator,
+            ValueError, inversion.linalg.ProductLinearOperator,
             np.eye(10, 3), np.eye(4, 10))
         self.assertRaises(
-            ValueError, inversion.linalg_interface.ProductLinearOperator,
+            ValueError, inversion.linalg.ProductLinearOperator,
             np.eye(10, 3), np.eye(3, 6), np.eye(5, 10))
         self.assertRaises(
-            ValueError, inversion.linalg_interface.ProductLinearOperator,
+            ValueError, inversion.linalg.ProductLinearOperator,
             np.eye(10, 4), np.eye(3, 6), np.eye(6, 10))
 
 
@@ -2143,7 +2161,7 @@ class TestLinalgSolve(unittest2.TestCase):
         """Test solve for a linear operator."""
         test_diag = np.ones(4)
         test_op = (
-            inversion.linalg_interface.DaskLinearOperator(
+            LinearOperator(
                 matvec=lambda x: x * test_diag, shape=(4, 4)))
         test_vec = np.arange(4)
 
@@ -2162,7 +2180,7 @@ class TestLinalgSolve(unittest2.TestCase):
         result = inversion.linalg.solve(
             test_arry, test_op)
         self.assertIsInstance(
-            result, inversion.linalg_interface.DaskLinearOperator)
+            result, LinearOperator)
         np_tst.assert_allclose(
             result.dot(np.eye(4)),
             np.eye(4),
@@ -2170,9 +2188,9 @@ class TestLinalgSolve(unittest2.TestCase):
 
     def test_matop_matop(self):
         """Test solve with a MatrixOperator as rhs."""
-        test_op = inversion.linalg.DaskMatrixLinearOperator(
+        test_op = MatrixLinearOperator(
             np.eye(4))
-        test_vec = inversion.linalg.DaskMatrixLinearOperator(
+        test_vec = MatrixLinearOperator(
             np.arange(4).reshape(4, 1))
 
         np_tst.assert_allclose(
@@ -2260,7 +2278,7 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
     def test_matrix_op(self):
         """Test that matrix_sqrt recognizes MatrixLinearOperator."""
         mat = np.eye(10)
-        mat_op = inversion.linalg_interface.DaskMatrixLinearOperator(mat)
+        mat_op = MatrixLinearOperator(mat)
 
         result1 = inversion.linalg.matrix_sqrt(mat_op)
         self.assertIsInstance(result1, np.ndarray)
@@ -2302,12 +2320,12 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
     def test_linop(self):
         """Test matrix_sqrt works for linear operators."""
         diag = np.arange(100, 0, -1)
-        operator = inversion.linalg_interface.LinearOperator(
+        operator = LinearOperator(
             matvec=lambda x: diag * x, shape=(100, 100))
         sqrt = inversion.linalg.matrix_sqrt(operator)
 
         self.assertIsInstance(
-            sqrt, inversion.linalg_interface.ProductLinearOperator)
+            sqrt, inversion.linalg.ProductLinearOperator)
         self.assertEqual(len(sqrt._operators), 3)
         np_tst.assert_allclose(sqrt._operators[1]._diag,
                                0.07 + np.sqrt(np.arange(50, 100)),

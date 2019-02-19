@@ -8,10 +8,10 @@ from __future__ import absolute_import
 import functools
 
 import numpy as np
+from numpy import atleast_1d, atleast_2d
 from scipy.sparse.linalg import LinearOperator
 
 import dask.array as da
-from numpy import atleast_1d, atleast_2d
 
 from .linalg import DaskKroneckerProductOperator, kron, solve
 from .linalg_interface import ProductLinearOperator, tolinearoperator
@@ -53,14 +53,14 @@ def kronecker_product(operator1, operator2):
 
     Returns
     -------
-    product_operator: ~scipy.sparse.linalg.LinearOperator
-        The kronecker product of the given operators
+    scipy.sparse.linalg.LinearOperator
+        The kronecker product of the given operators.
     """
     if hasattr(operator1, "kron"):
         return operator1.kron(operator2)
-    elif isinstance(operator1, ARRAY_TYPES):
+
+    if isinstance(operator1, ARRAY_TYPES):
         if ((isinstance(operator2, ARRAY_TYPES) and
-             # TODO: test this
              operator1.size * operator2.size < MAX_EXPLICIT_ARRAY)):
             return kron(operator1, operator2)
         return DaskKroneckerProductOperator(operator1, operator2)
@@ -71,13 +71,18 @@ def kronecker_product(operator1, operator2):
 def method_common(inversion_method):
     """Wrap method to validate args.
 
+    Can also deal with posterior uncertainty for a reduced-resolution
+    domain, where the method opts not to provide that.
+
     Parameters
     ----------
     inversion_method: function
+        The inversion function to wrap.
 
     Returns
     -------
-    wrapped_method: function
+    function
+        The wrapped function.
     """
     @functools.wraps(inversion_method)
     def wrapper(background, background_covariance,
@@ -115,7 +120,13 @@ def method_common(inversion_method):
         observation_operator: array_like[M, N]
             The relationship between the state and the observations.
         reduced_background_covariance: array_like[Nred, Nred], optional
+            The covariance for a smaller state space, usually obtained by
+            reducing resolution in space and time.  Note that
+            `reduced_observation_operator` must also be provided
         reduced_observation_operator: array_like[M, Nred], optional
+            The relationship between the reduced state space and the
+            observations.  Note that `reduced_background_covariance`
+            must also be provided.
 
         Returns
         -------
@@ -126,8 +137,14 @@ def method_common(inversion_method):
             realizations/ensemble members.  Calculated using
             reduced_background_covariance and
             reduced_observation_operator if possible
+
+        Raises
+        ------
+        ValueError
+            If only one of `reduced_background_covariance` and
+            `reduced_observation_operator` is provided
         """
-        _LinearOperator = LinearOperator
+        _LinearOperator = LinearOperator  # noqa: C0103
         background = atleast_1d(background)
         if not isinstance(background_covariance, _LinearOperator):
             background_covariance = atleast_2d(background_covariance)
@@ -187,6 +204,8 @@ def method_common(inversion_method):
             if isinstance(decrease, _LinearOperator):
                 reduced_background_covariance = tolinearoperator(
                     reduced_background_covariance)
+            elif isinstance(reduced_background_covariance, _LinearOperator):
+                decrease = tolinearoperator(decrease)
 
             # (I - KH) B
             analysis_covariance = (

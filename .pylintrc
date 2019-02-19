@@ -1,0 +1,72 @@
+[MASTER]
+
+# A comma-separated list of package or module names from where C extensions may
+# be loaded. Extensions are loading into the active Python interpreter and may
+# run arbitrary code.
+extension-pkg-whitelist=
+    numpy,
+    scipy,
+    numpy.core.multiarray,
+    numpy.core.umath,
+    numpy.linalg.lapack_lite,
+    scipy.linalg.decomp_cholesky
+
+# Add files or directories to the blacklist. They should be base names, not
+# paths.
+# pylint really does not like unittest=style tests
+# linalg_interface mostly isn't my code.
+ignore=CVS,.git,tests.py,linalg_interface.py
+
+# Pickle collected data for later comparisons.
+persistent=yes
+
+# Allow loading of arbitrary C extensions. Extensions are imported into the
+# active Python interpreter and may run arbitrary code.
+unsafe-load-any-extension=no
+
+
+[SIMILARITIES]
+
+# Ignore comments when computing similarities.
+ignore-comments=yes
+
+# Ignore docstrings when computing similarities.
+ignore-docstrings=yes
+
+# Ignore imports when computing similarities.
+ignore-imports=no
+
+# Minimum lines number of a similarity.
+min-similarity-lines=5
+
+[DESIGN]
+
+# Maximum number of arguments for function / method.
+max-args=11
+
+# Maximum number of attributes for a class (see R0902).
+max-attributes=7
+
+# Maximum number of boolean expressions in an if statement.
+max-bool-expr=5
+
+# Maximum number of branch for function / method body.
+max-branches=15
+
+# Maximum number of locals for function / method body.
+max-locals=25
+
+# Maximum number of parents for a class (see R0901).
+max-parents=7
+
+# Maximum number of public methods for a class (see R0904).
+max-public-methods=20
+
+# Maximum number of return / yield for function / method body.
+max-returns=6
+
+# Maximum number of statements in function / method body.
+max-statements=50
+
+# Minimum number of public methods for a class (see R0903).
+min-public-methods=2

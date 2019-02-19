@@ -20,10 +20,16 @@ def gaussian_noise(cov, size=None):
 
     Returns
     -------
-    noise: array_like[..., N]
+    array_like[..., N]
+        Samples of multivariate Gaussian noise
 
-    Note
-    ----
+    Raises
+    ------
+    ValueError
+        If cov not a square matrix
+
+    Notes
+    -----
     implementation largely copied from
     :func:`numpy.random.multivariate_normal`
     """
@@ -42,12 +48,12 @@ def gaussian_noise(cov, size=None):
     final_shape.append(sample_shape)
     transposed_shape = final_shape[::-1]
 
-    x = _standard_normal(
+    noise = _standard_normal(
         size=transposed_shape,
     ).reshape(sample_shape, -1)
 
     chol_upper = matrix_sqrt(cov)
 
     # x = x @ chol_upper
-    x = chol_upper.T.dot(x).T
-    return x.reshape(final_shape)
+    noise = chol_upper.T.dot(noise).T
+    return noise.reshape(final_shape)

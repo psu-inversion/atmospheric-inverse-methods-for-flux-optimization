@@ -3,6 +3,7 @@
 Hide most of the implementation details.
 Take prior and parameters, return posterior.
 """
+from distutils.version import LooseVersion
 import subprocess
 import datetime
 import sys
@@ -25,7 +26,7 @@ import inversion.covariances
 import inversion.util
 
 HOURS_PER_DAY = 24
-OBSERVATION_TEMPORAL_CORRELATION_FUNCTION = (
+OBSERVATION_TEMPORAL_CORRELATION_FUNCTION = (  # noqa: C0103
     inv_corr.ExponentialCorrelation)
 UTC = dateutil.tz.tzutc()
 UDUNITS_DATE = "%Y-%m-%d %H:%M:%S%z"
@@ -52,7 +53,9 @@ def invert_uniform(prior_fluxes, observations,
     Parameters
     ----------
     prior_fluxes: xarray.Dataarray[flux_time, y, x]
+        The prior or background estimate of the fluxes
     observations: xarray.Dataarray[obs_time, site]
+        The observed mole fractions
     observation_operator: xarray.Dataarray[obs_time, site, flux_time, y, x]
         The linearized operator mapping a flux distribution to
         observations.
@@ -75,18 +78,28 @@ def invert_uniform(prior_fluxes, observations,
         :func:`inversion.optimal_interpolation.simple`
     output_uncertainty_frequency: str
         One of the frequencies from
-        `http://pandas.pydata.org/pandas-docs/stable/timeseries.html#offset-aliases`_
+        `<http://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases>`_
         or "season".  Often "M", output_uncertainty_frequency, "Y",
         "YS", or "season" make the most sense.  Used to provide
         lower-temporal-resolution posterior uncertainties.
 
     Returns
     -------
-    xarray.Dataset[
-        prior[flux_time, y, x],
-        increment[flux_time, y, x],
-        posterior[flux_time, y, x],
-    ]
+    xarray.Dataset
+        The results of the inversion.
+        Contents:
+
+        prior[flux_time, y, x]
+            The prior mean for the inversion.
+        increment[flux_time, y, x]
+            The change from the prior to the posterior mean estimates.
+        posterior[flux_time, y, x]
+            The posterior mean for the inversion.
+        post_cov[red_flux_time_adj, y_adj, x_adj, red_flux_time, y, x]
+            The analytic uncertainty for the posterior, expressed as a
+            covariance matrix on a reduced-resolution domain.  If the
+            prior and observation likelihood are Gaussian, this will
+            be exact.
     """
     y_index_name = [name for name in prior_fluxes.coords
                     if "y" in name.lower()][0]
@@ -334,34 +347,43 @@ def get_installed_modules():
     if _PACKAGE_INFO is not None:
         return _PACKAGE_INFO
 
-    try:  # no branch
+    try:  # pragma: no branch
         with open(os.devnull, "wb") as stderr:
             output = subprocess.check_output(
                 ["conda", "list", "--export", "--no-show-channel-urls"],
                 universal_newlines=True, stderr=stderr)
         package_info = [line.split("=")[:2] for line in output.split("\n")
                         if line and not line.startswith("#")]
+        python_versions = [pair[1] for pair in package_info
+                           if pair[0] == "python"]
+
+        if ((LooseVersion(python_versions[0]) ==
+             LooseVersion(sys.version.split()[0]))):
+            _PACKAGE_INFO = package_info
+            return package_info
+    except (subprocess.CalledProcessError, OSError):
+        # Testing with python3 from conda and python2 from the system
+        # will not enter this branch.
+        pass  # pragma: no cover
+
+    # Conda not present or not providing current executable
+    pip_args = []
+    if sys.executable is not None:
+        pip_args = [sys.executable, "-m"]
+    pip_args.extend(["pip", "freeze"])
+    try:  # pragma: no branch
+        output = subprocess.check_output(
+            pip_args,
+            universal_newlines=True)
+        package_info = [line.split("==") for line in output.split("\n")
+                        if line]
 
         _PACKAGE_INFO = package_info
         return package_info
-    except (subprocess.CalledProcessError, OSError):
-        # file not found
-        pip_args = []
-        if sys.executable is not None:
-            pip_args = [sys.executable, "-m"]
-        pip_args.extend(["pip", "freeze"])
-        try:  # no branch
-            output = subprocess.check_output(
-                pip_args,
-                universal_newlines=True)
-            package_info = [line.split("==") for line in output.split("\n")
-                            if line]
-
-            _PACKAGE_INFO = package_info
-            return package_info
-        except OSError:
-            _PACKAGE_INFO = []    # no cover
-            return _PACKAGE_INFO  # no cover
+    except OSError:
+        # Avoid crashes on rare platforms lacking pip
+        _PACKAGE_INFO = []    # pragma: no cover
+        return _PACKAGE_INFO  # pragma: no cover
 
 
 def global_attributes_dict():

@@ -79,6 +79,8 @@ class ConvergenceError(ValueError):
         Parameters
         ----------
         msg: str
+            Information about the reasons behind the failure to
+            converge
         result:
             current state of scheme
         guess: array_like[N], optional

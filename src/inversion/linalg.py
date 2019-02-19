@@ -5,6 +5,17 @@ I figured it would be more useful to have it separate
 import warnings
 
 import numpy as np
+from numpy import newaxis
+import numpy.linalg as la
+from numpy.linalg import svd, LinAlgError
+# See if this will speed up inversions.  I call `.compute()` on the
+# output to keep the rest of the code numpy-only.  I think this is
+# implicitly called on the operator2.dot(chunk) that usually follows
+# this.
+from numpy import einsum
+from numpy import concatenate, zeros, nonzero
+from numpy import asarray, atleast_2d, stack, where, sqrt
+
 from scipy.sparse.linalg import lgmres
 from scipy.sparse.linalg.interface import (
     LinearOperator,
@@ -12,24 +23,12 @@ from scipy.sparse.linalg.interface import (
 
 from scipy.sparse.linalg.eigen import eigsh as linop_eigsh
 from scipy.sparse.linalg import svds
-from numpy import newaxis
 
-from numpy import concatenate, zeros, nonzero
-from numpy import asarray, atleast_2d, stack, where, sqrt
 from scipy.linalg import cholesky
-import numpy.linalg as la
-from numpy.linalg import svd, LinAlgError
 
-# See if this will speed up inversions.  I call `.compute()` on the
-# output to keep the rest of the code numpy-only.  I think this is
-# implicitly called on the operator2.dot(chunk) that usually follows
-# this.
-from numpy import einsum
-
-from .linalg_interface import (
-    DaskLinearOperator, DaskMatrixLinearOperator,
-    ProductLinearOperator, tolinearoperator,
-    ARRAY_TYPES, REAL_DTYPE_KINDS)
+from .linalg_interface import DaskLinearOperator, DaskMatrixLinearOperator
+from .linalg_interface import tolinearoperator, ProductLinearOperator
+from .linalg_interface import ARRAY_TYPES, REAL_DTYPE_KINDS
 
 NEAR_ZERO = 1e-20
 """Where correlations are rounded to zero.
@@ -65,6 +64,7 @@ def linop_solve(operator, arr):
     Returns
     -------
     array_like
+        The solution to the linear equation.
     """
     if arr.ndim == 1:
         return asarray(lgmres(operator, np.asarray(arr),
@@ -82,11 +82,21 @@ def solve(arr1, arr2):
     Parameters
     ----------
     arr1: array_like[N, N]
+        A square matrix
     arr2: array_like[N]
+        A vector
 
     Returns
     -------
     array_like[N]
+        The solution to the linear equation
+
+    Raises
+    ------
+    ValueError
+        if the dimensions do not match up
+    LinAlgError
+        if `arr1` is not square
     """
     if arr1.shape[0] != arr2.shape[0]:
         print(arr1.shape[1], arr2.shape[0])
@@ -104,10 +114,12 @@ def solve(arr1, arr2):
             Parameters
             ----------
             vec: array_like
+                The vector for which the solution is wanted
 
             Returns
             -------
             array_like
+                The solution of the linear equation
             """
             return solve(arr1, vec)
         inverse = DaskLinearOperator(matvec=solver, shape=arr1.shape[::-1])
@@ -120,9 +132,9 @@ def solve(arr1, arr2):
         except NotImplementedError:
             pass
 
-    if isinstance(arr1, (MatrixLinearOperator, DaskMatrixLinearOperator)):
+    if isinstance(arr1, MatrixLinearOperator):
         return la.solve(asarray(arr1.A), asarray(arr2))
-    elif isinstance(arr1, LinearOperator):
+    if isinstance(arr1, LinearOperator):
         # Linear operators with neither an underlying matrix nor a
         # provided solver. Use iterative sparse solvers.
         # TODO: Test Ax = b for b not column vector
@@ -143,11 +155,14 @@ def kron(matrix1, matrix2):
     Parameters
     ----------
     matrix1: array_like[M, N]
+        One of the matrixes for the product
     matrix2: array_like[J, K]
+        The other matrix for the product
 
     Returns
     -------
     array_like[M*J, N*K]
+        The kronecker product of the matrices
 
     See Also
     --------
@@ -185,8 +200,13 @@ def schmidt_decomposition(vector, dim1, dim2):
         The rows form the separate vectors.
         The weights are guaranteed to be greater than zero
 
-    Note
-    ----
+    Raises
+    ------
+    ValueError
+        if `vector` isn't actually a vector.
+
+    Notes
+    -----
     Algorithm from stackexchange:
     https://physics.stackexchange.com/questions/251522/how-do-you-find-a-schmidt-basis-and-how-can-the-schmidt-decomposition-be-used-f
     Also from Mathematica code I wrote based on description in the green
@@ -215,21 +235,25 @@ def matrix_sqrt(mat):
     Parameters
     ----------
     mat: array_like or LinearOperator
+        The square matrix for which the square root is desired
 
     Returns
     -------
-    S: array_like or LinearOperator
+    array_like or LinearOperator
+        A matrix such that S.T @ S == mat
 
     Raises
     ------
     ValueError
         if mat is not symmetric
+    TypeError
+        if mat is of an unrecognized type
     """
     if mat.shape[0] != mat.shape[1]:
         raise ValueError("Matrix square root only defined for square arrays")
     if hasattr(mat, "sqrt"):
         return mat.sqrt()
-    elif isinstance(mat, (MatrixLinearOperator, DaskMatrixLinearOperator)):
+    if isinstance(mat, MatrixLinearOperator):
         mat = mat.A
 
     if isinstance(mat, ARRAY_TYPES):
@@ -237,7 +261,7 @@ def matrix_sqrt(mat):
             asarray(mat)
         )
 
-    if isinstance(mat, (LinearOperator, DaskLinearOperator)):
+    if isinstance(mat, LinearOperator):
         warnings.warn("The square root will be approximate.")
         vals, vecs = linop_eigsh(
             mat, min(mat.shape[0] // 2, OPTIMAL_ELEMENTS // mat.shape[0]))
@@ -273,10 +297,9 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         Parameters
         ----------
         operator1: array_like
-        operator2: array_like or DaskLinearOperator
+        operator2: array_like or LinearOperator
         """
-        if isinstance(operator1, (DaskMatrixLinearOperator,
-                                  MatrixLinearOperator)):
+        if isinstance(operator1, MatrixLinearOperator):
             # TODO: test this
             operator1 = asarray(operator1.A)
         else:
@@ -319,11 +342,16 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
 
         Returns
         -------
-        S: DaskKroneckerProductOperator
+        DaskKroneckerProductOperator
+            The square root S of the operator
+            S.T @ S == self
 
         Raises
         ------
-        ValueError: if operator not self-adjoint
+        ValueError
+            if operator not self-adjoint
+        ValueError
+            if operator not symmetric
         """
         operator1 = self._operator1
         if ((self.shape[0] != self.shape[1] or
@@ -343,19 +371,21 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         return DaskKroneckerProductOperator(
             sqrt1, sqrt2)
 
-    def _matmat(self, mat):
+    def _matmat(self, X):
         r"""Compute matrix-matrix product.
 
         Parameters
         ----------
-        mat: array_like
+        X: array_like
+            The matrix with which the product is desired.
 
         Returns
         -------
-        result: array_like
+        array_like
+            The product of self with X.
 
-        Note
-        ----
+        Notes
+        -----
         Implementation depends on the structure of the Kronecker
         product:
 
@@ -380,25 +410,25 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         block_size = self._block_size
         operator1 = self._operator1
         operator2 = self._operator2
-        in_chunk = (operator1.shape[1], block_size, mat.shape[1])
+        in_chunk = (operator1.shape[1], block_size, X.shape[1])
 
         chunks = (
             operator2.dot(
                 einsum(
-                    "ij,jkl->kil", operator1, mat.reshape(in_chunk),
+                    "ij,jkl->kil", operator1, X.reshape(in_chunk),
                     # Column-major output should speed the
                     # operator2 @ tmp bit
                     order="F"
                 ).reshape(block_size, -1)
             )
             # Reshape to separate out the block dimension from the
-            # original second dim of mat
-            .reshape(operator2.shape[0], self._n_chunks, mat.shape[1])
+            # original second dim of X
+            .reshape(operator2.shape[0], self._n_chunks, X.shape[1])
             # Transpose back to have block dimension first
             .transpose((1, 0, 2))
         )
         # Reshape back to expected result size
-        return chunks.reshape(self.shape[0], mat.shape[1])
+        return chunks.reshape(self.shape[0], X.shape[1])
 
     def quadratic_form(self, mat):
         r"""Calculate the quadratic form mat.T @ self @ mat.
@@ -409,11 +439,18 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
 
         Returns
         -------
-        result: array_like[M, M]
+        array_like[M, M]
+            The product mat.T @ self @ mat
 
-        Note
-        ----
+        Raises
+        ------
+        TypeError
+            if mat is not an array or if self is not square
+        ValueError
+            if the shapes of self and mat are not compatible
 
+        Notes
+        -----
         Implementation depends on Kronecker structure, using the
         :meth:`._matmat` algorithm for self @ mat.  If mat is a lazy
         dask array, this implementation will load it multiple times to
@@ -463,10 +500,18 @@ class SelfAdjointLinearOperator(DaskLinearOperator):
     Provides :meth:`_rmatvec` and :meth:`_adjoint` methods.
     """
 
-    def __init__(self, dtype, size):
-        """Also set up transpose if operator is real."""
+    def __init__(self, dtype, shape):
+        """Also set up transpose if operator is real.
+
+        Raises
+        ------
+        ValueError
+            if operator would not be square
+        """
+        if shape[0] != shape[1]:
+            raise ValueError("Self-adjoint operators must be square")
         # TODO: Test complex self-adjoint operators
-        super(SelfAdjointLinearOperator, self).__init__(dtype, size)
+        super(SelfAdjointLinearOperator, self).__init__(dtype, shape)
 
         if self.dtype.kind in REAL_DTYPE_KINDS:
             # Real array; implies symmetric
@@ -475,13 +520,17 @@ class SelfAdjointLinearOperator(DaskLinearOperator):
     def _rmatvec(self, vector):
         """self.H.dot(vec).
 
+        Since self is self-adjoint, self is self.H
+
         Parameters
         ----------
         vector: array_like
+            The vector with which the product is desired.
 
         Returns
         -------
         array_like
+            The product of self and vector
         """
         # TODO: Figure out how to test this and do it
         return self._matvec(vector)  # pragma: no cover
@@ -494,6 +543,8 @@ class SelfAdjointLinearOperator(DaskLinearOperator):
         Returns
         -------
         SelfAdjointLinearOperator
+            The self-adjoint Hermitian adjoint of self.
+            Since self is self-adjoint, this is self.
         """
         return self
 
@@ -509,7 +560,10 @@ class DiagonalOperator(SelfAdjointLinearOperator):
         array: array_like
             The array of values to go on the diagonal.
         """
-        self._diag = asarray(array).reshape(-1)
+        if isinstance(array, DiagonalOperator):
+            self._diag = array._diag  # noqa: W0212
+        else:
+            self._diag = asarray(array).reshape(-1)
         side = self._diag.shape[0]
 
         super(DiagonalOperator, self).__init__(
@@ -524,10 +578,12 @@ class DiagonalOperator(SelfAdjointLinearOperator):
         Parameters
         ----------
         vector: array_like
+            The vector with which the product is desired
 
         Returns
         -------
         array_like
+            The product
         """
         if vector.ndim == 2:
             return self._diag[:, newaxis] * vector
