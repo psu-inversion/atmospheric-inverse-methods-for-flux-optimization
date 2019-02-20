@@ -26,3 +26,5 @@
 - [ ] I have updated the documentation accordingly.
 - [ ] I have added tests to cover my changes.
 - [ ] All new and existing tests passed.
+- [ ] I give permission for my code to be distributed under the existing license
+<!-- this may need to be okayed by your company's legal department if you did this on work time. -->
