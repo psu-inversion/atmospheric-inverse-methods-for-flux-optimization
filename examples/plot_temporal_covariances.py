@@ -26,7 +26,7 @@ import inversion.optimal_interpolation
 import inversion.variational
 import inversion.correlations
 import inversion.covariances
-from inversion.util import kronecker_product
+from inversion.util import kronecker_product, kron
 import cf_acdd
 
 INFLUENCE_PATHS = ["/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
@@ -61,7 +61,7 @@ OBS_FILES = glob.glob(os.path.join(
 CORR_FUN = "exp"
 CORR_LEN = 200
 TIME_CORR_FUN = "exp"
-TIME_CORR_LEN = 14
+TIME_CORR_LEN = 21
 FLUX_FILES = glob.glob(os.path.join(
     PRIOR_PATH,
     ("2010-07_osse_priors_{interval:1d}h_{res:02d}km_noise_"
@@ -219,7 +219,7 @@ OBS_VEC_TOTAL_SIZE = N_SITES * N_OBS_TIMES
 # Define correlation constants and get covariances
 print(datetime.datetime.now(UTC).strftime("%c"), "Getting covariances")
 flush_output_streams()
-CORRELATION_LENGTH = 84
+CORRELATION_LENGTH = 200
 GRID_RESOLUTION = 27
 # spatial_correlations = (
 #     inversion.correlations.HomogeneousIsotropicCorrelation.
@@ -243,17 +243,17 @@ hour_correlations_matrix = hour_correlations.dot(np.eye(
     hour_correlations.shape[0]))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have hourly correlations")
 flush_output_streams()
-DAILY_FLUX_TIMESCALE = 14
+DAILY_FLUX_TIMESCALE = 21
 DAILY_FLUX_FUN = "exp"
 day_correlations = (
     inversion.correlations.make_matrix(
         inversion.correlations.ExponentialCorrelation(DAILY_FLUX_TIMESCALE),
-        (30 * 4 *
+        (40 * 4 *
          FLUX_INTERVAL // HOURS_PER_DAY,)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have daily correlations")
 flush_output_streams()
-temporal_correlations = kronecker_product(day_correlations,
-                                          hour_correlations_matrix)
+temporal_correlations = kron(day_correlations,
+                             hour_correlations_matrix)
 print("Temporal:", type(temporal_correlations))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have temporal correlations")
 flush_output_streams()
@@ -262,18 +262,19 @@ import matplotlib as mpl
 mpl.use("TkAgg")
 import matplotlib.pyplot as plt
 
-time_index = pd.timedelta_range(start="0 day", end="30 day", freq="6H")
-array = xarray.DataArray(temporal_correlations,
-                         (("time1", time_index[:-1]),
-                          ("time2", time_index[:-1])),
-                         attrs=dict(day_timescale=np.uint8(14), day_fun="exp",
-                                    hour_timescale=np.uint8(3), hour_fun="exp",
+time_index = pd.timedelta_range(start="0 day", end="40 day", freq="6H")
+array = xarray.DataArray(data=temporal_correlations,
+                         coords=dict(time1=time_index[:-1],
+                                     time2=time_index[:-1]),
+                         dims=("time1", "time2"),
+                         attrs=dict(day_timescale=np.int8(21), day_fun="exp",
+                                    hour_timescale=np.int8(3), hour_fun="exp",
                                     long_name="temporal_correlation_matrix"),
                          name="temporal_correlation_matrix")
 array.coords["time_in_days1"] = (
-    "time1", np.arange(0, 30, .25, dtype=np.float32), dict(units="days"))
+    "time1", np.arange(0, 40, .25, dtype=np.float32), dict(units="days"))
 array.coords["time_in_days2"] = (
-    "time2", np.arange(0, 30, .25, dtype=np.float32), dict(units="days"))
+    "time2", np.arange(0, 40, .25, dtype=np.float32), dict(units="days"))
 array.attrs.update(cf_acdd.global_attributes_dict())
 
 array.plot(x="time_in_days1", y="time_in_days2", yincrease=False,
@@ -281,9 +282,10 @@ array.plot(x="time_in_days1", y="time_in_days2", yincrease=False,
 plt.suptitle("Temporal correlation matrix")
 plt.xlabel("Days since start")
 plt.ylabel("Days since start")
-plt.savefig("temporal_correlation_matrix_exp14day_exp3hour.png")
+plt.savefig("temporal_correlation_matrix_exp{day_corr:d}day_exp3hour.png"
+            .format(day_corr=DAILY_FLUX_TIMESCALE))
 
-fig = plt.figure()
+fig = plt.figure(figsize=(4, 3))
 plt.plot(array.coords["time_in_days2"], array.isel(time1=0))
 plt.xlim(0, 30)
 plt.ylim(0, 1)
@@ -291,9 +293,12 @@ plt.ylabel("Correlation")
 plt.xlabel("Days since start")
 plt.suptitle("Correlations of each time with first")
 plt.tight_layout()
-fig.savefig("temporal_correlation_function_exp14days_exp3hours.pdf")
+plt.subplots_adjust(top=.95)
+fig.savefig("temporal_correlation_function_exp{day_corr:d}days_exp3hours.pdf"
+            .format(day_corr=DAILY_FLUX_TIMESCALE))
 
-array.to_netcdf("temporal_correlation_matrix_exp14days_exp03hours.nc4",
+array.to_netcdf("temporal_correlation_matrix_exp{day_corr:d}days_exp03hours.nc4"
+                .format(day_corr=DAILY_FLUX_TIMESCALE),
                 engine="h5netcdf",
                 encoding=dict(time_in_days1={"_FillValue": None},
                               time_in_days2={"_FillValue": None}))
