@@ -165,6 +165,11 @@ Must also allow a few chunks to be loaded at once.
 """
 REALIZATION_CHUNK = 20
 NC_ENGINE = "netcdf4"
+UNCERTAINTY_RESOLUTION = "1W"
+"""The resolution at which the uncertainty is calculated and saved.
+
+Higher resolution means the uncertainties will be more accurate.
+"""
 
 
 ############################################################
@@ -494,8 +499,8 @@ flush_output_streams()
 # To treat the flux as a mean, we need to sum the influence function
 reduced_influences = (
     aligned_influences
-    .resample(flux_time="1M").sum("flux_time")
     .sum(["dim_y", "dim_x"])
+    .resample(flux_time=UNCERTAINTY_RESOLUTION).sum("flux_time")
 )
 reduced_influences.load()
 print(datetime.datetime.now(UTC).strftime("%c"),
@@ -593,8 +598,8 @@ temporal_correlation_ds = xarray.DataArray(
 # group will each be the number of elements in that group.
 reduced_temporal_correlation_ds = (
     temporal_correlation_ds
-    .resample(flux_time="1M").mean("flux_time")
-    .resample(flux_time_adjoint="1M").mean("flux_time_adjoint")
+    .resample(flux_time=UNCERTAINTY_RESOLUTION).mean("flux_time")
+    .resample(flux_time_adjoint=UNCERTAINTY_RESOLUTION).mean("flux_time_adjoint")
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have temporal correlations")
 print(reduced_temporal_correlation_ds.values)
