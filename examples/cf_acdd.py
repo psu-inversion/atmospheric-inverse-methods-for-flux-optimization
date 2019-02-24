@@ -4,7 +4,10 @@ from __future__ import division, print_function
 import datetime
 import sys
 import os
-from shlex import quote
+try:
+    from shlex import quote
+except ImportError:
+    from pipes import quote
 from pwd import getpwuid
 import subprocess
 import socket
