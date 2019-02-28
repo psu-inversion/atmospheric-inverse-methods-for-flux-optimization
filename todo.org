@@ -163,3 +163,6 @@
   elliptically symmetric Laplace random variables as a special
   case.  I only need the symmetric case, but the general case
   might be a good addition to scipy.
+* TODO CT-Lagrange compatibility
+  Interface described here:
+  https://www.esrl.noaa.gov/gmd/ccgg/carbontracker-lagrange/doc/config.html
