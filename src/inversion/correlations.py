@@ -35,7 +35,7 @@ from .linalg_interface import DaskLinearOperator
 NUM_THREADS = 8
 """Number of threads :mod:`pyfftw` should use for each transform."""
 PLANNER_EFFORT = "FFTW_ESTIMATE"
-ADVANCE_PLANNER_EFFORT = "FFTW_MEASURE"
+ADVANCE_PLANNER_EFFORT = "FFTW_EXHAUSTIVE"
 pyfftw.interfaces.cache.enable()
 
 ROUNDOFF = 1e-13
@@ -356,7 +356,7 @@ class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):
         Raises
         ------
         ValueError
-            if the instance is acyclic
+            if the instance is acyclic.
         """
         # TODO: Test this
         if not self._is_cyclic:
@@ -382,13 +382,17 @@ class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):
 
         Raises
         ------
-        ValueError
+        NotImplementedError
             if the instance is acyclic.
+        ValueError
+            If vec is the wrong shape
         """
         if not self._is_cyclic:
             raise NotImplementedError(
                 "HomogeneousIsotropicCorrelation.solve "
                 "does not support acyclic correlations")
+        if vec.shape[0] != self.shape[0]:
+            raise ValueError("Shape of vec not correct")
         field = asarray(vec).reshape(self._underlying_shape)
 
         spectral_field = self._fft(field)
