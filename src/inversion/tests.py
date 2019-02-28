@@ -1058,6 +1058,26 @@ class TestCorrelations(unittest2.TestCase):
                 np.block([[same_row, other_row],
                           [other_row, same_row]]))
 
+            corr_op = from_function(corr_func, [4, 6], False)
+            same_row = toeplitz(0.5 ** np.arange(6))
+            next_row = toeplitz(
+                0.5 ** np.array([1, np.sqrt(2), np.sqrt(5),
+                                 np.sqrt(10), np.sqrt(17),
+                                 np.sqrt(26)]))
+            row_after_next = toeplitz(
+                0.5 ** np.array([2, np.sqrt(5), np.sqrt(8),
+                                 np.sqrt(13), np.sqrt(20),
+                                 np.sqrt(29)]))
+            two_rows_on = toeplitz(
+                0.5 ** np.array([3, np.sqrt(10), np.sqrt(13),
+                                 np.sqrt(18), 5, np.sqrt(34)]))
+            np_tst.assert_allclose(
+                corr_op.dot(np.eye(24)),
+                np.block([[same_row, next_row, row_after_next, two_rows_on],
+                          [next_row, same_row, next_row, row_after_next],
+                          [row_after_next, next_row, same_row, next_row],
+                          [two_rows_on, row_after_next, next_row, same_row]]))
+
         with self.subTest(is_cyclic=True, nd=1):
             corr_op = from_function(corr_func, [10], True)
             np_tst.assert_allclose(
