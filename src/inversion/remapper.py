@@ -4,13 +4,13 @@ Intended for use in calculating the uncertainties at a coarser
 resolution than the fluxes.
 """
 from __future__ import division
-import math
 from math import ceil
 
 import numpy as np
 from numpy import zeros, newaxis
 
 DTYPE = np.float64
+
 
 def get_remappers(domain_size, block_side=3):
     """Get matrices to remap from original to coarser resolution.
@@ -33,7 +33,7 @@ def get_remappers(domain_size, block_side=3):
         In this package, that would be the fluxes.
     """
     domain_size = tuple(domain_size)
-    reduced_size = tuple(ceil(dim / block_side) for dim in domain_size)
+    reduced_size = tuple(int(ceil(dim / block_side)) for dim in domain_size)
     extensive_remapper = zeros(reduced_size + domain_size,
                                dtype=DTYPE)
 

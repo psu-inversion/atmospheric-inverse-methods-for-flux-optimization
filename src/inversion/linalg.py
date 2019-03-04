@@ -139,7 +139,6 @@ def solve(arr1, arr2):
         # provided solver. Use iterative sparse solvers.
         # TODO: Test Ax = b for b not column vector
         return linop_solve(arr1, arr2)
-        # # TODO: Figure out dask tasks for this
         # return da.Array(
         #     {(chunkname, 0):
         #      (spsolve, arr1, arr2.rechunk(1, whatever))},
