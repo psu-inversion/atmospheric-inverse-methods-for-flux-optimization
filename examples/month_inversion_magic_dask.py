@@ -364,10 +364,11 @@ print(OBS_DATASET.dims, OBS_DATASET.coords)
 OBS_DATASET.coords["site"] = list(
     map(lambda x: x.decode("ascii"),
         OBS_DATASET["name_of_observation_site"].values))
-OBS_DATASET.set_index(dim1="site",
-                      inplace=True)
-OBS_DATASET.rename(dict(dim1="site"),
-                   inplace=True)
+OBS_DATASET = (
+    OBS_DATASET
+    .set_index(dim1="site")
+    .rename(dict(dim1="site"))
+)
 del OBS_DATASET.coords["name_of_observation_site"]
 print(OBS_DATASET.dims, OBS_DATASET.coords)
 # Assign a few more coords and pull out only the fluxes we need.
