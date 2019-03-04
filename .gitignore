@@ -56,6 +56,7 @@ monthly_inversion*_output.nc4
 ????-??_observation_realizations_for_??h_???km_*.nc4
 .pyfftw.pickle*
 *_profile*
+*_gain_dist.txt
 
 # Filesystem artifacts?
 .nfs*

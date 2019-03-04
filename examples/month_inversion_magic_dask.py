@@ -147,13 +147,8 @@ DAYS_DROPPED_FROM_END = 1
 """Currently 1 to avoid problems with lack of fluxes in August."""
 OBS_DAYS = 30
 N_REALIZATIONS = 80
-#  1    3m36 ( 5 realizations)    8m42
-#  1   11m08 (80 realizations)   28m50
-#  2   12m43 (80 realizations)   32m34
-#  4   14m27 (80 realizations)   36m16
-#  8   20m43 (80 realizations)   48m33
-# 16   38m06 (80 realizations)   76m57
-# 30 1h51m09 (80 realizations) 3h42m20
+#  1    9m55 (80 realizations)    9m46
+# 30 2h48m40 (80 realizations) 3h56m41
 """Number of days of obs to use."""
 OBS_WINDOW = OBS_DAYS * OBS_TIMES_PER_DAY
 """Number of observation times."""
