@@ -60,6 +60,24 @@ Must divide twenty-four.
 """
 FLUX_RESOLUTION = 27
 """Resolution of fluxes and influence functions in kilometers."""
+UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR = 3
+"""How much coarser uncertainty is than mean estimate in the x direction.
+
+If we compute the uncertainty at full resolution, the resulting file
+is huge, starting in the hundreds of terabytes for a month.
+Coarsening the resolution for the uncertainties allows us to still
+report uncertainties within current computing constraints.
+"""
+# 4: 2h49 wall 132GiB mem 3h57 cpu
+# 3: 5h11 wall 140GiB mem 6h27 cpu
+UNCERTAINTY_FLUX_RESOLUTION = (UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR *
+                               FLUX_RESOLUTION * 1e3)
+"""Resolution of posterior uncertainties in meters."""
+UNCERTAINTY_TEMPORAL_RESOLUTION = "1W"
+"""The resolution at which the uncertainty is calculated and saved.
+
+Higher resolution means the uncertainties will be more accurate.
+"""
 
 # Linear interpolation in space
 OBS_FILES = glob.glob(os.path.join(
@@ -165,11 +183,6 @@ Must also allow a few chunks to be loaded at once.
 """
 REALIZATION_CHUNK = 20
 NC_ENGINE = "netcdf4"
-UNCERTAINTY_RESOLUTION = "1W"
-"""The resolution at which the uncertainty is calculated and saved.
-
-Higher resolution means the uncertainties will be more accurate.
-"""
 
 
 ############################################################
@@ -493,20 +506,6 @@ aligned_influences.load()
 print(datetime.datetime.now(UTC).strftime("%c"), "Loaded data")
 flush_output_streams()
 
-######################################################################
-# Get an observation operator for the month
-#
-# To treat the flux as a mean, we need to sum the influence function
-reduced_influences = (
-    aligned_influences
-    .sum(["dim_y", "dim_x"])
-    .resample(flux_time=UNCERTAINTY_RESOLUTION).sum("flux_time")
-)
-reduced_influences.load()
-print(datetime.datetime.now(UTC).strftime("%c"),
-      "Have influence for monthly average plots")
-flush_output_streams()
-
 posterior_var_atts = aligned_prior_fluxes.attrs.copy()
 posterior_var_atts.update(dict(
     long_name="posterior_fluxes",
@@ -549,16 +548,25 @@ spatial_correlations = (
         (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
          len(TRUE_FLUXES_MATCHED.coords["dim_x"])),
         is_cyclic=False))
-spatial_correlation_remapper = np.full(
-    # Grid points at full resolution, grid points at reduced resolution
-    (spatial_correlations.shape[0], 1),
-    # 1/Number of gridpoints combined in above mapping
-    1. / spatial_correlations.shape[0])
-# reduced_spatial_correlations = (
-#     spatial_correlation_remapper.dot(
-#         spatial_correlations.dot(spatial_correlation_remapper)))
+# spatial_correlation_remapper = np.full(
+#     # Grid points at full resolution, grid points at reduced resolution
+#     (spatial_correlations.shape[0], 1),
+#     # 1/Number of gridpoints combined in above mapping
+#     1. / spatial_correlations.shape[0])
+# # reduced_spatial_correlations = (
+# #     spatial_correlation_remapper.dot(
+# #         spatial_correlations.dot(spatial_correlation_remapper)))
+import inversion.remapper
+spatial_obs_op_remapper, spatial_correlation_remapper = (
+    inversion.remapper.get_remappers(
+        (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
+         len(TRUE_FLUXES_MATCHED.coords["dim_x"])),
+        UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR))
+REDUCED_NY, REDUCED_NX = spatial_correlation_remapper.shape[:2]
+REDUCED_N_GRID_POINTS = REDUCED_NY * REDUCED_NX
 print(datetime.datetime.now(UTC).strftime("%c"), "Have spatial correlations")
 flush_output_streams()
+
 HOURLY_FLUX_TIMESCALE = 3
 INTERVALS_PER_DAY = HOURS_PER_DAY // FLUX_INTERVAL
 hour_correlations = (
@@ -598,8 +606,8 @@ temporal_correlation_ds = xarray.DataArray(
 # group will each be the number of elements in that group.
 reduced_temporal_correlation_ds = (
     temporal_correlation_ds
-    .resample(flux_time=UNCERTAINTY_RESOLUTION).mean("flux_time")
-    .resample(flux_time_adjoint=UNCERTAINTY_RESOLUTION).mean("flux_time_adjoint")
+    .resample(flux_time=UNCERTAINTY_TEMPORAL_RESOLUTION).mean("flux_time")
+    .resample(flux_time_adjoint=UNCERTAINTY_TEMPORAL_RESOLUTION).mean("flux_time_adjoint")
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have temporal correlations")
 print(reduced_temporal_correlation_ds.values)
@@ -623,6 +631,11 @@ flux_std_pattern = xarray.open_dataset(
     engine=NC_ENGINE
 ).get(
     ["E_TRA{:d}".format(i + 1) for i in range(1)]
+).sel(
+    Time=reduced_temporal_correlation_ds.indexes["flux_time"]
+).mean(
+    dim="Time",
+    keep_attrs=True,
 )
 
 # Ensure units work out
@@ -641,18 +654,73 @@ for flux_part in flux_std_pattern.data_vars.values():
 #     ).data)
 reduced_flux_stds = (
     FLUX_VARIANCE_VARYING_FRACTION *
-    flux_std_pattern["E_TRA1"].sel(
-        Time=reduced_temporal_correlation_ds.indexes["flux_time"]
-    ).mean(dim="Time").data)
+    flux_std_pattern["E_TRA1"].data)
+print(datetime.datetime.now(UTC).strftime("%c"), "Have standard deviations")
+flush_output_streams()
 
 spatial_covariance = inversion.covariances.CorrelationStandardDeviation(
     spatial_correlations, reduced_flux_stds)
+print(datetime.datetime.now(UTC).strftime("%c"), "Have full spatial covariance")
+flush_output_streams()
 
-reduced_spatial_covariance = spatial_correlation_remapper.T.dot(
+reduced_spatial_covariance = spatial_correlation_remapper.reshape(
+    REDUCED_N_GRID_POINTS, N_GRID_POINTS
+).dot(
     spatial_covariance.dot(
-        spatial_correlation_remapper))
+        spatial_correlation_remapper.reshape(
+            REDUCED_N_GRID_POINTS, N_GRID_POINTS
+        ).T
+    )
+)
+print(datetime.datetime.now(UTC).strftime("%c"), "Have reduced spatial covariance")
+flush_output_streams()
+
 print(datetime.datetime.now(UTC).strftime("%c"), "Have spatial covariances")
 print(reduced_spatial_covariance)
+flush_output_streams()
+
+######################################################################
+# Get an observation operator for the month
+#
+# To treat the flux as a mean, we need to sum the influence function
+# spatial_obs_op_remapper_ds = xarray.DataArray(
+#     spatial_obs_op_remapper,
+#     dict(
+#     ("reduced_dim_y", "reduced_dim_x", "dim_y", "dim_x"),
+#     "spatial_obs_op_remapper_ds",
+# )
+
+reduced_influences = (
+    aligned_influences
+    .groupby_bins(
+        "dim_x",
+        pd.interval_range(
+            0,
+            aligned_influences.indexes["dim_x"][-1] + UNCERTAINTY_FLUX_RESOLUTION,
+            freq=UNCERTAINTY_FLUX_RESOLUTION,
+            closed="left")
+        # np.arange(
+        #     -1,
+        #     aligned_influences.indexes["dim_x"][-1] + UNCERTAINTY_FLUX_RESOLUTION,
+        #     UNCERTAINTY_FLUX_RESOLUTION),
+    ).sum("dim_x")
+    .groupby_bins(
+        "dim_y",
+        pd.interval_range(
+            0,
+            aligned_influences.indexes["dim_y"][-1] + UNCERTAINTY_FLUX_RESOLUTION,
+            freq=UNCERTAINTY_FLUX_RESOLUTION, closed="left")
+        # np.arange(
+        #     -1,
+        #      aligned_influences.indexes["dim_y"][-1] + UNCERTAINTY_FLUX_RESOLUTION,
+        #      UNCERTAINTY_FLUX_RESOLUTION),
+    ).sum("dim_y")
+    .resample(flux_time=UNCERTAINTY_TEMPORAL_RESOLUTION).sum("flux_time")
+).rename(dim_x_bins="reduced_dim_x", dim_y_bins="reduced_dim_y",
+         flux_time="reduced_flux_time")
+reduced_influences.load()
+print(datetime.datetime.now(UTC).strftime("%c"),
+      "Have influence for monthly average plots")
 flush_output_streams()
 
 prior_covariance = kronecker_product(
@@ -740,7 +808,9 @@ posterior, reduced_posterior_covariances = (
         # .reshape(aligned_influences.shape[0],
         #          np.prod(aligned_influences.shape[-3:]))),
         reduced_prior_covariance,
-        reduced_influences  # .stack(fluxes=("dim_y", "dim_x")).values
+        reduced_influences.stack(
+            fluxes=("reduced_flux_time", "reduced_dim_y",
+                    "reduced_dim_x")).values
     )
 )
 print(datetime.datetime.now(UTC).strftime("%c"),
@@ -784,36 +854,110 @@ flush_output_streams()
 posterior_covariance_ds = xarray.Dataset(
     dict(
         reduced_posterior_covariance=(
-            reduced_temporal_correlation_ds.dims,
+            ("reduced_flux_time_adjoint",
+             "reduced_dim_y_adjoint",
+             "reduced_dim_x_adjoint",
+             "reduced_flux_time",
+             "reduced_dim_y",
+             "reduced_dim_x",
+            ),
             reduced_posterior_covariances.reshape(
-                reduced_temporal_correlation_ds.shape),
+                reduced_temporal_correlation_ds.shape[0],
+                reduced_influences.shape[2],
+                reduced_influences.shape[3],
+                reduced_temporal_correlation_ds.shape[1],
+                reduced_influences.shape[2],
+                reduced_influences.shape[3]
+            ),
             dict(
                 long_name="reduced_covariance_matrix_for_posterior_fluxes",
                 units=(FLUX_UNITS ** 2).format(),
             ),
         ),
         reduced_prior_covariance=(
-            reduced_temporal_correlation_ds.dims,
+            ("reduced_flux_time_adjoint",
+             "reduced_dim_y_adjoint",
+             "reduced_dim_x_adjoint",
+             "reduced_flux_time",
+             "reduced_dim_y",
+             "reduced_dim_x",
+             ),
             reduced_prior_covariance.reshape(
-                reduced_temporal_correlation_ds.shape),
+                reduced_temporal_correlation_ds.shape[0],
+                reduced_influences.shape[2],
+                reduced_influences.shape[3],
+                reduced_temporal_correlation_ds.shape[1],
+                reduced_influences.shape[2],
+                reduced_influences.shape[3]
+            ),
             dict(
                 long_name="reduced_covariance_matrix_for_prior_fluxes",
                 units=(FLUX_UNITS ** 2).format(),
             ),
         ),
     ),
-    reduced_temporal_correlation_ds.coords,
+    dict(
+        reduced_flux_time=reduced_temporal_correlation_ds.coords["flux_time"].values,
+        reduced_flux_time_adjoint=reduced_temporal_correlation_ds.coords["flux_time_adjoint"].values,
+        wrf_proj=reduced_influences.coords["wrf_proj"]
+    ),
     posterior_global_atts
+)
+
+RED_DIM_Y = reduced_influences.indexes["reduced_dim_y"]
+posterior_covariance_ds.coords["reduced_dim_y"] = RED_DIM_Y.left
+posterior_covariance_ds.coords["reduced_dim_y_bnds"] = (
+    ("reduced_dim_y", "bnds2"),
+    np.vstack([RED_DIM_Y.left, RED_DIM_Y.right]).T,
+    dict(closed="left")
+)
+posterior_covariance_ds.coords["reduced_dim_y"].attrs.update(
+    aligned_influences.coords["dim_y"].attrs)
+posterior_covariance_ds.coords["reduced_dim_y"].attrs.update(
+    dict(bounds="reduced_dim_y_bnds",
+         adjoint="reduced_dim_y_adjoint"))
+
+RED_DIM_X = reduced_influences.indexes["reduced_dim_x"]
+posterior_covariance_ds.coords["reduced_dim_x"] = RED_DIM_X.left
+posterior_covariance_ds.coords["reduced_dim_x_bnds"] = (
+    ("reduced_dim_x", "bnds2"),
+    np.vstack([RED_DIM_X.left, RED_DIM_X.right]).T,
+    dict(closed="left"))
+posterior_covariance_ds.coords["reduced_dim_x"].attrs.update(
+    aligned_influences.coords["dim_x"].attrs)
+posterior_covariance_ds.coords["reduced_dim_x"].attrs.update(
+    dict(bounds="reduced_dim_x_bnds",
+         adjoint="reduced_dim_x"))
+
+posterior_covariance_ds.coords["reduced_dim_y_adjoint"] = (
+    posterior_covariance_ds.coords["reduced_dim_y"].values)
+posterior_covariance_ds.coords["reduced_dim_y_adjoint_bnds"] = (
+    ("reduced_dim_y", "bnds2"),
+    np.vstack([RED_DIM_Y.left, RED_DIM_Y.right]).T,
+    dict(closed="left")
+)
+posterior_covariance_ds.coords["reduced_dim_y_adjoint"].attrs.update(
+    aligned_influences.coords["dim_y"].attrs)
+posterior_covariance_ds.coords["reduced_dim_y_adjoint"].attrs.update(
+    dict(bounds="reduced_dim_y_adjoint_bnds",
+         adjoint="reduced_dim_y"))
+
+posterior_covariance_ds.coords["reduced_dim_x_adjoint"] = (
+    posterior_covariance_ds.coords["reduced_dim_x"].values)
+posterior_covariance_ds.coords["reduced_dim_x_adjoint_bnds"] = (
+    ("reduced_dim_x", "bnds2"),
+    np.vstack([RED_DIM_X.left, RED_DIM_X.right]).T,
+    dict(closed="left"))
+posterior_covariance_ds.attrs.update(
+    dict(title="posterior_flux_uncertainty",
+         summary="Covariance matrices for prior and posterior fluxes.",
+         )
 )
 
 encoding = {name: {"_FillValue": -99}
             for name in posterior_covariance_ds.data_vars}
 encoding.update({name: {"_FillValue": False}
                  for name in posterior_covariance_ds.coords})
-posterior_covariance_ds.load()
-print(posterior_covariance_ds)
-print(posterior_covariance_ds["reduced_posterior_covariance"].values)
-print(posterior_covariance_ds["reduced_prior_covariance"].values)
 
 posterior_covariance_ds.to_netcdf(
     ("2010-07_monthly_inversion_{flux_interval:02d}h_027km_"
