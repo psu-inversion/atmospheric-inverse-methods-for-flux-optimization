@@ -136,7 +136,7 @@ def simple(background, background_covariance,
         # Then B * _ to get the decrease
         decrease = reduced_background_covariance.dot(most_of_decrease.T)
 
-        if isinstance(background_covariance, LinearOperator):
+        if isinstance(reduced_background_covariance, LinearOperator):
             decrease = tolinearoperator(decrease)
 
         analysis_covariance = reduced_background_covariance - decrease
@@ -263,7 +263,7 @@ def fold_common(background, background_covariance,
         # Then B * _ to get the decrease
         decrease = reduced_background_covariance.dot(most_of_decrease.T)
 
-        if isinstance(background_covariance, LinearOperator):
+        if isinstance(reduced_background_covariance, LinearOperator):
             decrease = tolinearoperator(decrease)
 
         analysis_covariance = reduced_background_covariance - decrease
