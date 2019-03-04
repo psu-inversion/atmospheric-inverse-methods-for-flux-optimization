@@ -2,6 +2,10 @@
 
 Hide most of the implementation details.
 Take prior and parameters, return posterior.
+
+The interface is still experimental at this point.  I am likely to
+remove functions and parameters as I find better ways to organize
+things.  The code still works fine as an example.
 """
 from distutils.version import LooseVersion
 import subprocess
