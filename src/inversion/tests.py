@@ -38,6 +38,7 @@ import inversion.optimal_interpolation
 import inversion.correlations
 import inversion.covariances
 import inversion.variational
+import inversion.remapper
 import inversion.wrapper
 import inversion.linalg
 import inversion.noise
@@ -2731,6 +2732,54 @@ class TestWrapperUniform(unittest2.TestCase):
 
         for dim in result.dims:
             self.assertIn(dim, result.coords)
+
+
+class TestRemapper(unittest2.TestCase):
+    """Test that the remappers are working properly."""
+
+    def test_simple(self):
+        """Test for the simplest possible case."""
+        extensive, intensive = inversion.remapper.get_remappers(
+            (6, 6), 3)
+
+        old_data = np.arange(36, dtype=float).reshape(6, 6)
+        test_sum = extensive.reshape(4, 36).dot(
+            old_data.reshape(36)).reshape(2, 2)
+
+        np_tst.assert_allclose(
+            test_sum,
+            [[63, 90],
+             [225, 252]])
+
+        test_mean = intensive.reshape(4, 36).dot(
+            old_data.reshape(36)).reshape(2, 2)
+        np_tst.assert_allclose(
+            test_mean,
+            [[7, 10],
+             [25, 28]])
+
+    def test_harder(self):
+        """Test for domains that do not divide evenly."""
+        extensive, intensive = inversion.remapper.get_remappers(
+            (7, 7), 3)
+
+        old_data = np.arange(49, dtype=float).reshape(7, 7)
+
+        test_sum = extensive.reshape(9, 49).dot(
+            old_data.reshape(49)).reshape(3, 3)
+        np_tst.assert_allclose(
+            test_sum,
+            [[72, 99, 39],
+             [261, 288, 102],
+             [129, 138, 48]])
+
+        test_mean = intensive.reshape(9, 49).dot(
+            old_data.reshape(49)).reshape(3, 3)
+        np_tst.assert_allclose(
+            test_mean,
+            [[8, 11, 13],
+             [29, 32, 34],
+             [43, 46, 48]])
 
 
 if __name__ == "__main__":
