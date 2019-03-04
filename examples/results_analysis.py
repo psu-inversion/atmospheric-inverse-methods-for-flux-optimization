@@ -17,6 +17,7 @@ import scipy.special
 import matplotlib as mpl
 mpl.use("Agg")
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeat
@@ -43,9 +44,42 @@ FLUX_RESOLUTION = 27
 
 
 def write_console_message(msg):
-    """Write a message to stdout and flush output streams."""
+    """Write a message to stdout and flush output streams.
+
+    Parameters
+    ----------
+    msg: str
+    """
     sys.stderr.flush()
     print(datetime.datetime.now(), msg, flush=True)
+
+
+def long_description(df):
+    """Print longer description of df.
+
+    Parameters
+    ----------
+    df: pd.DataFrame
+
+    Returns
+    -------
+    pd.DataFrame
+    """
+    df_stats = df.describe()
+    df_stats_loc = df_stats.loc
+    df_stats_loc["IQR", :] = df_stats_loc["75%", :] - df_stats_loc["25%", :]
+    df_stats_loc["mean abs. dev.", :] = df.mad()
+
+    deviation_from_median = df - df_stats_loc["50%", :]
+    df_stats_loc["med. abs. dev.", :] = deviation_from_median.abs().median()
+    df_stats_loc["Fisher skewness", :] = df.skew()
+    df_stats_loc["Y-K skewness", :] = (
+        (df_stats_loc["75%", :] + df_stats_loc["25%", :] -
+         2 * df_stats_loc["50%", :]) /
+        (df_stats_loc["75%", :] - df_stats_loc["25%", :])
+    )
+    df_stats_loc["Fisher kurtosis", :] = df.kurt()
+    return df_stats
 
 
 PRIOR_PATH = (
@@ -67,19 +101,6 @@ POSTERIOR_PATH = (
          noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
          invfun=INV_FUNCTION, invlen=INV_LENGTH,
          inv_time_fun=INV_TIME_FUN, inv_time_len=INV_TIME_LEN)
-
-COVARIANCE_DS = xarray.open_dataset(
-    "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
-    "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d_"
-    "icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d_"
-    "covariance_output.nc4".format(
-        year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
-        noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
-        noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
-        invfun=INV_FUNCTION, invlen=INV_LENGTH,
-        inv_time_fun=INV_TIME_FUN, inv_time_len=INV_TIME_LEN
-    )
-)
 
 WRF_CRS = ccrs.LambertConformal(
     standard_parallels=(30, 60), central_latitude=40,
@@ -221,7 +242,7 @@ for name, var in PRIOR_DS.data_vars.items():
         long_name += "_with_added_noise"
     var.attrs["long_name"] = long_name
     try:
-        var.attrs["units"] = "μ" + var.attrs["units"]
+        var.attrs["units"] = "\N{MICRO SIGN}" + var.attrs["units"]
         var *= 1e6
     except KeyError:
         print(name)
@@ -249,7 +270,7 @@ for name, var in NOISE_STD_DS.data_vars.items():
     var.attrs["long_name"] = long_name
     if var.attrs["units"] == "mol km^-2 hr^-1":
         var /= 3.6e3
-        var.attrs["units"] = "μmol/m^2/s"
+        var.attrs["units"] = "\N{MICRO SIGN}mol/m^2/s"
 
 # NOISE_STD_DS.coords["south_north"] = PRIOR_DS.coords["dim_y"].data
 # NOISE_STD_DS.coords["west_east"] = PRIOR_DS.coords["dim_x"].data
@@ -272,7 +293,7 @@ POSTERIOR_DS.coords["time"] = POSTERIOR_DS.indexes["time"].round("S")
 
 for var in POSTERIOR_DS.data_vars.values():
     var *= 1e6
-    var.attrs["units"] = "μ" + var.attrs["units"]
+    var.attrs["units"] = "\N{MICRO SIGN}" + var.attrs["units"]
 
 NOISE_STD_DS.coords["south_north"] = (
     POSTERIOR_DS.coords["projection_y_coordinate"].data
@@ -288,6 +309,27 @@ SMALL_POSTERIOR_DS = POSTERIOR_DS.sel(
 # SMALL_PRIOR_DS = PRIOR_DS.sel(
 #     dim_x=slice(WEST_BOUNDARY_WRF, EAST_BOUNDARY_WRF),
 #     dim_y=slice(SOUTH_BOUNDARY_WRF, NORTH_BOUNDARY_WRF))
+
+COVARIANCE_DS = xarray.open_dataset(
+    "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
+    "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d_"
+    "icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d_"
+    "covariance_output.nc4".format(
+        year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
+        noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
+        noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
+        invfun=INV_FUNCTION, invlen=INV_LENGTH,
+        inv_time_fun=INV_TIME_FUN, inv_time_len=INV_TIME_LEN
+    ),
+    chunks=dict(reduced_flux_time_adjoint=3, reduced_dim_y_adjoint=3,
+                reduced_dim_x_adjoint=3),
+)
+SMALL_COVARIANCE_DS = COVARIANCE_DS.sel(
+    reduced_dim_x_adjoint=slice(*LPDM_BOUNDS[:,0]),
+    reduced_dim_y_adjoint=slice(*LPDM_BOUNDS[:, 1]),
+    reduced_dim_x=slice(*LPDM_BOUNDS[:, 0]),
+    reduced_dim_y=slice(*LPDM_BOUNDS[:, 1]),
+)
 
 PSEUDO_OBS_DS = xarray.open_mfdataset(
     "observation_realizations_for_06h_0?.nc4",
@@ -330,7 +372,7 @@ fig, axes = plt.subplots(
 (2. * 5. * NOISE_STD_DS.E_TRA7).plot.pcolormesh(robust=True)
 axes = fig.axes
 axes[0].coastlines()
-axes[1].set_ylabel("standard deviation of noise (mol/m$^2$/s)")
+axes[1].set_ylabel("standard deviation of noise (µmol/m$^2$/s)")
 fig.suptitle("Standard deviation of added noise")
 axes[0].set_xlim(POSTERIOR_DS.coords["projection_x_coordinate"][[0, -1]])
 axes[0].set_ylim(POSTERIOR_DS.coords["projection_y_coordinate"][[0, -1]])
@@ -400,7 +442,7 @@ for ax in plots.axes.flat:
     ax.set_ylim(ylim)
     ax.coastlines()
 
-plots.cbar.ax.set_ylabel("CO$_2$ Flux (μmol/m$^2$/s)")
+plots.cbar.ax.set_ylabel("CO$_2$ Flux (\N{MICRO SIGN}mol/m$^2$/s)")
 plots.axes[0, 0].set_title('"Truth"')
 plots.axes[0, 1].set_title("Prior")
 plots.axes[0, 2].set_title("Posterior")
@@ -452,7 +494,7 @@ for ax in plots.axes.flat:
     ax.set_ylim(ylim)
     ax.coastlines()
 
-plots.cbar.ax.set_ylabel("CO$_2$ Flux (μmol/m$^2$/s)")
+plots.cbar.ax.set_ylabel("CO$_2$ Flux (\N{MICRO SIGN}mol/m$^2$/s)")
 plots.axes[0, 0].set_title("Prior $-$ \"Truth\"")
 plots.axes[0, 1].set_title("Posterior $-$ \"Truth\"")
 
@@ -626,7 +668,7 @@ ax.set_xlim(mpl.dates.datestr2num(
 ax.axhline(0, color="black", linewidth=.75)
 
 plt.legend()
-ax.set_ylabel("Average flux error over whole domain\n(μmol/m²/s)")
+ax.set_ylabel("Average flux error over whole domain\n(\N{MICRO SIGN}mol/m²/s)")
 ax.set_xlabel("")
 plt.title("Spatial average flux error")
 
@@ -672,7 +714,7 @@ ax.set_xlim(mpl.dates.datestr2num(
 ax.axhline(0, color="black", linewidth=.75)
 
 plt.legend()
-ax.set_ylabel("Average flux error over West Virginia\n(μmol/m²/s)")
+ax.set_ylabel("Average flux error over West Virginia\n(\N{MICRO SIGN}mol/m²/s)")
 ax.set_xlabel("")
 plt.title("Spatial average flux error")
 
@@ -712,7 +754,7 @@ spatial_avg_increment.isel(realization=0).plot.line('-')
 #     ax.axvline(xval, color=color)
 
 ax.axhline(0, color="black", linewidth=.75)
-ax.set_ylabel("Average increment over whole domain\n(μmol/m²/s)")
+ax.set_ylabel("Average increment over whole domain\n(\N{MICRO SIGN}mol/m²/s)")
 ax.set_xlabel("")
 plt.title("Spatial average increment")
 
@@ -754,7 +796,7 @@ except ValueError:
 #     ax.axvline(xval, color=color)
 
 ax.axhline(0, color="black", linewidth=.75)
-ax.set_ylabel("Average increment over West Virginia\n(μmol/m²/s)")
+ax.set_ylabel("Average increment over West Virginia\n(\N{MICRO SIGN}mol/m²/s)")
 ax.set_xlabel("")
 plt.title("Spatial average increment")
 
@@ -772,6 +814,26 @@ plt.close(fig)
 write_console_message("Done increment plots")
 
 ############################################################
+# Calculate prior and posterior variances
+write_console_message("Calculating variances")
+prior_theoretical_variance = (
+    COVARIANCE_DS["reduced_prior_covariance"].mean() * 1e12
+).values
+write_console_message("Done prior, starting posterior")
+posterior_theoretical_variance = (
+    COVARIANCE_DS["reduced_posterior_covariance"].mean() * 1e12
+).values
+write_console_message("Done calculating large variances, starting small")
+prior_small_theoretical_variance = (
+    SMALL_COVARIANCE_DS["reduced_prior_covariance"].mean() * 1e12
+).values
+write_console_message("Done prior, starting posterior")
+posterior_small_theoretical_variance = (
+    SMALL_COVARIANCE_DS["reduced_posterior_covariance"].mean() * 1e12
+).values
+write_console_message("Done calculating variances")
+
+############################################################
 # Plot histogram of average flux errors
 error_range = da.asarray(
     [all_mean_error.min(), all_mean_error.max()]).compute()
@@ -780,32 +842,36 @@ fig, ax = plt.subplots(1, 1)
 #              all_mean_error.sel(type="posterior_error")],
 #             range=[-.1, .1],
 #             label=["Prior", "Posterior"])
-all_mean_error.to_dataframe(
+mean_error_df = all_mean_error.to_dataframe(
     name="error"
 ).loc[:, "error"].unstack(0).loc[
     :, ["prior_error", "posterior_error"]
-].plot.kde(
+]
+mean_error_df.plot.kde(
     ax=ax, subplots=False, xlim=(-2, 2), ylim=(0, None),
 )
+sns.rugplot(mean_error_df["prior_error"], axis=ax, color="b")
+sns.rugplot(mean_error_df["posterior_error"], axis=ax, color="tab:orange")
 # sns.kdeplot(all_mean_error.sel(type="prior_error"), ax=ax,
 #             shade=True, label="Prior")
 # sns.kdeplot(all_mean_error.sel(type="posterior_error"), ax=ax,
 #             shade=True, label="Posterior")
 
-prior_theoretical_variance = (
-    COVARIANCE_DS["reduced_prior_covariance"].mean() * 1e12
-).values
 sample_fluxes = np.linspace(-2, 2, 50)
-flux_densities = (
+prior_flux_density = (
     np.exp(-0.5 * sample_fluxes ** 2 / prior_theoretical_variance) /
     np.sqrt(2 * np.pi * prior_theoretical_variance)
 )
-ax.plot(sample_fluxes, flux_densities, 'r--')
+ax.plot(sample_fluxes, prior_flux_density, 'r--')
+posterior_flux_density = (
+    np.exp(-0.5 * sample_fluxes ** 2 / posterior_theoretical_variance) /
+    np.sqrt(2 * np.pi * posterior_theoretical_variance)
+)
+ax.plot(sample_fluxes, posterior_flux_density, "m--")
 
-ax.legend(["Prior Means", "Posterior Means", "PDF for Prior Means"])
+ax.legend(["Prior Means", "Posterior Means", "PDF for Prior Means", "PDF for Posterior Means"])
 ax.set_ylabel("Density")
-ax.set_xlabel("Error in mean estimate (μmol/m$^2$/s)")
-
+ax.set_xlabel("Error in mean estimate (\N{MICRO SIGN}mol/m$^2$/s)")
 
 fig.savefig(
     "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
@@ -819,6 +885,72 @@ fig.savefig(
 
 plt.close(fig)
 
+fig, ax = plt.subplots(1, 1)
+mean_error_df.plot.hist(ax=ax, alpha=.5, xlim=(-1.8, 1.8))
+ax.set_ylabel("Count")
+ax.set_xlabel("Error in mean estimate (\N{MICRO SIGN}mol/m\N{SUPERSCRIPT TWO}/s)")
+ax.legend(["Prior means", "Posterior means"])
+fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_flux_error_hist.pdf".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
+plt.close(fig)
+
+ZSTAR_90 = scipy.stats.norm.ppf(.95)
+with open(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_flux_error_stats.txt".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN), "w") as out_file:
+
+    print("Theoretical standard deviations", file=out_file)
+    print(np.sqrt([prior_theoretical_variance, posterior_theoretical_variance]),
+          file=out_file)
+
+    print("Description of errors", file=out_file)
+    print(long_description(mean_error_df), file=out_file)
+
+    print("Coverage for 90% confidence interval, prior:",
+          file=out_file)
+    number_in_prior_ci = (
+        np.abs(mean_error_df["prior_error"] / 
+               np.sqrt(prior_theoretical_variance)) 
+        < ZSTAR_90
+    ).sum()
+    print(number_in_prior_ci / mean_error_df.shape[0], file=out_file)
+    print("Coverage for 90% confidence interval, posterior:",
+          file=out_file)
+    number_in_posterior_ci = (
+        np.abs(mean_error_df["posterior_error"] /
+               np.sqrt(posterior_theoretical_variance))
+        < ZSTAR_90
+    ).sum()
+    print(number_in_posterior_ci / mean_error_df.shape[0], file=out_file)
+    print("P-values are one of:", file=out_file)
+    dist = scipy.stats.binom(mean_error_df.shape[0], .9)
+    print(dist.cdf([number_in_prior_ci, number_in_posterior_ci]) * 2, file=out_file)
+    print(dist.sf([number_in_prior_ci, number_in_posterior_ci]) * 2, file=out_file)
+
+    print("K-S tests for distributions:", file=out_file)
+    print("Prior:    ", scipy.stats.kstest(
+            mean_error_df["prior_error"],
+            scipy.stats.norm(scale=np.sqrt(prior_theoretical_variance)).cdf),
+          file=out_file)
+    print("Posterior:", scipy.stats.kstest(
+            mean_error_df["posterior_error"],
+            scipy.stats.norm(scale=np.sqrt(posterior_theoretical_variance)).cdf),
+          file=out_file)
+
+
 small_error_range = da.asarray(
     [small_mean_error.min(), small_mean_error.max()]).compute()
 fig, ax = plt.subplots(1, 1)
@@ -826,15 +958,32 @@ fig, ax = plt.subplots(1, 1)
 #          small_mean_error.sel(type="posterior_error")],
 #         range=[-4, 4],
 #         label=["Prior", "Posterior"])
-ax.set_xlabel("West Virginia mean flux error (μmol/m$^2$/s)")
-small_mean_error.to_dataframe(
+ax.set_xlabel("West Virginia mean flux error (\N{MICRO SIGN}mol/m$^2$/s)")
+small_mean_error_df = small_mean_error.to_dataframe(
     name="error"
 ).loc[:, "error"].unstack(0).loc[
     :, ["prior_error", "posterior_error"]
-].plot.kde(
-    ax=ax, subplots=False, xlim=(-10, 10), ylim=(0, None),
+]
+small_mean_error_df.plot.kde(
+    ax=ax, subplots=False, xlim=(-30, 30), ylim=(0, None),
 )
-ax.legend(["Prior Means", "Posterior Means"])
+
+sns.rugplot(small_mean_error_df["prior_error"], axis=ax, color="b")
+sns.rugplot(small_mean_error_df["posterior_error"], axis=ax, color="tab:orange")
+
+sample_fluxes = np.linspace(-20, 20, 50)
+prior_flux_density = (
+    np.exp(-0.5 * sample_fluxes ** 2 / prior_small_theoretical_variance) /
+    np.sqrt(2 * np.pi * prior_small_theoretical_variance)
+)
+ax.plot(sample_fluxes, prior_flux_density, 'r--')
+posterior_flux_density = (
+    np.exp(-0.5 * sample_fluxes ** 2 / posterior_small_theoretical_variance) /
+    np.sqrt(2 * np.pi * posterior_small_theoretical_variance)
+)
+ax.plot(sample_fluxes, posterior_flux_density, "m--")
+
+ax.legend(["Prior Means", "Posterior Means", "PDF for Prior Means", "PDF for Posterior Means"])
 ax.set_ylabel("Density")
 
 fig.savefig(
@@ -847,6 +996,23 @@ fig.savefig(
         inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
         inv_time_len=INV_TIME_LEN))
 plt.close(fig)
+
+fig, ax = plt.subplots(1, 1)
+small_mean_error_df.plot.hist(ax=ax, alpha=.5, xlim=(-30, 30))
+ax.set_ylabel("Count")
+ax.set_xlabel("Error in mean estimate (\N{MICRO SIGN}mol/m\N{SUPERSCRIPT TWO}/s)")
+ax.legend(["Prior means", "Posterior means"])
+fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_small_flux_error_hist.pdf".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
+plt.close(fig)
+
 write_console_message("Wrote error densities")
 
 ############################################################
@@ -855,7 +1021,7 @@ fig = plt.figure(figsize=(4, 2.5))
 plt.subplots_adjust(left=.24, bottom=.2)
 plt.plot(total_gain, all_mean_error.sel(type="prior_error"), ".")
 plt.xlabel("Gain")
-plt.ylabel("Prior error (μmol/m$^2$/s)")
+plt.ylabel("Prior error (\N{MICRO SIGN}mol/m$^2$/s)")
 plt.xlim(-1, 1)
 
 fig.savefig(
@@ -873,7 +1039,7 @@ fig = plt.figure(figsize=(4, 2.5))
 plt.subplots_adjust(left=.24, bottom=.2)
 plt.plot(small_gain, small_mean_error.sel(type="prior_error"), ".")
 plt.xlabel("Gain")
-plt.ylabel("Prior error (μmol/m$^2$/s)")
+plt.ylabel("Prior error (\N{MICRO SIGN}mol/m$^2$/s)")
 plt.xlim(-1, 1)
 
 fig.savefig(
