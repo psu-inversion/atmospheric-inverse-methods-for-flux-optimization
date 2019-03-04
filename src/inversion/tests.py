@@ -2475,6 +2475,104 @@ class TestReducedUncertainties(unittest2.TestCase):
                 bg, bg_cov, obs, obs_cov, obs_op,
                 reduced_background_covariance=bg_cov_red)
 
+    @unittest2.expectedFailure
+    def test_multi_dim_correlated(self):
+        """Test that reduced uncertainties are close even for multidimensional systems.
+
+        The process of coarsening the resolutions of the state and
+        observation operators is causing problems.
+        """
+        bg = np.zeros((7, 3, 5), dtype=DTYPE)
+        obs = np.ones((5, 3), dtype=DTYPE)
+        times_in_first_group = 3
+        times_in_second_group = bg.shape[0] - times_in_first_group
+        test_bg = np.arange(bg.size, dtype=DTYPE).reshape(bg.shape)
+
+        temp_cov = scipy.linalg.toeplitz((1 - 1./14) ** np.arange(bg.shape[0]))
+        spatial_cov = (inversion.correlations.HomogeneousIsotropicCorrelation
+                       .from_function(inversion.correlations.ExponentialCorrelation(3.),
+                                      bg.shape[1:],
+                                      False))
+
+        bg_cov = inversion.linalg.DaskKroneckerProductOperator(
+            temp_cov, spatial_cov)
+
+        same_tower_corr = scipy.linalg.toeplitz(np.exp(-np.arange(obs.shape[0], dtype=DTYPE)))
+        other_tower_corr = np.zeros_like(same_tower_corr, dtype=DTYPE)
+        obs_corr = np.block([[same_tower_corr, other_tower_corr, other_tower_corr],
+                             [other_tower_corr, same_tower_corr, other_tower_corr],
+                             [other_tower_corr, other_tower_corr, same_tower_corr]])
+
+        obs_op = np.zeros(obs.shape + bg.shape, dtype=DTYPE)
+        for i in range(obs.shape[0]):
+            for j in range(bg.shape[0] - i):
+                obs_op[i, :, i + j, :, :] = np.exp(-j)
+
+        spatial_remapper = np.full(
+            bg.shape[1:],
+            1. / np.product(bg.shape[1:]),
+            dtype=DTYPE
+        ).reshape(-1)
+        spatial_cov_reduced = spatial_remapper.dot(spatial_cov.dot(spatial_remapper))
+
+        temp_cov_reduced = np.block(
+            [[temp_cov[:times_in_first_group, :times_in_first_group].mean(),
+              temp_cov[:times_in_first_group, times_in_first_group:].mean()],
+             [temp_cov[times_in_first_group:, :times_in_first_group].mean(),
+              temp_cov[times_in_first_group:, times_in_first_group:].mean()]])
+        bg_cov_red = inversion.util.kron(temp_cov_reduced,
+                                         spatial_cov_reduced)
+
+        obs_op_part_red = obs_op.sum(axis=-1).sum(axis=-1)
+        obs_op_red = np.stack(
+            [obs_op_part_red[:, :, :times_in_first_group].sum(axis=-1),
+             obs_op_part_red[:, :, times_in_first_group:].sum(axis=-1)],
+            axis=2)
+
+        fluxes_in_first_group = spatial_remapper.shape[0] * times_in_first_group
+        fluxes_in_second_group = spatial_remapper.shape[0] * times_in_second_group
+        cov_remapper = np.block(
+            [[np.full(fluxes_in_first_group, 1. / fluxes_in_first_group, dtype=DTYPE),
+              np.zeros(fluxes_in_second_group, dtype=DTYPE)],
+             [np.zeros(fluxes_in_first_group, dtype=DTYPE),
+              np.full(fluxes_in_second_group, 1. / fluxes_in_second_group, dtype=DTYPE)]]
+        )
+        np_tst.assert_allclose(cov_remapper.dot(bg_cov.dot(cov_remapper.T)),
+                               bg_cov_red)
+
+        np_tst.assert_allclose(cov_remapper.dot(test_bg.reshape(-1)),
+                               [test_bg[:times_in_first_group, :, :].mean(),
+                                test_bg[times_in_first_group:, :, :].mean()])
+
+        np_tst.assert_allclose(
+            obs_op_red.reshape(obs_corr.shape[0],
+                               bg_cov_red.shape[0]).dot(
+                cov_remapper.dot(
+                    test_bg.reshape(-1))),
+            obs_op.reshape(obs_corr.shape[0],
+                           bg_cov.shape[0]).dot(
+                test_bg.reshape(-1))
+        )
+
+        for method in ALL_METHODS[:4]:
+            with self.subTest(method=getname(method)):
+                print(getname(method))
+                post, post_cov = method(
+                    bg.reshape(-1), bg_cov,
+                    obs.reshape(-1), obs_corr,
+                    obs_op.reshape(obs_corr.shape[0], bg_cov.shape[0]))
+                post, post_cov_red = method(
+                    bg.reshape(-1), bg_cov,
+                    obs.reshape(-1), obs_corr,
+                    obs_op.reshape(obs_corr.shape[0], bg_cov.shape[0]),
+                    bg_cov_red,
+                    obs_op_red.reshape(obs_corr.shape[0], bg_cov_red.shape[0]))
+
+                la.cholesky(post_cov_red)
+                reduced_post_cov = cov_remapper.dot(
+                    post_cov.dot(cov_remapper.T))
+                np_tst.assert_allclose(reduced_post_cov, post_cov_red)
+
 
 class TestWrapperMetadata(unittest2.TestCase):
     """Test the metadata provided for the wrapper."""
