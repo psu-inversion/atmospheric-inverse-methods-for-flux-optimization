@@ -49,7 +49,6 @@ memory.
 """
 
 
-# TODO: Test
 # TODO: Get preconditioner working
 def linop_solve(operator, arr):
     """Solve `operator @ x = arr`.
@@ -137,7 +136,6 @@ def solve(arr1, arr2):
     if isinstance(arr1, LinearOperator):
         # Linear operators with neither an underlying matrix nor a
         # provided solver. Use iterative sparse solvers.
-        # TODO: Test Ax = b for b not column vector
         return linop_solve(arr1, arr2)
         # return da.Array(
         #     {(chunkname, 0):
@@ -179,7 +177,6 @@ def kron(matrix1, matrix2):
     matrix2_index = tuple(np.newaxis if i < change else slice(None)
                           for i in range(len(total_shape)))
 
-    # TODO: choose good chunk sizes
     product = matrix1[matrix1_index] * matrix2[matrix2_index]
 
     return concatenate(concatenate(product, axis=1), axis=1)
@@ -212,7 +209,6 @@ def schmidt_decomposition(vector, dim1, dim2):
     Quantum Computation book in the reading library
     """
     if vector.ndim == 2 and vector.shape[1] != 1:
-        # TODO: Test failure mode
         raise ValueError("Schmidt decomposition only valid for vectors")
     state_matrix = asarray(vector).reshape(dim1, dim2)
     min_dim = min(dim1, dim2)
@@ -299,7 +295,6 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         operator2: array_like or LinearOperator
         """
         if isinstance(operator1, MatrixLinearOperator):
-            # TODO: test this
             operator1 = asarray(operator1.A)
         else:
             operator1 = asarray(operator1)
@@ -326,7 +321,6 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
                 if operator2.T is operator2:
                     self.__transp = self
                 else:
-                    # TODO: test this
                     self.__transp = DaskKroneckerProductOperator(
                         operator1, operator2.T)
             else:
@@ -355,12 +349,10 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         operator1 = self._operator1
         if ((self.shape[0] != self.shape[1] or
              operator1.shape[0] != operator1.shape[1])):
-            # TODO: test this
             raise ValueError(
                 "Square root not defined for {shape!s} operators."
                 .format(shape=self.shape))
         if self.T is not self:
-            # TODO: test this
             raise ValueError(
                 "Square root not defined for non-symmetric operators.")
         # Cholesky can be fragile, so delegate to central location for
@@ -459,13 +451,11 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         addition, which defaults to using all available cores.
         """
         if not isinstance(mat, ARRAY_TYPES) or self.shape[0] != self.shape[1]:
-            # TODO: test failure mode
             raise TypeError("Unsupported")
         elif mat.ndim == 1:
             mat = mat[:, np.newaxis]
         mat = asarray(mat)
         if mat.shape[0] != self.shape[1]:
-            # TODO: test failure mode
             raise ValueError("Dim mismatch: {mat:d} != {self:d}".format(
                 mat=mat.shape[0], self=self.shape[1]))
         outer_size = mat.shape[-1]
@@ -509,7 +499,6 @@ class SelfAdjointLinearOperator(DaskLinearOperator):
         """
         if shape[0] != shape[1]:
             raise ValueError("Self-adjoint operators must be square")
-        # TODO: Test complex self-adjoint operators
         super(SelfAdjointLinearOperator, self).__init__(dtype, shape)
 
         if self.dtype.kind in REAL_DTYPE_KINDS:
