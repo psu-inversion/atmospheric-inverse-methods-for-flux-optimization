@@ -428,9 +428,8 @@ class ProductLinearOperator(DaskLinearOperator):
                    zip(operators, reversed(operators))):
                 self.quadratic_form = self._quadratic_form
                 self.sqrt = self._sqrt
-        except NotImplementedError:
+        except AttributeError:
             # Transpose not implemented for a subclass
-            # TODO: test
             pass
 
     def _matvec(self, vector):
@@ -536,7 +535,6 @@ class ProductLinearOperator(DaskLinearOperator):
         if is_odd(n_ops):
             middle_op = operators[half_n_ops]
             if hasattr(middle_op, "quadratic_form"):
-                # TODO: test this
                 result = operators[half_n_ops].quadratic_form(mat)
             else:
                 result = mat.T.dot(middle_op.dot(mat))

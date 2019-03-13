@@ -293,30 +293,6 @@ class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):
         result._fourier_near_zero = self._fourier_near_zero
         return result
 
-    def _matvec(self, vec):
-        """Evaluate the matrix product of this matrix and `vec`.
-
-        Parameters
-        ----------
-        vec: array_like[N]
-
-        Returns
-        -------
-        array_like[N]
-        """
-        _shape = self._underlying_shape
-        field = asarray(vec).reshape(_shape)
-        # TODO: Test this
-
-        spectral_field = self._fft(field)
-        spectral_field *= self._corr_fourier
-        result = self._ifft(spectral_field)
-
-        return result.reshape(vec.shape)
-
-    _rmatvec = _matvec
-    # Matrix is symmetric, so self.T @ x = self @ x
-
     def _matmat(self, mat):
         """Evaluate the matrix product of self and `mat`.
 
@@ -330,21 +306,12 @@ class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):
         """
         _shape = self._underlying_shape
         fields = asarray(mat).reshape(_shape + (-1,))
-        # TODO: Distribute columns over dask tasks
 
         spectral_fields = self._fft(fields)
         spectral_fields *= self._corr_fourier[..., np.newaxis]
         results = self._ifft(spectral_fields)
 
         return results.reshape(mat.shape)
-
-    def _transpose(self):
-        """Evaluate the transpose of this operator."""
-        # Correlation matrices are symmetric.
-        return self
-
-    _adjoint = _transpose
-    # Correlation matrices are also real
 
     def inv(self):
         """Construct the matrix inverse of this operator.
@@ -358,7 +325,6 @@ class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):
         ValueError
             if the instance is acyclic.
         """
-        # TODO: Test this
         if not self._is_cyclic:
             raise NotImplementedError(
                 "HomogeneousIsotropicCorrelation.inv "
@@ -512,10 +478,7 @@ class SchmidtKroneckerProduct(DaskLinearOperator):
         -------
         array_like[M]
         """
-        if vector.ndim == 1:
-            result_shape = self.shape[0]
-        else:
-            result_shape = (self.shape[0], 1)
+        result_shape = self.shape[0]
 
         lambdas, vecs1, vecs2 = schmidt_decomposition(
             asarray(vector), self._inshape1, self._inshape2)
@@ -542,32 +505,6 @@ class SchmidtKroneckerProduct(DaskLinearOperator):
             ).reshape(result_shape)
 
         return asarray(result)
-
-    def _matmat(self, matrix):
-        """Evaluate the indicated matrix-matrix product.
-
-        Parameters
-        ----------
-        matrix: array_like
-
-        Returns
-        -------
-        array_like
-        """
-        # TODO: look into Kronecker decomposition of matrix
-        # as indicated in references below.
-        # Mathematica code here:
-        # https://mathematica.stackexchange.com/
-        # questions/91651/nearest-kronecker-product,
-        # drawn from Pitsianis-Van Loan algorithm from here:
-        # https://link.springer.com/chapter/10.1007%2F978-94-015-8196-7_17
-        return hstack([self.matvec(column.reshape(-1, 1))
-                       for column in matrix.T])
-    #     result = zeros(shape=(self.shape[0], matrix.shape[1]),
-    #                    dtype=np.result_type(self.dtype, matrix.dtype))
-    #     for i, column in enumerate(matrix.T):
-    #         result[:, i] = self._matvec(column)
-    #     return result
 
 
 def make_matrix(corr_func, shape):

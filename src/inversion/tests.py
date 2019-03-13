@@ -7,6 +7,7 @@ different methods agree for simple problems.
 from __future__ import print_function, division
 import fractions
 import itertools
+import operator
 import os.path
 import atexit
 import pickle
@@ -1137,6 +1138,19 @@ class TestCorrelations(unittest2.TestCase):
                     NotImplementedError,
                     corr_op.inv)
 
+    def test_wrong_shape_fails(self):
+        """Test that a vector of the wrong shape fails noisily."""
+        corr_func = (inversion.correlations.
+                     ExponentialCorrelation(2))
+        corr_op = (
+            inversion.correlations.HomogeneousIsotropicCorrelation.
+            from_function(corr_func, (3, 4)))
+
+        self.assertRaises(
+            ValueError,
+            corr_op.solve,
+            np.arange(5))
+
     def test_cyclic_from_array(self):
         """Test from_array with assumed cyclic correlations."""
         array = [1, .5, .25, .125, .0625, .125, .25, .5]
@@ -1347,6 +1361,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
                 mat3, mat1)
             transpose = product.T
 
+            self.assertIsNot(transpose, product)
             self.assertIs(transpose._operator1, mat3)
             np_tst.assert_allclose(transpose._operator2.A,
                                    mat1.T)
@@ -1539,12 +1554,7 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
 
     def test_linop_array(self):
         """Test linop-sparse Kronecker products."""
-        HomogeneousIsotropicCorrelation = (
-            inversion.correlations.HomogeneousIsotropicCorrelation)
-        corr_class = inversion.correlations.GaussianCorrelation
-        corr_fun = corr_class(5)
-
-        op1 = HomogeneousIsotropicCorrelation.from_function(corr_fun, 15)
+        op1 = inversion.linalg.DiagonalOperator(np.arange(15))
         mat2 = np.eye(10)
         combined_op = inversion.util.kronecker_product(op1, mat2)
 
@@ -1857,6 +1867,32 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
             linop_kron.quadratic_form(test_arry),
             test_arry.T.dot(scipy_kron.dot(test_arry)))
 
+    def test_failure_modes(self):
+        """Test the failure modes of YMKron.quadratic_form."""
+        mat1 = np.eye(3, 2)
+
+        op1 = inversion.linalg.DaskKroneckerProductOperator(
+            mat1, mat1)
+
+        self.assertRaises(
+            TypeError,
+            op1.quadratic_form,
+            np.arange(4))
+
+        mat2 = np.eye(3)
+        op2 = inversion.linalg.DaskKroneckerProductOperator(
+            mat2, mat2)
+
+        self.assertRaises(
+            TypeError,
+            op2.quadratic_form,
+            op1)
+
+        self.assertRaises(
+            ValueError,
+            op2.quadratic_form,
+            np.arange(4))
+
 
 class TestUtilProduct(unittest2.TestCase):
     """Test that quadratic_form works properly for ProductLinearOperator."""
@@ -1891,6 +1927,9 @@ class TestUtilProduct(unittest2.TestCase):
         """Test that the shape of the result is correct."""
         op1 = tolinearoperator(np.eye(3))
         op2 = inversion.linalg.DiagonalOperator(np.ones(3))
+        op3 = (inversion.correlations.HomogeneousIsotropicCorrelation
+               .from_array(
+                   (1, .5, .25), is_cyclic=False))
         ProductLinearOperator = inversion.linalg.ProductLinearOperator
 
         vectors = np.eye(3)
@@ -1915,6 +1954,16 @@ class TestUtilProduct(unittest2.TestCase):
                     result = product.quadratic_form(vectors[:, :stop])
                     self.assertEqual(result.shape, (stop, stop))
                     np_tst.assert_allclose(result, vectors[:stop, :stop])
+
+        with self.subTest(num=3, quadratic_form=True):
+            product = ProductLinearOperator(op1.T, op3, op1)
+
+            for i in range(vectors.shape[0]):
+                stop = i + 1
+
+                with self.subTest(shape=stop):
+                    result = product.quadratic_form(vectors[:, :stop])
+                    self.assertEqual(result.shape, (stop, stop))
 
     def test_product_sqrt(self):
         """Test the square root of a ProductLinearOperator."""
@@ -1977,6 +2026,27 @@ class TestUtilProduct(unittest2.TestCase):
         self.assertRaises(
             ValueError, inversion.linalg.ProductLinearOperator,
             np.eye(10, 4), np.eye(3, 6), np.eye(6, 10))
+
+    def test_product_without_transpose(self):
+        """Test ProductLinearOperator of non-transposing operators."""
+        op = inversion.linalg_interface.DaskLinearOperator(
+            shape=(10, 10),
+            dtype=np.complex128,
+            matvec=lambda vec: vec,
+            matmat=lambda mat: mat)
+
+        self.assertRaises(
+            AttributeError,
+            operator.attrgetter("T"),
+            op)
+        self.assertRaises(
+            AttributeError,
+            op.transpose)
+        product = inversion.linalg_interface.ProductLinearOperator(
+            op, op)
+        self.assertRaises(
+            AttributeError,
+            product.transpose)
 
 
 class TestCorrelationStandardDeviation(unittest2.TestCase):
@@ -2111,6 +2181,15 @@ class TestCovariances(unittest2.TestCase):
         self.assertIs(operator, operator.H)
         self.assertIs(operator, operator.T)
 
+    def test_diagonal_from_diagonal(self):
+        """Test that creating a DiagonalOperator from another works."""
+        op1 = inversion.linalg.DiagonalOperator(np.arange(10))
+        op2 = inversion.linalg.DiagonalOperator(op1)
+
+        np_tst.assert_allclose(
+            op1.dot(np.arange(10)),
+            op2.dot(np.arange(10)))
+
     def test_diagonal_sqrt(self):
         """Test that DiagonalOperator.sqrt works as expected."""
         DiagonalOperator = inversion.covariances.DiagonalOperator
@@ -2189,6 +2268,11 @@ class TestLinalgSolve(unittest2.TestCase):
         np_tst.assert_allclose(
             inversion.linalg.solve(test_op, test_vec),
             test_vec / test_diag)
+
+        test_mat = np.eye(4)
+        np_tst.assert_allclose(
+            inversion.linalg.solve(test_op, test_mat),
+            test_mat / test_diag[np.newaxis, :])
 
     def test_array_linop(self):
         """Test solve with a linear operator as rhs."""
@@ -2508,20 +2592,24 @@ class TestReducedUncertainties(unittest2.TestCase):
         times_in_second_group = bg.shape[0] - times_in_first_group
         test_bg = np.arange(bg.size, dtype=DTYPE).reshape(bg.shape)
 
-        temp_cov = scipy.linalg.toeplitz((1 - 1./14) ** np.arange(bg.shape[0]))
-        spatial_cov = (inversion.correlations.HomogeneousIsotropicCorrelation
-                       .from_function(inversion.correlations.ExponentialCorrelation(3.),
-                                      bg.shape[1:],
-                                      False))
+        temp_cov = scipy.linalg.toeplitz(
+            (1 - 1. / 14) ** np.arange(bg.shape[0]))
+        spatial_cov = (
+            inversion.correlations.HomogeneousIsotropicCorrelation
+            .from_function(inversion.correlations.ExponentialCorrelation(3.),
+                           bg.shape[1:],
+                           False))
 
         bg_cov = inversion.linalg.DaskKroneckerProductOperator(
             temp_cov, spatial_cov)
 
-        same_tower_corr = scipy.linalg.toeplitz(np.exp(-np.arange(obs.shape[0], dtype=DTYPE)))
+        same_tower_corr = scipy.linalg.toeplitz(
+            np.exp(-np.arange(obs.shape[0], dtype=DTYPE)))
         other_tower_corr = np.zeros_like(same_tower_corr, dtype=DTYPE)
-        obs_corr = np.block([[same_tower_corr, other_tower_corr, other_tower_corr],
-                             [other_tower_corr, same_tower_corr, other_tower_corr],
-                             [other_tower_corr, other_tower_corr, same_tower_corr]])
+        obs_corr = np.block(
+            [[same_tower_corr, other_tower_corr, other_tower_corr],
+             [other_tower_corr, same_tower_corr, other_tower_corr],
+             [other_tower_corr, other_tower_corr, same_tower_corr]])
 
         obs_op = np.zeros(obs.shape + bg.shape, dtype=DTYPE)
         for i in range(obs.shape[0]):
@@ -2533,7 +2621,8 @@ class TestReducedUncertainties(unittest2.TestCase):
             1. / np.product(bg.shape[1:]),
             dtype=DTYPE
         ).reshape(-1)
-        spatial_cov_reduced = spatial_remapper.dot(spatial_cov.dot(spatial_remapper))
+        spatial_cov_reduced = spatial_remapper.dot(
+            spatial_cov.dot(spatial_remapper))
 
         temp_cov_reduced = np.block(
             [[temp_cov[:times_in_first_group, :times_in_first_group].mean(),
@@ -2549,13 +2638,17 @@ class TestReducedUncertainties(unittest2.TestCase):
              obs_op_part_red[:, :, times_in_first_group:].sum(axis=-1)],
             axis=2)
 
-        fluxes_in_first_group = spatial_remapper.shape[0] * times_in_first_group
-        fluxes_in_second_group = spatial_remapper.shape[0] * times_in_second_group
+        fluxes_in_first_group = (
+            spatial_remapper.shape[0] * times_in_first_group)
+        fluxes_in_second_group = (
+            spatial_remapper.shape[0] * times_in_second_group)
         cov_remapper = np.block(
-            [[np.full(fluxes_in_first_group, 1. / fluxes_in_first_group, dtype=DTYPE),
+            [[np.full(fluxes_in_first_group, 1. / fluxes_in_first_group,
+                      dtype=DTYPE),
               np.zeros(fluxes_in_second_group, dtype=DTYPE)],
              [np.zeros(fluxes_in_first_group, dtype=DTYPE),
-              np.full(fluxes_in_second_group, 1. / fluxes_in_second_group, dtype=DTYPE)]]
+              np.full(fluxes_in_second_group, 1. / fluxes_in_second_group,
+                      dtype=DTYPE)]]
         )
         np_tst.assert_allclose(cov_remapper.dot(bg_cov.dot(cov_remapper.T)),
                                bg_cov_red)

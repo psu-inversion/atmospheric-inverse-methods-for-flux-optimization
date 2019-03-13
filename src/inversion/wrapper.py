@@ -365,7 +365,7 @@ def get_installed_modules():
              LooseVersion(sys.version.split()[0]))):
             _PACKAGE_INFO = package_info
             return package_info
-    except (subprocess.CalledProcessError, OSError):
+    except (subprocess.CalledProcessError, OSError):  # pragma: no cover
         # Testing with python3 from conda and python2 from the system
         # will not enter this branch.
         pass  # pragma: no cover
@@ -384,7 +384,7 @@ def get_installed_modules():
 
         _PACKAGE_INFO = package_info
         return package_info
-    except OSError:
+    except OSError:  # pragma: no cover
         # Avoid crashes on rare platforms lacking pip
         _PACKAGE_INFO = []    # pragma: no cover
         return _PACKAGE_INFO  # pragma: no cover
