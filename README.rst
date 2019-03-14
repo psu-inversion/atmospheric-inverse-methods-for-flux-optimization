@@ -7,7 +7,17 @@ atmospheric observations.
 
 My use-case is primarily continental-scale biological carbon dioxide
 flux optimization using atmospheric carbon dioxide mole fraction
-observations.  A paper with more details is planned.
+observations.  A paper with more details is in preparation.
+
+Similar work is being done, using similar methods with a different
+approach, by the `NOAA/GMD CarbonTracker-Lagrange Inversion code
+<https://www.esrl.noaa.gov/gmd/ccgg/carbontracker-lagrange/doc/intro.html>`_.
+This code is designed to be run from within Python, where theirs is
+designed as a series of scripts to be run from the command line.  I
+feel the flexibility from the data structures I chose to use,
+specifically inheriting from classes based on `scipy's LinearOperators
+<https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.LinearOperator.html>`_
+allows greater flexibility in what this code can do.
 
 Installation
 ------------
