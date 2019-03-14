@@ -14,6 +14,13 @@ recommended function is
 able to take advantage of functionality offered by
 :py:func:`inversion.linalg.DaskKroneckerProductOperator`.
 
+Theory
+------
+.. toctree::
+   :maxdepth: 3
+
+   theory
+
 API Reference
 -------------
 
