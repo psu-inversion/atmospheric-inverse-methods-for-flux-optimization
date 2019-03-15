@@ -113,4 +113,4 @@ References
 Grubbs, F., and Weaver, C. (1947). The Best Unbiased Estimate of
 Population Standard Deviation Based on Group Ranges.  *Journal of the
 American Statistical Association*, 42(238), 224--241.
-doi:10.2307/2280652
+:doi:`10.2307/2280652`, :jstor:`2280652`

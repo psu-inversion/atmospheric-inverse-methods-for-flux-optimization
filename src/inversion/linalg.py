@@ -283,7 +283,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
     large linear inverse problems: an example from carbon dioxide flux
     estimation" *Geosci. Model Dev.* 2013. Vol 6, pp. 583--590.
     URL: https://www.geosci-model-dev.net/6/583/2013
-    DOI: 10.5194/gmd-6-583-2013.
+    :doi:`10.5194/gmd-6-583-2013`.
     """
 
     def __init__(self, operator1, operator2):

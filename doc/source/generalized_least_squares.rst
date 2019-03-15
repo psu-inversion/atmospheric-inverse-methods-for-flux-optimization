@@ -38,4 +38,4 @@ References
 
 Aitken, A. (1936).  IV.---On Least Squares and Linear Combination of
 Observations.  *Proceedings of the Royal Society of Edinburgh*, 55,
-42--48.  doi:10.1017/S0370164600014346
+42--48.  :doi:`10.1017/S0370164600014346`

@@ -702,7 +702,7 @@ class MaternCorrelation(DistanceCorrelationFunction):
     Stein, Michael L. *Interpolation of Spatial Data: Some Theory for
     Kridging* Springer-Verlag New York.  Part of Springer Series in
     Statistics (issn:0172-7397) isbn:978-1-4612-7166-6.
-    doi:10.1007/978-1-4612-1494-6
+    :doi:`10.1007/978-1-4612-1494-6`
     """
 
     _distance_scaling = 1.25
