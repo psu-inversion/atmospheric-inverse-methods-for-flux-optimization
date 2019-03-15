@@ -18,8 +18,10 @@ To find the minimum of this quadratic expression, we need the derivative.
 
 .. math::
 
-   \frac{d J(\vec{x}_a)}{d\vec{x}_a} &= 2 B^{-1} (\vec{x}_a - \vec{x}_b) - 2 H^T R^{-1} (\vec{y} - H \vec{x}_a) \\
-   \frac{1}{2} \frac{d J(\vec{x}_a)}{d\vec{x}_a} &= B^{-1} \vec{x}_a - B^{-1} \vec{x}_b - H^T R^{-1} \vec{y} + H^T R^{-1} H \vec{x_a} \\
+   \frac{d J(\vec{x}_a)}{d\vec{x}_a}
+     &= 2 B^{-1} (\vec{x}_a - \vec{x}_b) - 2 H^T R^{-1} (\vec{y} - H \vec{x}_a) \\
+   \frac{1}{2} \frac{d J(\vec{x}_a)}{d\vec{x}_a}
+     &= B^{-1} \vec{x}_a - B^{-1} \vec{x}_b - H^T R^{-1} \vec{y} + H^T R^{-1} H \vec{x_a} \\
    &= (B^{-1} + H^T R^{-1} H) \vec{x}_a - B^{-1} \vec{x}_b - H^T R^{-1} \vec{y}
 
 Seting this derivative equal to zero and solving for :math:`\vec{x}_a`
@@ -30,8 +32,24 @@ will give the location of the minimum of the cost function
 
    0 &= (B^{-1} + H^T R^{-1} H) \vec{x}_a - B^{-1} \vec{x}_b - H^T R^{-1} \vec{y} \\
    B^{-1} \vec{x}_b + H^T R^{-1} \vec{y} &= (B^{-1} + H^T R^{-1} H) \vec{x}_a \\
-   (B^{-1} + H^T R^{-1} H)^{-1} (B^{-1} \vec{x}_b + H^T R^{-1} \vec{y}) &= (B^{-1} + H^T R^{-1} H)^{-1} (B^{-1} + H^T R^{-1} H) \vec{x}_a \\
+   (B^{-1} + H^T R^{-1} H)^{-1} (B^{-1} \vec{x}_b + H^T R^{-1} \vec{y})
+     &= (B^{-1} + H^T R^{-1} H)^{-1} (B^{-1} + H^T R^{-1} H) \vec{x}_a \\
    \vec{x}_a &= (B^{-1} + H^T R^{-1} H)^{-1} (B^{-1} \vec{x}_b + H^T R^{-1} \vec{y})
+
+This is the form of the GLS estimate that is most convenient for
+deriving the uncertainty, but we can work with it a bit more to make
+it look more like what is derived in the :ref:`BLUE case
+<blue-derivation>`.
+
+.. math::
+
+   \vec{x}_a &= (B^{-1} + H^T R^{-1} H)^{-1}
+     (B^{-1} \vec{x}_b + H^T R^{-1} H \vec{x}_b
+      - H^T R^{-1} H \vec{x}_b + H^T R^{-1} \vec{y}) \\
+   &= (B^{-1} + H^T R^{-1} H)^{-1} (B^{-1} + H^T R^{-1} H) \vec{x}_b +
+     (B^{-1} + H^T R^{-1} H)^{-1} H^T R^{-1} (\vec{y} - H \vec{x}_b) \\
+   &= \vec{x}_b +
+     (B^{-1} + H^T R^{-1} H)^{-1} H^T R^{-1} (\vec{y} - H \vec{x}_b)
 
 Since this estimate is a linear combination of our original
 information, we can express the uncertainty for this estimate as

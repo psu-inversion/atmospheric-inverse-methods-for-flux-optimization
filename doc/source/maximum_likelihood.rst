@@ -55,6 +55,19 @@ to find the derivative of the log-likelihood with respect to
    (B^{-1} + H^T R^{-1} H) \vec{x}_a &= B^{-1} \vec{x}_b + H^T R^{-1} \vec{y} \\
    \vec{x}_a &= (B^{-1} + H^T R^{-1} H)^{-1} (B^{-1} \vec{x}_b + H^T R^{-1} \vec{y})
 
+This is the form of the estimator I use for the uncertainty estimate,
+but it can also be rearranged to make it look more like that derived
+as the :ref:`best linear unbiased estimator <blue-derivation>`.
+
+.. math::
+
+   \vec{x}_a &= (B^{-1} + H^T R^{-1} H)^{-1}
+     (B^{-1} \vec{x}_b + H^T R^{-1} H \vec{x}_b
+      - H^T R^{-1} H \vec{x}_b + H^T R^{-1} \vec{y}) \\
+   &= (B^{-1} + H^T R^{-1} H)^{-1} (B^{-1} + H^T R^{-1} H) \vec{x}_b +
+     (B^{-1} + H^T R^{-1} H)^{-1} H^T R^{-1} (\vec{y} - H \vec{x}_b) \\
+   &= \vec{x}_b +
+     (B^{-1} + H^T R^{-1} H)^{-1} H^T R^{-1} (\vec{y} - H \vec{x}_b)
 
 The covariance matrix of this estimator is then:
 

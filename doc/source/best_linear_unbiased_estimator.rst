@@ -1,3 +1,5 @@
+.. _blue-derivation:
+
 ==============================
 Best Linear Unbiased Estimator
 ==============================
