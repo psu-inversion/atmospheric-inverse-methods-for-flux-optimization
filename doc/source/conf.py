@@ -104,6 +104,11 @@ pygments_style = 'sphinx'
 # If true, keep warnings as "system message" paragraphs in the built documents.
 #keep_warnings = False
 
+# Mathjax configuration
+mathjax_config = dict(
+    extensions=["AMSmath.js"],
+)
+
 
 # -- Options for HTML output ----------------------------------------------
 

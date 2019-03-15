@@ -24,7 +24,7 @@ That is, we seek :math:`\vec{x}_a` such that:
 
    E[\vec{x}_a - \vec{x}_t] = 0 \\
 
-   \vec{x}_a = argmin( E[\vec{x}_a \cdot \vec{x}_a] )
+   \vec{x}_a = \operatorname{argmin}( E[\vec{x}_a \cdot \vec{x}_a] )
 
 for some matrices :math:`A_1` and :math:`A_2` and some vector :math:`A_3`.
 
@@ -53,9 +53,10 @@ are trying to minimize is the trace of the covariance matrix of
 
 .. math::
 
-   Cov[\vec{x}_a, \vec{x}_a] &= Cov[(I - A_2 H) \vec{x}_b + A_2 \vec{y}, (I - A_2 H) \vec{x}_b + A_2 \vec{y}] \\
-   &= Cov[(I - A_2 H) \vec{x}_b, (I - A_2 H) \vec{x}_b] + Cov[(I - A_2 H) \vec{x}_b, A_2 \vec{y}] + Cov[A_2 \vec{y}, (I - A_2 H) \vec{x}_b] + Cov[A_2 \vec{y}, A_2 \vec{y}] \\
-   &= (I - A_2 H) Cov[\vec{x}_b, \vec{x}_b] (I - A_2 H)^T + (I - A_2 H) Cov[\vec{x}_b, \vec{y}] A_2^T + A_2 Cov[\vec{y}, \vec{x}_b] (I - A_2 H)^T + A_2 Cov[\vec{y}, \vec{y}] A_2^T \\
+   \DeclareMathOperator{\Cov}{Cov}
+   \Cov[\vec{x}_a, \vec{x}_a] &= \Cov[(I - A_2 H) \vec{x}_b + A_2 \vec{y}, (I - A_2 H) \vec{x}_b + A_2 \vec{y}] \\
+   &= \Cov[(I - A_2 H) \vec{x}_b, (I - A_2 H) \vec{x}_b] + \Cov[(I - A_2 H) \vec{x}_b, A_2 \vec{y}] + \Cov[A_2 \vec{y}, (I - A_2 H) \vec{x}_b] + \Cov[A_2 \vec{y}, A_2 \vec{y}] \\
+   &= (I - A_2 H) \Cov[\vec{x}_b, \vec{x}_b] (I - A_2 H)^T + (I - A_2 H) \Cov[\vec{x}_b, \vec{y}] A_2^T + A_2 \Cov[\vec{y}, \vec{x}_b] (I - A_2 H)^T + A_2 \Cov[\vec{y}, \vec{y}] A_2^T \\
    &= (I - A_2 H) B (I - H^T A_2^T) + 0 + 0 + A_2 T A_2^T \\
    &= B - B H^T A_2^T - A_2 H B + A_2 H B H^T A_2^T + A_2 R A_2^T
 
@@ -64,11 +65,12 @@ of this covariance matrix with respect to A_2.
 
 .. math::
 
-   \frac{d}{dA_2} tr(B - B H^T A_2^T - A_2 H B + A_2 H B H^T A_2^T + A_2 R A_2^T) = \\
-   \frac{d}{dA_2} [tr(B) - tr(B H^T A_2^T) - tr(A_2 H B) + tr(A_2 H B H^T A_2^T) + tr(A_2 R A_2^T) = \\
-   \frac{d}{dA_2} tr(B) - \frac{d}{dA_2} 2 tr(B H^T A_2^T) + \frac{d}{dA_2} tr(A_2 H B H^T A_2^T) + \frac{d}{d A_2} tr(A_2 R A_2^T) = \\
-   0 - 2 tr(B H^T) + 2 tr(A_2 H B H^T) + 2 tr(A_2 R) = \\
-   2 tr[-B H^T + A_2 (H B H^T + R)]
+   \DeclareMathOperator{\trace}{tr}
+   \frac{d}{dA_2} \trace(B - B H^T A_2^T - A_2 H B + A_2 H B H^T A_2^T + A_2 R A_2^T) = \\
+   \frac{d}{dA_2} [\trace(B) - \trace(B H^T A_2^T) - \trace(A_2 H B) + \trace(A_2 H B H^T A_2^T) + \trace(A_2 R A_2^T) = \\
+   \frac{d}{dA_2} \trace(B) - \frac{d}{dA_2} 2 \trace(B H^T A_2^T) + \frac{d}{dA_2} \trace(A_2 H B H^T A_2^T) + \frac{d}{d A_2} \trace(A_2 R A_2^T) = \\
+   0 - 2 \trace(B H^T) + 2 \trace(A_2 H B H^T) + 2 \trace(A_2 R) = \\
+   2 \trace[-B H^T + A_2 (H B H^T + R)]
 
 We find the minimum where the derivative is equal to zero.  The
 simplest way to find that is to set everything inside the trace to be
