@@ -19,6 +19,16 @@ specifically inheriting from classes based on `scipy's LinearOperators
 <https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.LinearOperator.html>`_
 allows greater flexibility in what this code can do.
 
+Other software packages in Python that tackle similar problems include
+`Data Assimilation with Python: a Package for Experimental Research
+(DAPPER) <https://github.com/nansencenter/DAPPER>`_ and `Python
+Observing System Simulation Experiments (PyOSSE)
+<https://www.geos.ed.ac.uk/~lfeng/>`_, both of which have more focus
+on identical-twin OSSEs and Ensemble Kalman Filters.
+These packages do not use standard Python packaging frameworks to
+specify dependencies, and my reasons for prefering my package to the
+CT-Lagrange inversion code also apply here.
+
 Installation
 ------------
 
