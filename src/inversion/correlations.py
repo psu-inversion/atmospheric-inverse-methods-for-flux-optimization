@@ -662,6 +662,13 @@ class BalgovindCorrelation(DistanceCorrelationFunction):
 
     This implementation has problems for length == 10.
     I have no idea why.  3 and 30 are fine.
+
+    References
+    ----------
+    Balgovind, R and Dalcher, A. and Ghil, M. and Kalnay, E. (1983).
+    A Stochastic-Dynamic Model for the Spatial Structure of Forecast
+    Error Statistics *Monthly Weather Review* 111(4) 701--722.
+    :doi:`10.1175/1520-0493(1983)111<0701:asdmft>2.0.co;2`
     """
 
     _distance_scaling = 0.5
