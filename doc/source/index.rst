@@ -21,6 +21,14 @@ Theory
 
    theory
 
+User Guide
+----------
+
+.. toctree::
+   :maxdepth: 3
+
+   user_guide
+
 API Reference
 -------------
 
