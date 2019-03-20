@@ -117,7 +117,11 @@ linkcheck_ignore = [r"https://www.jstor.org/stable/\w+"]
 
 # Mathjax configuration
 mathjax_config = dict(
-    extensions=["AMSmath.js"],
+    extensions=["tex2jax.js"],
+    jax=["input/TeX", "output/HTML-CSS"],
+    TeX=dict(
+        extensions=["AMSmath.js"],
+    ),
 )
 
 
