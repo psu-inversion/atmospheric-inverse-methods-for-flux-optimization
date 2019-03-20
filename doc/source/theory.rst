@@ -32,14 +32,14 @@ The estimate of the uncertainty in the previous estimate :math:`B` is
 also called the background error covariance matrix or the covariance
 of the prior distribution.
 
-The estimate of the uncertainty in :math:`\vec{x}_a` :math:`A` is
-called the analysis error covariance matrix or the covariance of the
-posterior distribution.
-
 The matrix :math:`K = B H^T (H B H^T + R)^{-1} = (B^{-1} + H^T R^{-1}
 H)^{-1} H^T R^{-1}` is called the Kalman gain, and is called
 :math:`A_2` in :ref:`the derivation for the best linear unbiased
 estimator below <blue-derivation>`
+
+:math:`A`, the estimate of the uncertainty in :math:`\vec{x}_a`, is
+called the analysis error covariance matrix or the covariance of the
+posterior distribution.
 
 Methodology
 ===========
