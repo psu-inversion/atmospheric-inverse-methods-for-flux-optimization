@@ -15,10 +15,12 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"extensions": ["tex2jax.js"], "jax": ["input/TeX", "output/HTML-CSS"], "TeX": {"extensions": ["AMSmath.js"]}})</script>
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="inversion package" href="inversion.html" /> 
+    <link rel="next" title="Theory of Atmospheric Flux Inversions" href="theory.html" /> 
   </head><body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
@@ -30,7 +32,7 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="inversion.html" title="inversion package"
+          <a href="theory.html" title="Theory of Atmospheric Flux Inversions"
              accesskey="N">next</a> |</li>
         <li class="nav-item nav-item-0"><a href="#">Inversions 0.4.0.dev0 documentation</a> &#187;</li> 
       </ul>
@@ -50,6 +52,31 @@ recommended function is
 <a class="reference internal" href="inversion.optimal_interpolation.html#inversion.optimal_interpolation.save_sum" title="inversion.optimal_interpolation.save_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">inversion.optimal_interpolation.save_sum()</span></code></a>, which is best
 able to take advantage of functionality offered by
 <a class="reference internal" href="inversion.linalg.html#inversion.linalg.DaskKroneckerProductOperator" title="inversion.linalg.DaskKroneckerProductOperator"><code class="xref py py-func docutils literal notranslate"><span class="pre">inversion.linalg.DaskKroneckerProductOperator()</span></code></a>.</p>
+<div class="section" id="theory">
+<h2>Theory<a class="headerlink" href="#theory" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="theory.html">Theory of Atmospheric Flux Inversions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="theory.html#terminology">Terminology</a></li>
+<li class="toctree-l2"><a class="reference internal" href="theory.html#methodology">Methodology</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="best_linear_unbiased_estimator.html">Best Linear Unbiased Estimator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generalized_least_squares.html">Generalized Least Squares Estimator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="maximum_likelihood.html">Maximum Likelihood Estimator</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="user-guide">
+<h2>User Guide<a class="headerlink" href="#user-guide" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="user_guide.html">Inversion User Guide</a></li>
+</ul>
+</div>
+</div>
 <div class="section" id="api-reference">
 <h2>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
@@ -69,11 +96,6 @@ able to take advantage of functionality offered by
 </li>
 <li class="toctree-l3"><a class="reference internal" href="inversion.html#high-level-wrappers">High-level wrappers</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="inversion.wrapper.html">inversion.wrapper module</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="inversion.html#helpers-for-real-data-inversions">Helpers for real-data inversions</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="inversion.observation_operator.html">inversion.observation_operator module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="inversion.remapper.html">inversion.remapper module</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="inversion.html#other-utilities">Other utilities</a><ul>
@@ -109,6 +131,8 @@ able to take advantage of functionality offered by
   <h3><a href="#">Table of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Welcome to Inversion’s documentation!</a><ul>
+<li><a class="reference internal" href="#theory">Theory</a></li>
+<li><a class="reference internal" href="#user-guide">User Guide</a></li>
 <li><a class="reference internal" href="#api-reference">API Reference</a></li>
 </ul>
 </li>
@@ -116,8 +140,8 @@ able to take advantage of functionality offered by
 </ul>
 
   <h4>Next topic</h4>
-  <p class="topless"><a href="inversion.html"
-                        title="next chapter">inversion package</a></p>
+  <p class="topless"><a href="theory.html"
+                        title="next chapter">Theory of Atmospheric Flux Inversions</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -151,7 +175,7 @@ able to take advantage of functionality offered by
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="inversion.html" title="inversion package"
+          <a href="theory.html" title="Theory of Atmospheric Flux Inversions"
              >next</a> |</li>
         <li class="nav-item nav-item-0"><a href="#">Inversions 0.4.0.dev0 documentation</a> &#187;</li> 
       </ul>

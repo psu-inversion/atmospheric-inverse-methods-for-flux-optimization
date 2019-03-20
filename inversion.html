@@ -15,11 +15,13 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"extensions": ["tex2jax.js"], "jax": ["input/TeX", "output/HTML-CSS"], "TeX": {"extensions": ["AMSmath.js"]}})</script>
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="inversion.correlations module" href="inversion.correlations.html" />
-    <link rel="prev" title="Welcome to Inversion’s documentation!" href="index.html" /> 
+    <link rel="prev" title="Inversion User Guide" href="user_guide.html" /> 
   </head><body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
@@ -34,7 +36,7 @@
           <a href="inversion.correlations.html" title="inversion.correlations module"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Welcome to Inversion’s documentation!"
+          <a href="user_guide.html" title="Inversion User Guide"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">Inversions 0.4.0.dev0 documentation</a> &#187;</li> 
       </ul>
@@ -63,9 +65,9 @@
 <h3>Inversion functions<a class="headerlink" href="#inversion-functions" title="Permalink to this headline">¶</a></h3>
 <p>All inversion functions have the same signature and give similar
 answers: the difference is how they get there.  PSAS and Variational
-methods use iterative solvers for linear systems, where Optimal
-Interpolation uses Gauss-Jordan elimination.  Variational methods use
-a different but equivalent formulation of the problem.</p>
+methods use iterative solvers. Optimal Interpolation uses a
+Gauss-Jordan solver.  Variational methods use a different but
+equivalent formulation of the problem.</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="inversion.optimal_interpolation.html">inversion.optimal_interpolation module</a></li>
@@ -79,19 +81,6 @@ a different but equivalent formulation of the problem.</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="inversion.wrapper.html">inversion.wrapper module</a></li>
-</ul>
-</div>
-</div>
-<div class="section" id="helpers-for-real-data-inversions">
-<h3>Helpers for real-data inversions<a class="headerlink" href="#helpers-for-real-data-inversions" title="Permalink to this headline">¶</a></h3>
-<p>Helper functions to calculate the prior error covariance and
-observation operator at reduced resolution so the inversion routines
-can calculate the posterior error covariance in reasonable time and in
-a reasonable amount of storage.</p>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="inversion.observation_operator.html">inversion.observation_operator module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="inversion.remapper.html">inversion.remapper module</a></li>
 </ul>
 </div>
 </div>
@@ -188,7 +177,6 @@ minimization.</p>
 <li><a class="reference internal" href="#classes-for-defining-covariances">Classes for defining covariances</a></li>
 <li><a class="reference internal" href="#inversion-functions">Inversion functions</a></li>
 <li><a class="reference internal" href="#high-level-wrappers">High-level wrappers</a></li>
-<li><a class="reference internal" href="#helpers-for-real-data-inversions">Helpers for real-data inversions</a></li>
 <li><a class="reference internal" href="#other-utilities">Other utilities</a></li>
 </ul>
 </li>
@@ -198,8 +186,8 @@ minimization.</p>
 </ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="index.html"
-                        title="previous chapter">Welcome to Inversion’s documentation!</a></p>
+  <p class="topless"><a href="user_guide.html"
+                        title="previous chapter">Inversion User Guide</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="inversion.correlations.html"
                         title="next chapter">inversion.correlations module</a></p>
@@ -239,7 +227,7 @@ minimization.</p>
           <a href="inversion.correlations.html" title="inversion.correlations module"
              >next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Welcome to Inversion’s documentation!"
+          <a href="user_guide.html" title="Inversion User Guide"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">Inversions 0.4.0.dev0 documentation</a> &#187;</li> 
       </ul>

@@ -1,0 +1,205 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Best Linear Unbiased Estimator &#8212; Inversions 0.4.0.dev0 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"extensions": ["tex2jax.js"], "jax": ["input/TeX", "output/HTML-CSS"], "TeX": {"extensions": ["AMSmath.js"]}})</script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Generalized Least Squares Estimator" href="generalized_least_squares.html" />
+    <link rel="prev" title="Theory of Atmospheric Flux Inversions" href="theory.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="generalized_least_squares.html" title="Generalized Least Squares Estimator"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="theory.html" title="Theory of Atmospheric Flux Inversions"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 0.4.0.dev0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="theory.html" accesskey="U">Theory of Atmospheric Flux Inversions</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="best-linear-unbiased-estimator">
+<span id="blue-derivation"></span><h1>Best Linear Unbiased Estimator<a class="headerlink" href="#best-linear-unbiased-estimator" title="Permalink to this headline">¶</a></h1>
+<p>This derivation follows the Grubbs and Weaver (1947) definition of the
+Best Linear Unbiased Estimator.</p>
+<p>We have two estimates related to the true flux <span class="math notranslate nohighlight">\(\vec{x}_t\)</span>: some
+flux estimate <span class="math notranslate nohighlight">\(\vec{x}_b\)</span> and an independent set of atmospheric
+measurements <span class="math notranslate nohighlight">\(\vec{y}\)</span>.  We think the difference
+<span class="math notranslate nohighlight">\(\epsilon_b = \vec{x}_b - \vec{x}_a\)</span> has mean zero and
+variance-covariance matrix <span class="math notranslate nohighlight">\(B\)</span>.  Similarly, we think the
+measurement errors <span class="math notranslate nohighlight">\(\epsilon_o = \vec{y} - H \vec{x}_t\)</span> have
+mean zero and variance-covariance <span class="math notranslate nohighlight">\(R\)</span>.  We would like to find
+the linear combination of these estimates that is an unbiased
+estimator for <span class="math notranslate nohighlight">\(\vec{x}_t\)</span> and has the lowest variance of such
+estimators.</p>
+<p>That is, we seek <span class="math notranslate nohighlight">\(\vec{x}_a\)</span> such that:</p>
+<div class="math notranslate nohighlight">
+\[ \begin{align}\begin{aligned}\begin{split}\vec{x}_a = A_1 \vec{x}_b + A_2 \vec{y} + A_3 \\\end{split}\\\begin{split}E[\vec{x}_a - \vec{x}_t] = 0 \\\end{split}\\\vec{x}_a = \operatorname{argmin}( E[\vec{x}_a \cdot \vec{x}_a] )\end{aligned}\end{align} \]</div>
+<p>for some matrices <span class="math notranslate nohighlight">\(A_1\)</span> and <span class="math notranslate nohighlight">\(A_2\)</span> and some vector <span class="math notranslate nohighlight">\(A_3\)</span>.</p>
+<p>Let us start with the first requirement.  To obtain an unbiased
+estimator, we must have:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\vec{x}_t &amp;= E[\vec{x}_a] \\
+&amp;= E[A_1 \vec{x}_b + A_2 \vec{y} + A_3] \\
+&amp;= E[A_1 (\vec{x}_t + \epsilon_b)] + E[A_2 (H \vec{x}_t + \epsilon_o)] + E[A_3] \\
+&amp;= A_1 E[\vec{x}_t] + A_1 E[\epsilon_b] + A_2 H E[\vec{x}_t] + A_2 H E[\epsilon_o] + A_3 \\
+&amp;= A_1 \vec{x}_t + 0 + A_2 H \vec{x}_t + 0 + A_3 \\
+&amp;= (A_1 + A_2 H) \vec{x}_t + A_3\end{split}\]</div>
+<p>Since we want this equality to hold for all values of
+<span class="math notranslate nohighlight">\(\vec{x}_t\)</span>, we must have <span class="math notranslate nohighlight">\(A_3 = 0\)</span> and <span class="math notranslate nohighlight">\(A_1 + A_2 H = I\)</span>.</p>
+<p>With this relationship between <span class="math notranslate nohighlight">\(A_1\)</span> and <span class="math notranslate nohighlight">\(A_2\)</span>, we can
+start on the second requirement.  We want to minimize
+<span class="math notranslate nohighlight">\(E[\vec{x}_a \cdot \vec{x}_a]\)</span>, where <span class="math notranslate nohighlight">\(\vec{x}_a\)</span> is now
+given by <span class="math notranslate nohighlight">\((I - A_2 H) \vec{x}_b + A_2 \vec{y}\)</span>.  The quantity we
+are trying to minimize is the trace of the covariance matrix of
+<span class="math notranslate nohighlight">\(\vec{x}_a\)</span>, which is given by the covariance of
+<span class="math notranslate nohighlight">\(\vec{x}_a\)</span> with itself:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\DeclareMathOperator{\Cov}{Cov}
+\Cov[\vec{x}_a, \vec{x}_a] &amp;= \Cov[(I - A_2 H) \vec{x}_b + A_2 \vec{y}, (I - A_2 H) \vec{x}_b + A_2 \vec{y}] \\
+&amp;= \Cov[(I - A_2 H) \vec{x}_b, (I - A_2 H) \vec{x}_b] + \Cov[(I - A_2 H) \vec{x}_b, A_2 \vec{y}] + \Cov[A_2 \vec{y}, (I - A_2 H) \vec{x}_b] + \Cov[A_2 \vec{y}, A_2 \vec{y}] \\
+&amp;= (I - A_2 H) \Cov[\vec{x}_b, \vec{x}_b] (I - A_2 H)^T + (I - A_2 H) \Cov[\vec{x}_b, \vec{y}] A_2^T + A_2 \Cov[\vec{y}, \vec{x}_b] (I - A_2 H)^T + A_2 \Cov[\vec{y}, \vec{y}] A_2^T \\
+&amp;= (I - A_2 H) B (I - H^T A_2^T) + 0 + 0 + A_2 T A_2^T \\
+&amp;= B - B H^T A_2^T - A_2 H B + A_2 H B H^T A_2^T + A_2 R A_2^T\end{split}\]</div>
+<p>To find the minimum, we will need to find the derivative of the trace
+of this covariance matrix with respect to A_2.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\DeclareMathOperator{\trace}{tr}
+\frac{d}{dA_2} \trace(B - B H^T A_2^T - A_2 H B + A_2 H B H^T A_2^T + A_2 R A_2^T) = \\
+\frac{d}{dA_2} [\trace(B) - \trace(B H^T A_2^T) - \trace(A_2 H B) + \trace(A_2 H B H^T A_2^T) + \trace(A_2 R A_2^T) = \\
+\frac{d}{dA_2} \trace(B) - \frac{d}{dA_2} 2 \trace(B H^T A_2^T) + \frac{d}{dA_2} \trace(A_2 H B H^T A_2^T) + \frac{d}{d A_2} \trace(A_2 R A_2^T) = \\
+0 - 2 \trace(B H^T) + 2 \trace(A_2 H B H^T) + 2 \trace(A_2 R) = \\
+2 \trace[-B H^T + A_2 (H B H^T + R)]\end{split}\]</div>
+<p>We find the minimum where the derivative is equal to zero.  The
+simplest way to find that is to set everything inside the trace to be
+equal to zero and solve for <span class="math notranslate nohighlight">\(A_2\)</span>.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}0 &amp;= -B H^T + A_2 (HBH^T + R) \\
+B H^T &amp;= A_2 (H B H^T + R) \\
+B H^T (H B H^T + R)^{-1} &amp;= A_2 (H B H^T + R) (H B H^T + R)^{-1} \\
+A_2 &amp;= B H^T (H B H^T + R)^{-1}\end{split}\]</div>
+<p>That is, the best linear unbiased estimate <span class="math notranslate nohighlight">\(\vec{x}_a\)</span> of the
+true fluxes <span class="math notranslate nohighlight">\(\vec{x}_t\)</span> given a previous estimate
+<span class="math notranslate nohighlight">\(\vec{x}_b\)</span> and observations <span class="math notranslate nohighlight">\(\vec{y}\)</span> with uncertainties
+<span class="math notranslate nohighlight">\(B\)</span> and <span class="math notranslate nohighlight">\(R\)</span>, respectively, is</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\vec{x}_a &amp;= (I - A_2 H) \vec{x}_b + A_2 \vec{y} \\
+&amp;= \vec{x}_b + A_2 (\vec{y} - H \vec{x}_b) \\
+&amp;= \vec{x}_b + B H^T (H B H^T + R)^{-1} (\vec{y} - H \vec{x}_b)\end{split}\]</div>
+<p>with covariance matrix given by</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}A &amp;= (I - A_2 H) B (I - H^T A_2^T) + A_2 R A_2^T \\
+  &amp;= (I - A_2 H) B - (I - A_2 H) B H^T A_2^T + A_2 R A_2^T \\
+  &amp;= (I - A_2 H) B - [(I - A_2 H) B H^T - A_2 R] A_2^T \\
+  &amp;= (I - A_2 H) B - [B H^T - A_2 (H B H^T + R)] A_2^T \\
+  &amp;= (I - A_2 H) B - [B H^T - B H^T (H B H^T + R)^{-1} (H B H^T + R)] A_2^T \\
+  &amp;= (I - A_2 H) B - [B H^T - B H^T I] A_2^T \\
+  &amp;= (I - A_2 H) B - 0 \\
+  &amp;= B - B H^T (H B H^T + R)^{-1} H B\end{split}\]</div>
+<div class="section" id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
+<p>Grubbs, F., and Weaver, C. (1947). The Best Unbiased Estimate of
+Population Standard Deviation Based on Group Ranges.  <em>Journal of the
+American Statistical Association</em>, 42(238), 224–241.
+<a class="reference external" href="https://dx.doi.org/10.2307/2280652">doi:10.2307/2280652</a>, <a class="reference external" href="https://www.jstor.org/stable/2280652">jstor:2280652</a></p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Best Linear Unbiased Estimator</a><ul>
+<li><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="theory.html"
+                        title="previous chapter">Theory of Atmospheric Flux Inversions</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="generalized_least_squares.html"
+                        title="next chapter">Generalized Least Squares Estimator</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/best_linear_unbiased_estimator.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="generalized_least_squares.html" title="Generalized Least Squares Estimator"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="theory.html" title="Theory of Atmospheric Flux Inversions"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 0.4.0.dev0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="theory.html" >Theory of Atmospheric Flux Inversions</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, Daniel Wesloh.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+  </body>
+</html>

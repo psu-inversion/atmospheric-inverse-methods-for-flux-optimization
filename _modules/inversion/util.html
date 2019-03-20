@@ -15,6 +15,8 @@
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"extensions": ["tex2jax.js"], "jax": ["input/TeX", "output/HTML-CSS"], "TeX": {"extensions": ["AMSmath.js"]}})</script>
     
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -50,15 +52,13 @@
 <span class="kn">import</span> <span class="nn">functools</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">atleast_1d</span><span class="p">,</span> <span class="n">atleast_2d</span><span class="p">,</span> <span class="n">einsum</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">atleast_1d</span><span class="p">,</span> <span class="n">atleast_2d</span>
 <span class="kn">from</span> <span class="nn">scipy.sparse.linalg</span> <span class="k">import</span> <span class="n">LinearOperator</span>
-<span class="kn">from</span> <span class="nn">scipy.sparse</span> <span class="k">import</span> <span class="n">bsr_matrix</span>
 
 <span class="kn">import</span> <span class="nn">dask.array</span> <span class="k">as</span> <span class="nn">da</span>
 
 <span class="kn">from</span> <span class="nn">.linalg</span> <span class="k">import</span> <span class="n">DaskKroneckerProductOperator</span><span class="p">,</span> <span class="n">kron</span><span class="p">,</span> <span class="n">solve</span>
 <span class="kn">from</span> <span class="nn">.linalg_interface</span> <span class="k">import</span> <span class="n">ProductLinearOperator</span><span class="p">,</span> <span class="n">tolinearoperator</span>
-<span class="kn">from</span> <span class="nn">.linalg_interface</span> <span class="k">import</span> <span class="n">DaskMatrixLinearOperator</span> <span class="k">as</span> <span class="n">_MatrixLinearOperator</span>
 
 <span class="n">ARRAY_TYPES</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">da</span><span class="o">.</span><span class="n">Array</span><span class="p">)</span>
 <span class="sd">&quot;&quot;&quot;Array types for determining Kronecker product type.</span>
@@ -197,23 +197,21 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">observation_covariance</span><span class="p">,</span> <span class="n">_LinearOperator</span><span class="p">):</span>
             <span class="n">observation_covariance</span> <span class="o">=</span> <span class="n">atleast_2d</span><span class="p">(</span><span class="n">observation_covariance</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">observation_operator</span><span class="p">,</span> <span class="n">bsr_matrix</span><span class="p">):</span>
-            <span class="n">observation_operator</span> <span class="o">=</span> <span class="n">_MatrixLinearOperator</span><span class="p">(</span><span class="n">observation_operator</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">observation_operator</span><span class="p">,</span> <span class="n">_LinearOperator</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">observation_operator</span><span class="p">,</span> <span class="n">_LinearOperator</span><span class="p">):</span>
             <span class="n">observation_operator</span> <span class="o">=</span> <span class="n">atleast_2d</span><span class="p">(</span><span class="n">observation_operator</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="p">(((</span><span class="n">reduced_background_covariance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="o">^</span>
-             <span class="p">(</span><span class="n">reduced_observation_operator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">))):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Need reduced versions of both B and H&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">reduced_background_covariance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reduced_background_covariance</span><span class="p">,</span> <span class="n">LinearOperator</span><span class="p">):</span>
                 <span class="n">reduced_background_covariance</span> <span class="o">=</span> <span class="n">atleast_2d</span><span class="p">(</span>
                     <span class="n">reduced_background_covariance</span><span class="p">)</span>
 
+            <span class="k">if</span> <span class="n">reduced_observation_operator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Need reduced versions of both B and H&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reduced_observation_operator</span><span class="p">,</span> <span class="n">LinearOperator</span><span class="p">):</span>
                 <span class="n">reduced_observation_operator</span> <span class="o">=</span> <span class="n">atleast_2d</span><span class="p">(</span>
                     <span class="n">reduced_observation_operator</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">reduced_observation_operator</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Need reduced versions of both B and H&quot;</span><span class="p">)</span>
 
         <span class="n">analysis_estimate</span><span class="p">,</span> <span class="n">analysis_covariance</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">inversion_method</span><span class="p">(</span><span class="n">background</span><span class="p">,</span> <span class="n">background_covariance</span><span class="p">,</span>
@@ -262,74 +260,6 @@
 
         <span class="k">return</span> <span class="n">analysis_estimate</span><span class="p">,</span> <span class="n">analysis_covariance</span>
     <span class="k">return</span> <span class="n">wrapper</span></div>
-
-
-<div class="viewcode-block" id="ym_kronecker_quadratic_form_bsr"><a class="viewcode-back" href="../../inversion.util.html#inversion.util.ym_kronecker_quadratic_form_bsr">[docs]</a><span class="k">def</span> <span class="nf">ym_kronecker_quadratic_form_bsr</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">operator</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Calculate matrix @ operator @ matrix.T.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    matrix: scipy.sparse.bsr_matrix</span>
-<span class="sd">    operator: inversion.linalg.DaskKroneckerProductOperator</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    array_like</span>
-
-<span class="sd">    Raises</span>
-<span class="sd">    ------</span>
-<span class="sd">    ValueError</span>
-<span class="sd">        If the block sizes do not match</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">result_side</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">block_size</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">blocksize</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-    <span class="n">sites_per_block</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">blocksize</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-
-    <span class="n">left_operator</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">_operator1</span>
-    <span class="n">right_operator</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">_operator2</span>
-    <span class="n">n_blocks</span> <span class="o">=</span> <span class="n">left_operator</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-
-    <span class="k">if</span> <span class="n">right_operator</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">block_size</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Block sizes do not match&quot;</span><span class="p">)</span>
-
-    <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">result_side</span><span class="p">,</span> <span class="n">result_side</span><span class="p">),</span>
-                      <span class="n">dtype</span><span class="o">=</span><span class="n">matrix</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
-                      <span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span><span class="p">)</span>
-
-    <span class="n">row_start</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">indptr</span>
-    <span class="n">columns_for_row</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">indices</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">data</span>
-
-    <span class="k">for</span> <span class="n">i_block</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">result_side</span> <span class="o">//</span> <span class="n">sites_per_block</span><span class="p">):</span>
-        <span class="n">i_row</span> <span class="o">=</span> <span class="n">sites_per_block</span> <span class="o">*</span> <span class="n">i_block</span>
-        <span class="n">this_row_start</span> <span class="o">=</span> <span class="n">row_start</span><span class="p">[</span><span class="n">i_block</span><span class="p">]</span>
-        <span class="n">next_row_start</span> <span class="o">=</span> <span class="n">row_start</span><span class="p">[</span><span class="n">i_block</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
-
-        <span class="c1"># flux_time x nz_blocks</span>
-        <span class="n">relevant_left_columns</span> <span class="o">=</span> <span class="n">left_operator</span><span class="p">[</span>
-            <span class="p">:,</span>
-            <span class="n">columns_for_row</span><span class="p">[</span><span class="n">this_row_start</span><span class="p">:</span><span class="n">next_row_start</span><span class="p">]</span>
-        <span class="p">]</span>
-        <span class="c1"># nz_blocks x site x space</span>
-        <span class="n">relevant_blocks_of_matrix</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">this_row_start</span><span class="p">:</span><span class="n">next_row_start</span><span class="p">]</span>
-        <span class="n">result</span><span class="p">[:,</span> <span class="n">i_row</span><span class="p">:</span><span class="n">i_row</span> <span class="o">+</span> <span class="n">sites_per_block</span><span class="p">]</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span>
-            <span class="n">right_operator</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span>
-                <span class="c1"># space x flux_time x site</span>
-                <span class="n">einsum</span><span class="p">(</span>
-                    <span class="s2">&quot;ij,jlk-&gt;kil&quot;</span><span class="p">,</span>
-                    <span class="n">relevant_left_columns</span><span class="p">,</span>
-                    <span class="n">relevant_blocks_of_matrix</span><span class="p">,</span>
-                    <span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span>
-                <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">block_size</span><span class="p">,</span> <span class="n">n_blocks</span> <span class="o">*</span> <span class="n">sites_per_block</span><span class="p">,</span>
-                          <span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span><span class="p">)</span>
-                <span class="c1"># space x (flux_time * site)</span>
-            <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">block_size</span> <span class="o">*</span> <span class="n">n_blocks</span><span class="p">,</span> <span class="n">sites_per_block</span><span class="p">,</span>
-                      <span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span><span class="p">)</span>
-            <span class="c1"># (space * flux_time) x site</span>
-        <span class="p">)</span>
-        <span class="c1"># (obs_time * site) x site</span>
-
-    <span class="k">return</span> <span class="n">result</span></div>
 </pre></div>
 
           </div>

@@ -1,0 +1,402 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Inversion User Guide &#8212; Inversions 0.4.0.dev0 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"extensions": ["tex2jax.js"], "jax": ["input/TeX", "output/HTML-CSS"], "TeX": {"extensions": ["AMSmath.js"]}})</script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="inversion package" href="inversion.html" />
+    <link rel="prev" title="Maximum Likelihood Estimator" href="maximum_likelihood.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="inversion.html" title="inversion package"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="maximum_likelihood.html" title="Maximum Likelihood Estimator"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 0.4.0.dev0 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="inversion-user-guide">
+<h1>Inversion User Guide<a class="headerlink" href="#inversion-user-guide" title="Permalink to this headline">¶</a></h1>
+<p>We are interested in using a set of <span class="math notranslate nohighlight">\(M\)</span> atmospheric measurements
+to obtain an estimate for a set of <span class="math notranslate nohighlight">\(N\)</span> surface fluxes.</p>
+<p>To start off, we need some previous estimate of the fluxes of interest,
+the set of atmospheric measurements, and the relationship between the
+two.  I will assume these are stored in variables
+<cite>previous_surface_flux_estimate</cite>, <cite>observations</cite>, and <cite>influence_functions</cite>
+<a class="footnote-reference" href="#infl-fun-deriv" id="id1">[1]</a>, respectively.</p>
+<p>In an ideal world, we would have <cite>observations ==
+influence_functions.dot(previous_surface_flux_estimate)</cite>
+<a class="footnote-reference" href="#matmul-op" id="id2">[2]</a>, but unfortunately this is probably not the case.  We
+would like to refine <cite>previous_surface_flux_estimate</cite> so this is
+closer to true.  To do this, we need some estimate of the
+uncertainties in the flux estimate and in the observations.  This
+method does not explicitly represent the uncertainty in the
+relationship between the fluxes and measurements, so that uncertainty
+is instead included in the uncertainty for the measurements
+<a class="footnote-reference" href="#transport-uncert" id="id3">[3]</a>.</p>
+<p><a class="reference internal" href="theory.html#theory"><span class="std std-ref">It turns out to be convenient</span></a> to represent these
+uncertainties as covariance matrices.  We could assume that these
+matrices are diagonal: that the correction needed to bring any given
+flux into line with the atmospheric observations is completely
+unrelated to the corrections needed for the fluxes around it in space
+and time, and that the difference between an actual measurement and
+what we would predict given perfect information about the fluxes is
+independent of the difference at the previous and subsequent
+observation times, as well as at different measurement locations.
+This is equivalent to a Weighted Least Squares method and has the
+advantages of being fast and memory-efficient.</p>
+<p>Unfortunately, if we are solving for high-resolution fluxes, using a
+spatially dense set of measurement locations, or using measurements
+with high temporal resolution, these assumptions are unlikely to
+correspond to reality.  If we discover that the previous flux estimate
+at a given point was incorrect, it was likely also incorrect on the
+previous and subsequent days for roughly the same reasons.  Similarly,
+while the individual measurements themselves are almost certainly
+independent, predicting which fluxes influenced them is still a
+challenging prospect.  When that prediction goes wrong, it will likely
+stay wrong in a similar manner for at least a few hours.</p>
+<p>Given that diagonal covariances will probably not work, we must
+specify the full covariance matrix.  The next-simplest assumption
+about the correlations in space and time are separate from each other:
+the temporal correlations in problems with our previous estimate are
+independent of the spatial location of those problems, and similarly
+the spatial correlations of the problems with the previous estimate
+with their neighbors are independent of the time those problems
+occured.  Both <a class="reference internal" href="inversion.linalg.html#inversion.linalg.DaskKroneckerProductOperator" title="inversion.linalg.DaskKroneckerProductOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">DaskKroneckerProductOperator</span></code></a>
+and <a class="reference internal" href="inversion.correlations.html#inversion.correlations.SchmidtKroneckerProduct" title="inversion.correlations.SchmidtKroneckerProduct"><code class="xref py py-class docutils literal notranslate"><span class="pre">SchmidtKroneckerProduct</span></code></a> are
+designed for this type of matrix.</p>
+<p>I tend to assume that the pointwise variances, which are related to
+how big we expect the problems in our previous estimate to be at any
+given point, are a function only of space, and are independent of
+time.  We can then use
+<a class="reference internal" href="inversion.covariances.html#inversion.covariances.CorrelationStandardDeviation" title="inversion.covariances.CorrelationStandardDeviation"><code class="xref py py-class docutils literal notranslate"><span class="pre">CorrelationStandardDeviation</span></code></a> to
+represent the spatial part of the covariance, and are left with only
+the spatial and temporal correlations to completely specify the
+uncertainty estimate we need here.</p>
+<p><a class="reference internal" href="inversion.linalg.html#inversion.linalg.DaskKroneckerProductOperator" title="inversion.linalg.DaskKroneckerProductOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">DaskKroneckerProductOperator</span></code></a> requires an
+explicit array for its first argument.  The <a class="reference external" href="http://cfconventions.org">Climate and Forecast
+conventions</a> suggest ordering the dimensions for
+a gridded flux estimate as time by y by x, which means this would be
+the temporal correlations.</p>
+<p>The fluxes are assumed to be less correlated noon to midnight than
+they are from noon to noon, so we create separate correlation
+structures to reflect this.  Kronecker products work for combining
+correlations into a valid larger correlation structure, so we use that
+again.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">hour_correlation_time</span> <span class="o">=</span> <span class="mi">3</span>  <span class="c1"># hours</span>
+<span class="n">day_correlation_time</span> <span class="o">=</span> <span class="mi">14</span>  <span class="c1"># days</span>
+
+<span class="n">hour_correlation_function</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">ExponentialCorrelation</span><span class="p">(</span>
+    <span class="n">hour_correlation_time</span> <span class="o">/</span> <span class="n">flux_dt</span><span class="p">)</span>
+<span class="n">hour_correlations</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">make_matrix</span><span class="p">(</span>
+    <span class="n">hour_correlation_function</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+
+<span class="n">day_correlation_function</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">ExponentialCorrelation</span><span class="p">(</span>
+    <span class="n">day_correlation_time</span><span class="p">)</span>
+<span class="n">day_correlations</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">make_matrix</span><span class="p">(</span>
+    <span class="n">day_correlation_function</span><span class="p">,</span> <span class="n">n_flux_days</span><span class="p">)</span>
+
+<span class="n">temporal_correlations</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">kron</span><span class="p">(</span>
+    <span class="n">day_correlations</span><span class="p">,</span> <span class="n">hour_correlations</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We are left with the spatial correlations.  I have seen no evidence
+that the spatial correlations are related to Plant Functional Type, so
+I use correlations that are a function only of distance.
+<a class="reference internal" href="inversion.correlations.html#inversion.correlations.HomogeneousIsotropicCorrelation.from_function" title="inversion.correlations.HomogeneousIsotropicCorrelation.from_function"><code class="xref py py-class docutils literal notranslate"><span class="pre">from_function</span></code></a>
+makes this somewhat easier, and is designed to work with instances of
+<a class="reference internal" href="inversion.correlations.html#inversion.correlations.DistanceCorrelationFunction" title="inversion.correlations.DistanceCorrelationFunction"><code class="xref py py-class docutils literal notranslate"><span class="pre">DistanceCorrelationFunction</span></code></a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">correlation_length</span> <span class="o">=</span> <span class="mi">200</span>  <span class="c1"># km</span>
+<span class="n">spatial_correlation_function</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">ExponentialCorrelation</span><span class="p">(</span>
+    <span class="n">correlation_length</span> <span class="o">/</span> <span class="n">dx</span><span class="p">)</span>
+<span class="n">spatial_correlations</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">HomogeneousIsotropicCorrelation</span><span class="o">.</span><span class="n">from_function</span><span class="p">(</span>
+    <span class="n">spatial_correlation_function</span><span class="p">,</span> <span class="n">previous_surface_flux_estimate</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:],</span>
+    <span class="bp">False</span><span class="p">)</span>
+<span class="n">spatial_covariance</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">covariances</span><span class="o">.</span><span class="n">CorrelationStandardDeviation</span><span class="p">(</span>
+    <span class="n">spatial_correlations</span><span class="p">,</span> <span class="n">standard_deviations</span><span class="p">)</span>
+
+<span class="n">full_covariance</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">DaskKroneckerProductOperator</span><span class="p">(</span>
+    <span class="n">temporal_correlations</span><span class="p">,</span> <span class="n">spatial_covariance</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The measurements tend to be somewhat less regular than the previous
+flux estimate, so that covariance matrix is best constructed by
+different means.  We assume the towers are far enough apart that the
+uncertainties in the relationship between the fluxes and measurements
+are independent at each location, though they are probably still
+correlated in time.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">observation_correlation_time</span> <span class="o">=</span> <span class="mi">3</span>  <span class="c1"># hours</span>
+<span class="n">observation_standard_deviation</span> <span class="o">=</span> <span class="mi">2</span>  <span class="c1"># ppm</span>
+<span class="n">observation_correlation_function</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">ExponentialCorrelation</span><span class="p">(</span>
+    <span class="n">observation_correlation_time</span> <span class="o">/</span>
+    <span class="n">observation_dt</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">observation_time_units</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;m8[h]&quot;</span><span class="p">)</span>
+<span class="n">observation_covariance</span> <span class="o">=</span> <span class="n">observation_correlation_function</span><span class="p">(</span>
+    <span class="nb">abs</span><span class="p">(</span><span class="n">observation_time_index</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">-</span>
+        <span class="n">observation_time_index</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:])</span> <span class="o">/</span>
+    <span class="n">observation_time_units</span>
+<span class="p">)</span>
+<span class="n">observation_covariance</span><span class="p">[</span>
+    <span class="n">observation_site_index</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">!=</span>
+    <span class="n">observation_site_index</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span>
+<span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">observation_covariance</span> <span class="o">*=</span> <span class="n">observation_standard_deviation</span> <span class="o">**</span> <span class="mi">2</span>
+</pre></div>
+</div>
+<p>At this point, we are nearly ready to pass everything to
+<a class="reference internal" href="inversion.optimal_interpolation.html#inversion.optimal_interpolation.save_sum" title="inversion.optimal_interpolation.save_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_sum()</span></code></a>; however, just
+passing everything now would result in that function calculating a
+full-resolution covariance matrix for its estimate.  If we want many
+fluxes, this is too big to fit in memory and will crash the system.
+Fortunately, <code class="xref py py-func docutils literal notranslate"><span class="pre">get_remappers()</span></code> will give us
+matrices to aggregate our flux uncertainty and influence functions to
+a coarser resolution.  If we pass these to
+<a class="reference internal" href="inversion.optimal_interpolation.html#inversion.optimal_interpolation.save_sum" title="inversion.optimal_interpolation.save_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_sum()</span></code></a>, it will calculate
+the uncertainty for its estimate at this reduced resolution, as:</p>
+<div class="math notranslate nohighlight">
+\[A_{red} = B_{red} -
+B_{red} H_{red}^T
+(H_{full} B_{full} H_{full}^T + R)^{-1}
+H_{red} B_{red},\]</div>
+<p>taking advantage of calculations already done for the flux estimate
+<a class="footnote-reference" href="#theory" id="id4">[4]</a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">resolution_reduction_factor</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">uncertainty_spatial_resolution</span> <span class="o">=</span> <span class="n">dx</span> <span class="o">*</span> <span class="n">resolution_reduction_factor</span>
+<span class="n">uncertainty_temporal_resolution</span> <span class="o">=</span> <span class="s2">&quot;7D&quot;</span>
+<span class="n">influence_function_remapper</span><span class="p">,</span> <span class="n">covariance_remapper</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">inversion</span><span class="o">.</span><span class="n">remapper</span><span class="o">.</span><span class="n">get_remappers</span><span class="p">(</span>
+        <span class="n">previous_surface_flux_estimate</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:],</span>
+        <span class="n">resolution_reduction_factor</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+<span class="n">reduced_n_grid_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">covariance_remapper</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
+
+<span class="n">covariance_remap_matrix</span> <span class="o">=</span> <span class="n">covariance_remapper</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+    <span class="p">(</span><span class="n">reduced_n_grid_points</span><span class="p">,</span> <span class="n">n_grid_points</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">reduced_spatial_covariance</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">covariance_remap_matrix</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span>
+        <span class="n">spatial_covariance</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span>
+            <span class="n">covariance_remap_matrix</span><span class="o">.</span><span class="n">T</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">reduced_influence_functions</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">influence_functions</span>
+    <span class="o">.</span><span class="n">groupby_bins</span><span class="p">(</span>
+        <span class="s2">&quot;x_dimension&quot;</span><span class="p">,</span>
+        <span class="n">pd</span><span class="o">.</span><span class="n">interval_range</span><span class="p">(</span>
+            <span class="mi">0</span><span class="p">,</span>
+            <span class="n">x_index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">uncertainty_spatial_resolution</span><span class="p">,</span>
+            <span class="n">freq</span><span class="o">=</span><span class="n">uncertainty_spatial_resolution</span><span class="p">,</span>
+            <span class="n">closed</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="s2">&quot;x_dimension&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">groupby_bins</span><span class="p">(</span>
+        <span class="s2">&quot;y_dimension&quot;</span><span class="p">,</span>
+        <span class="n">pd</span><span class="o">.</span><span class="n">interval_range</span><span class="p">(</span>
+            <span class="mi">0</span><span class="p">,</span>
+            <span class="n">y_index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">uncertainty_spatial_resolution</span><span class="p">,</span>
+            <span class="n">freq</span><span class="o">=</span><span class="n">uncertainty_spatial_resolution</span><span class="p">,</span>
+            <span class="n">closed</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="s2">&quot;y_dimension&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="n">flux_time</span><span class="o">=</span><span class="n">uncertainty_temporal_resolution</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="s2">&quot;flux_time&quot;</span><span class="p">)</span>
+<span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+    <span class="n">x_dimension_bins</span><span class="o">=</span><span class="s2">&quot;reduced_x_dimension&quot;</span><span class="p">,</span>
+    <span class="n">y_dimension_bins</span><span class="o">=</span><span class="s2">&quot;reduced_y_dimension&quot;</span><span class="p">,</span>
+    <span class="n">flux_time</span><span class="o">=</span><span class="s2">&quot;reduced_flux_time&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">temporal_correlation_ds</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+    <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;flux_time_adjoint&quot;</span><span class="p">,</span> <span class="s2">&quot;flux_time&quot;</span><span class="p">),</span>
+    <span class="n">values</span><span class="o">=</span><span class="n">temporal_correlations</span><span class="p">,</span>
+    <span class="n">coords</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+        <span class="n">flux_time_adjoint</span><span class="o">=</span><span class="n">flux_time_index</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+        <span class="n">flux_time</span><span class="o">=</span><span class="n">flux_time_index</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;temporal_correlations&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">reduced_temporal_correlation_ds</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">temporal_correlation_ds</span>
+    <span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="n">flux_time</span><span class="o">=</span><span class="n">uncertainty_temporal_resolution</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="s2">&quot;flux_time&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="n">flux_time_adjoint</span><span class="o">=</span><span class="n">uncertainty_temporal_resolution</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="s2">&quot;flux_time_adjoint&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">reduced_covariance</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">DaskKroneckerProductOperator</span><span class="p">(</span>
+    <span class="n">reduced_temporal_correlation_ds</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+    <span class="n">reduced_spatial_covariance</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The results from <a class="reference internal" href="inversion.optimal_interpolation.html#inversion.optimal_interpolation.save_sum" title="inversion.optimal_interpolation.save_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_sum()</span></code></a> are
+the combined flux estimate, which uses both the previous estimate and
+the atmospheric measurements, and the uncertainty of that estimate
+represented as a covariance matrix, at reduced resolution if
+applicable.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">combined_flux_estimate</span><span class="p">,</span> <span class="n">reduced_uncertainty</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">inversion</span><span class="o">.</span><span class="n">optimal_interpolation</span><span class="o">.</span><span class="n">save_sum</span><span class="p">(</span>
+        <span class="n">previous_surface_flux_estimate</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
+            <span class="n">state_space</span><span class="o">=</span><span class="p">(</span>
+                <span class="s2">&quot;flux_time&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;y_dimension&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;x_dimension&quot;</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+        <span class="n">full_covariance</span><span class="p">,</span>
+        <span class="n">observations</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+        <span class="n">observation_covariance</span><span class="p">,</span>
+        <span class="n">influence_functions</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
+            <span class="n">state_space</span><span class="o">=</span><span class="p">(</span>
+                <span class="s2">&quot;flux_time&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;y_dimension&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;x_dimension&quot;</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span>
+            <span class="s2">&quot;observation&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;state_space&quot;</span><span class="p">,</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+        <span class="n">reduced_covariance</span><span class="p">,</span>
+        <span class="n">reduced_influence_functions</span><span class="p">,</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>If there are multiple previous estimates for which the same
+uncertainty estimate applies, including those estimates as the columns
+of the first argument to
+<a class="reference internal" href="inversion.optimal_interpolation.html#inversion.optimal_interpolation.save_sum" title="inversion.optimal_interpolation.save_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_sum()</span></code></a> will produce a
+collection of combined estimates, with the columns again corresponding
+to the different previous estimates.  This has only been tested with
+corresponding columns in the observations; a simple way to obtain
+these columns would be duplicating the values of the measurements in
+each column of <cite>observations</cite> to match the columns in the previous
+flux estimate.</p>
+<p class="rubric">Footnotes</p>
+<table class="docutils footnote" frame="void" id="infl-fun-deriv" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>We’re assuming here that the relationship between
+a single flux and a single observation is linear.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="matmul-op" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td><span class="target" id="index-0"></span><a class="pep reference external" href="https://www.python.org/dev/peps/pep-0465"><strong>PEP 465</strong></a> introduces <cite>&#64;</cite> as the matrix multiplication
+operator.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="transport-uncert" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id3">[3]</a></td><td>The assumption is that if we are unsure about
+which fluxes impact which measurements, we
+cannot use as much information from the
+measurements to inform our estimates of the
+fluxes.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="theory" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id4">[4]</a></td><td>The various derivations in <a class="reference internal" href="theory.html#theory"><span class="std std-ref">the section on theory</span></a> derive similar forms for the covariance of the
+new flux estimate.</td></tr>
+</tbody>
+</table>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="maximum_likelihood.html"
+                        title="previous chapter">Maximum Likelihood Estimator</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="inversion.html"
+                        title="next chapter">inversion package</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/user_guide.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="inversion.html" title="inversion package"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="maximum_likelihood.html" title="Maximum Likelihood Estimator"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 0.4.0.dev0 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, Daniel Wesloh.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+  </body>
+</html>

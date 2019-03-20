@@ -15,6 +15,8 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"extensions": ["tex2jax.js"], "jax": ["input/TeX", "output/HTML-CSS"], "TeX": {"extensions": ["AMSmath.js"]}})</script>
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -110,33 +112,6 @@ domain, where the method opts not to provide that.</p>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The wrapped function.</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">function</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="inversion.util.ym_kronecker_quadratic_form_bsr">
-<code class="descclassname">inversion.util.</code><code class="descname">ym_kronecker_quadratic_form_bsr</code><span class="sig-paren">(</span><em>matrix</em>, <em>operator</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/util.html#ym_kronecker_quadratic_form_bsr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.util.ym_kronecker_quadratic_form_bsr" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculate matrix &#64; operator &#64; matrix.T.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>matrix</strong> (<a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.bsr_matrix.html#scipy.sparse.bsr_matrix" title="(in SciPy v1.2.1)"><em>scipy.sparse.bsr_matrix</em></a>) – </li>
-<li><strong>operator</strong> (<a class="reference internal" href="inversion.linalg.html#inversion.linalg.DaskKroneckerProductOperator" title="inversion.linalg.DaskKroneckerProductOperator"><em>inversion.linalg.DaskKroneckerProductOperator</em></a>) – </li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"></p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">array_like</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> – If the block sizes do not match</p>
-</td>
 </tr>
 </tbody>
 </table>
