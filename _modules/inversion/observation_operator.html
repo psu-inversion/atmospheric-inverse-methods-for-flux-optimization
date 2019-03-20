@@ -1,0 +1,234 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>inversion.observation_operator &#8212; Inversions 0.4.0.dev0 documentation</title>
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Inversions 0.4.0.dev0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../inversion.html" accesskey="U">inversion</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for inversion.observation_operator</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Utilities for working with influence function files.</span>
+
+<span class="sd">Designed for files dimensioned:</span>
+<span class="sd">`observation_time, site, forecast_period, y, x`.</span>
+
+<span class="sd">Functions here turn these into BSR matrices dimensioned</span>
+<span class="sd">`observation, time, y, x` or</span>
+<span class="sd">`observation_time, site, time, y, x`</span>
+<span class="sd">keeping the memory savings of the first form while still usable for</span>
+<span class="sd">standard code.</span>
+
+<span class="sd">I should mention at some point that &quot;influence function&quot; and</span>
+<span class="sd">&quot;observation operator&quot; refer to the same quantity, represented by</span>
+<span class="sd">:math:`H` in the equations.  This is used to represent which fluxes</span>
+<span class="sd">influence each observation, as well as what observations would be</span>
+<span class="sd">expected given a specific set of fluxes.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">newaxis</span>
+
+<span class="kn">import</span> <span class="nn">scipy.sparse</span>
+
+<span class="kn">import</span> <span class="nn">xarray.core.utils</span>
+<span class="kn">import</span> <span class="nn">xarray.core.variable</span>
+
+<span class="n">xarray</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">variable</span><span class="o">.</span><span class="n">NON_NUMPY_SUPPORTED_ARRAY_TYPES</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">xarray</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">variable</span><span class="o">.</span><span class="n">NON_NUMPY_SUPPORTED_ARRAY_TYPES</span> <span class="o">+</span>
+    <span class="p">(</span><span class="n">scipy</span><span class="o">.</span><span class="n">sparse</span><span class="o">.</span><span class="n">spmatrix</span><span class="p">,)</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="align_full_obs_op"><a class="viewcode-back" href="../../inversion.observation_operator.html#inversion.observation_operator.align_full_obs_op">[docs]</a><span class="k">def</span> <span class="nf">align_full_obs_op</span><span class="p">(</span><span class="n">obs_op</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Align observation operator on flux_time.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    obs_op: xarray.DataArray</span>
+<span class="sd">        dims: observation_time, site, time_before_observation, y, x</span>
+<span class="sd">        coords: flux_time</span>
+<span class="sd">        time_before_obs monotone increasing</span>
+<span class="sd">        observation_time monotone decreasing</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    obs_op_aligned: scipy.sparse.bsr_matrix</span>
+<span class="sd">        dims: observation, flux</span>
+<span class="sd">        observation is composed of observation_time, site</span>
+<span class="sd">        flux is composed of flux_time, y, x</span>
+<span class="sd">        bsr_matrix does not support indexing</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">flux_time</span> <span class="o">=</span> <span class="n">obs_op</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s2">&quot;flux_time&quot;</span><span class="p">]</span>
+
+    <span class="n">column_offset</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">flux_time</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">flux_time</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">flux_time</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+    <span class="n">earliest_flux</span> <span class="o">=</span> <span class="n">flux_time</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+
+    <span class="c1"># Find offset of first flux in each row</span>
+    <span class="n">row_offset_start</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">flux_time</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">earliest_flux</span><span class="p">)</span> <span class="o">/</span> <span class="n">dt</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+
+    <span class="c1"># repeat row_offset_start for sites</span>
+    <span class="n">obs_op</span> <span class="o">=</span> <span class="n">obs_op</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">space</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;dim_y&quot;</span><span class="p">,</span> <span class="s2">&quot;dim_x&quot;</span><span class="p">))</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">obs_op</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span>
+        <span class="s2">&quot;observation_time&quot;</span><span class="p">,</span> <span class="s2">&quot;time_before_observation&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;site&quot;</span><span class="p">,</span> <span class="s2">&quot;space&quot;</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
+        <span class="n">block_dim</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;observation_time&quot;</span><span class="p">,</span> <span class="s2">&quot;time_before_observation&quot;</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span>
+        <span class="s2">&quot;block_dim&quot;</span><span class="p">,</span> <span class="s2">&quot;site&quot;</span><span class="p">,</span> <span class="s2">&quot;space&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">aligned_data</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">sparse</span><span class="o">.</span><span class="n">bsr_matrix</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+         <span class="p">(</span><span class="n">row_offset_start</span><span class="p">[:,</span> <span class="n">newaxis</span><span class="p">]</span> <span class="o">+</span>
+          <span class="n">column_offset</span><span class="p">[</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:])</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+         <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">flux_time</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">flux_time</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="c1"># rows: obs_time, site stack</span>
+    <span class="c1"># cols: flux_time, space stack</span>
+    <span class="n">aligned_data</span><span class="o">.</span><span class="n">ndim</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="k">return</span> <span class="n">aligned_data</span></div>
+
+
+<div class="viewcode-block" id="align_partial_obs_op"><a class="viewcode-back" href="../../inversion.observation_operator.html#inversion.observation_operator.align_partial_obs_op">[docs]</a><span class="k">def</span> <span class="nf">align_partial_obs_op</span><span class="p">(</span><span class="n">obs_op</span><span class="p">,</span> <span class="n">required_shape</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Align observation operator on flux_time.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    obs_op: xarray.DataArray</span>
+<span class="sd">        dims: observation, time_before_obs, y, x</span>
+<span class="sd">        coords: flux_time, observation_time</span>
+<span class="sd">        time_before_obs monotone increasing</span>
+<span class="sd">        observation_time monotone decreasing</span>
+<span class="sd">        only one dim each with &#39;y&#39; and &#39;x&#39;</span>
+<span class="sd">        obs_op[-1, -1] is earliest influence map</span>
+<span class="sd">    required_shape: tuple of int, optional</span>
+<span class="sd">        The share required of the returned</span>
+<span class="sd">        matrix.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    obs_op_aligned: scipy.sparse.bsr_matrix</span>
+<span class="sd">        dims: observation, flux</span>
+<span class="sd">        flux is composed of flux_time, y, x</span>
+<span class="sd">        bsr_matrix does not support indexing</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">flux_time</span> <span class="o">=</span> <span class="n">obs_op</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s2">&quot;flux_time&quot;</span><span class="p">]</span>
+
+    <span class="n">column_offset</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">flux_time</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">flux_time</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">flux_time</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+    <span class="n">earliest_flux</span> <span class="o">=</span> <span class="n">flux_time</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+
+    <span class="n">y_index_name</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">obs_op</span><span class="o">.</span><span class="n">dims</span> <span class="k">if</span> <span class="s2">&quot;y&quot;</span> <span class="ow">in</span> <span class="n">name</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">x_index_name</span> <span class="o">=</span> <span class="n">y_index_name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">)</span>
+    <span class="n">x_index</span> <span class="o">=</span> <span class="n">obs_op</span><span class="o">.</span><span class="n">get_index</span><span class="p">(</span><span class="n">x_index_name</span><span class="p">)</span>
+    <span class="n">y_index</span> <span class="o">=</span> <span class="n">obs_op</span><span class="o">.</span><span class="n">get_index</span><span class="p">(</span><span class="n">y_index_name</span><span class="p">)</span>
+
+    <span class="c1"># Find offset of first flux in each row</span>
+    <span class="n">row_offset_start</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">flux_time</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">earliest_flux</span><span class="p">)</span> <span class="o">/</span> <span class="n">dt</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+
+    <span class="c1"># repeat row_offset_start for sites</span>
+
+    <span class="c1"># obs_op.stack(observation=(&quot;observation_time&quot;, &quot;site&quot;))</span>
+    <span class="n">obs_op</span> <span class="o">=</span> <span class="n">obs_op</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">space</span><span class="o">=</span><span class="p">(</span><span class="n">y_index_name</span><span class="p">,</span> <span class="n">x_index_name</span><span class="p">))</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">obs_op</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span>
+        <span class="s2">&quot;observation&quot;</span><span class="p">,</span> <span class="s2">&quot;time_before_observation&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;space&quot;</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span>
+        <span class="s2">&quot;block_extra_dim&quot;</span><span class="p">,</span> <span class="mi">1</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span>
+        <span class="s2">&quot;observation&quot;</span><span class="p">,</span> <span class="s2">&quot;time_before_observation&quot;</span><span class="p">,</span> <span class="s2">&quot;block_extra_dim&quot;</span><span class="p">,</span> <span class="s2">&quot;space&quot;</span>
+    <span class="p">)</span>
+    <span class="n">n_obs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs_op</span><span class="o">.</span><span class="n">indexes</span><span class="p">[</span><span class="s2">&quot;observation&quot;</span><span class="p">])</span>
+    <span class="n">n_times_back</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs_op</span><span class="o">.</span><span class="n">indexes</span><span class="p">[</span><span class="s2">&quot;time_before_observation&quot;</span><span class="p">])</span>
+    <span class="n">n_space</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y_index</span><span class="p">)</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_index</span><span class="p">)</span>
+
+    <span class="n">aligned_data</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">sparse</span><span class="o">.</span><span class="n">bsr_matrix</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n_obs</span> <span class="o">*</span> <span class="n">n_times_back</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n_space</span><span class="p">),</span>
+         <span class="p">(</span><span class="n">row_offset_start</span><span class="p">[:,</span> <span class="n">newaxis</span><span class="p">]</span> <span class="o">+</span> <span class="n">column_offset</span><span class="p">[</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:])</span><span class="o">.</span><span class="n">flat</span><span class="p">,</span>
+         <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">flux_time</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">flux_time</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+        <span class="n">shape</span><span class="o">=</span><span class="n">required_shape</span><span class="p">)</span>
+    <span class="c1"># rows: obs_time, site stack</span>
+    <span class="c1"># cols: flux_time, space stack</span>
+    <span class="n">aligned_data</span><span class="o">.</span><span class="n">ndim</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="k">return</span> <span class="n">aligned_data</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Inversions 0.4.0.dev0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../inversion.html" >inversion</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, Daniel Wesloh.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,200 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>inversion.util module &#8212; Inversions 0.4.0.dev0 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="inversion.noise module" href="inversion.noise.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="inversion.noise.html" title="inversion.noise module"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 0.4.0.dev0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="inversion.html" accesskey="U">inversion package</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-inversion.util">
+<span id="inversion-util-module"></span><h1>inversion.util module<a class="headerlink" href="#module-inversion.util" title="Permalink to this headline">¶</a></h1>
+<p>Utility functions for compatibility.</p>
+<p>Some functions mirror <a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/index.html#module-numpy" title="(in NumPy v1.16)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">numpy</span></code></a> functions but produce <code class="xref py py-mod docutils literal notranslate"><span class="pre">dask</span></code>
+output.  Others map similar functionality across the various methods
+to accomplish that end.</p>
+<dl class="data">
+<dt id="inversion.util.ARRAY_TYPES">
+<code class="descclassname">inversion.util.</code><code class="descname">ARRAY_TYPES</code><em class="property"> = (&lt;class 'numpy.ndarray'&gt;, &lt;class 'dask.array.core.Array'&gt;)</em><a class="headerlink" href="#inversion.util.ARRAY_TYPES" title="Permalink to this definition">¶</a></dt>
+<dd><p>Array types for determining Kronecker product type.</p>
+<p>These are combined for a direct product.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="inversion.util.MAX_EXPLICIT_ARRAY">
+<code class="descclassname">inversion.util.</code><code class="descname">MAX_EXPLICIT_ARRAY</code><em class="property"> = 1024</em><a class="headerlink" href="#inversion.util.MAX_EXPLICIT_ARRAY" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum size for an array represented explicitly.</p>
+<p><a class="reference internal" href="#inversion.util.kronecker_product" title="inversion.util.kronecker_product"><code class="xref py py-func docutils literal notranslate"><span class="pre">kronecker_product()</span></code></a> will form products smaller than this as an
+explicit matrix using <a class="reference internal" href="inversion.linalg.html#inversion.linalg.kron" title="inversion.linalg.kron"><code class="xref py py-func docutils literal notranslate"><span class="pre">linalg.kron()</span></code></a>.  Arrays larger than this will use
+<a class="reference internal" href="inversion.linalg.html#inversion.linalg.DaskKroneckerProductOperator" title="inversion.linalg.DaskKroneckerProductOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">linalg.DaskKroneckerProductOperator</span></code></a>.</p>
+<p>Currently completely arbitrary.
+<cite>2 ** 16</cite> works fine in memory, <cite>2**17</cite> gives a <a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#MemoryError" title="(in Python v3.4)"><code class="xref py py-class docutils literal notranslate"><span class="pre">MemoryError</span></code></a>.
+Hopefully Dask knows not to try this.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="inversion.util.REAL_DTYPE_KINDS">
+<code class="descclassname">inversion.util.</code><code class="descname">REAL_DTYPE_KINDS</code><em class="property"> = 'fiu'</em><a class="headerlink" href="#inversion.util.REAL_DTYPE_KINDS" title="Permalink to this definition">¶</a></dt>
+<dd><p>The kinds used by dtypes to represent real numbers.</p>
+<p>Includes subsets.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="inversion.util.kronecker_product">
+<code class="descclassname">inversion.util.</code><code class="descname">kronecker_product</code><span class="sig-paren">(</span><em>operator1</em>, <em>operator2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/util.html#kronecker_product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.util.kronecker_product" title="Permalink to this definition">¶</a></dt>
+<dd><p>Form the Kronecker product of the given operators.</p>
+<p>Delegates to <code class="docutils literal notranslate"><span class="pre">operator1.kron()</span></code> if possible,
+<a class="reference internal" href="inversion.linalg.html#inversion.linalg.kron" title="inversion.linalg.kron"><code class="xref py py-func docutils literal notranslate"><span class="pre">linalg.kron()</span></code></a> if both are <a class="reference internal" href="#inversion.util.ARRAY_TYPES" title="inversion.util.ARRAY_TYPES"><code class="xref py py-const docutils literal notranslate"><span class="pre">ARRAY_TYPES</span></code></a>, or
+<a class="reference internal" href="inversion.correlations.html#inversion.correlations.SchmidtKroneckerProduct" title="inversion.correlations.SchmidtKroneckerProduct"><code class="xref py py-class docutils literal notranslate"><span class="pre">SchmidtKroneckerProduct</span></code></a> otherwise.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>operator2</strong> (<em>operator1</em><em>,</em>) – The component operators of the Kronecker product.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The kronecker product of the given operators.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.LinearOperator.html#scipy.sparse.linalg.LinearOperator" title="(in SciPy v1.2.1)">scipy.sparse.linalg.LinearOperator</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="inversion.util.method_common">
+<code class="descclassname">inversion.util.</code><code class="descname">method_common</code><span class="sig-paren">(</span><em>inversion_method</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/util.html#method_common"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.util.method_common" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wrap method to validate args.</p>
+<p>Can also deal with posterior uncertainty for a reduced-resolution
+domain, where the method opts not to provide that.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>inversion_method</strong> (<em>function</em>) – The inversion function to wrap.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The wrapped function.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">function</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="inversion.util.ym_kronecker_quadratic_form_bsr">
+<code class="descclassname">inversion.util.</code><code class="descname">ym_kronecker_quadratic_form_bsr</code><span class="sig-paren">(</span><em>matrix</em>, <em>operator</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/util.html#ym_kronecker_quadratic_form_bsr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.util.ym_kronecker_quadratic_form_bsr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate matrix &#64; operator &#64; matrix.T.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>matrix</strong> (<a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.bsr_matrix.html#scipy.sparse.bsr_matrix" title="(in SciPy v1.2.1)"><em>scipy.sparse.bsr_matrix</em></a>) – </li>
+<li><strong>operator</strong> (<a class="reference internal" href="inversion.linalg.html#inversion.linalg.DaskKroneckerProductOperator" title="inversion.linalg.DaskKroneckerProductOperator"><em>inversion.linalg.DaskKroneckerProductOperator</em></a>) – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"></p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">array_like</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> – If the block sizes do not match</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="inversion.noise.html"
+                        title="previous chapter">inversion.noise module</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/inversion.util.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="inversion.noise.html" title="inversion.noise module"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 0.4.0.dev0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="inversion.html" >inversion package</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, Daniel Wesloh.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+  </body>
+</html>

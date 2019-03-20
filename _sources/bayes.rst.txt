@@ -1,0 +1,44 @@
+==================
+Bayesian Estimator
+==================
+
+Our prior information about the surface fluxes :math:`\vec{x}` can be
+represented by a multivariate normal prior distribution:
+
+.. math::
+
+   \vec{x} \sim \mathcal{N}(\vec{x}_b, B)
+
+The likelihood of observing a set of atmospheric measurements
+:math:`\vec{y}` given surface fluxes :math:`\vec{x}` is an independent
+multivariate normal:
+
+.. math::
+
+   \vec{y} | \vec{x} \sim \mathcal{N}(H \vec{x}, R)
+
+We can combine these to obtain the posterior distribution for the
+surface fluxes :math:`\vec{x}`.
+
+.. math::
+
+   P(\vec{x} | \vec{y})
+   &= \frac{P(\vec{y} | \vec{x}) P(\vec{x})}{\int_{\vec{x}} P(\vec{y} | \vec{x}) d\vec{x}} \\
+   &\propto P(\vec{y} | \vec{x}) P(\vec{x}) \\
+   &= (2\pi)^{-\frac{M}{2}} det(R)^{-\frac{1}{2}}
+   exp[-\frac{1}{2} (\vec{y} - H \vec{x})^T R^{-1} (\vec{y} - H \vec{x})] \\
+   &\quad \times (2\pi)^{-\frac{N}{2}} det(B)^{-\frac{1}{2}}
+   exp[-\frac{1}{2} (\vec{x} - \vec{x}_b)^T B^{-1} (\vec{x} - \vec{x}_b)] \\
+   &= (2\pi)^{-\frac{M + N}{2}} det(R)^{-\frac{1}{2}} det(B)^{-\frac{1}{2}} \\
+   &\quad \times exp[-\frac{1}{2} (\vec{y} - H \vec{x})^T R^{-1} (\vec{y} - H \vec{x}_b)
+   - \frac{1}{2} (\vec{x} - \vec{x}_b)^T B^{-1} (\vec{x} - \vec{x}_b)]] \\
+   &\propto exp[-\frac{1}{2} (
+   \vec{y}^T R^{-1} \vec{y} - \vec{x}^T H^T R^{-1} \vec{y}
+   - \vec{y}^T R^{-1} H \vec{x} + \vec{x}^T H^T R^{-1} H \vec{x} \\
+   &\qquad\qquad\qquad + \vec{x}^T B^{-1} \vec{x} - \vec{x}^T B^{-1} \vec{x_b}
+   - \vec{x}_b^T B^{-1} \vec{x} + \vec{x}_b^T B^{-1} \vec{x}_b)] \\
+   &= exp\{-\frac{1}{2} [
+   \vec{x}^T (B^{-1} + H R^{-1} H^T) \vec{x} + \vec{y}^T R^{-1} \vec{y}
+   - \vec{x}^T H^T R^{-1} \vec{y} - \vec{y}^T R^{-1} H \vec{x} \\
+   &\qquad\qquad\qquad - \vec{x}^T B^{-1} \vec{x_b}
+   - \vec{x}_b^T B^{-1} \vec{x} + \vec{x}_b^T B^{-1} \vec{x}_b]\}

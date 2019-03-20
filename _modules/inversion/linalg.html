@@ -1,0 +1,696 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>inversion.linalg &#8212; Inversions 0.4.0.dev0 documentation</title>
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Inversions 0.4.0.dev0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../inversion.html" accesskey="U">inversion</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for inversion.linalg</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;All the linear algebra details for the package.</span>
+
+<span class="sd">I figured it would be more useful to have it separate</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">newaxis</span>
+<span class="kn">import</span> <span class="nn">numpy.linalg</span> <span class="k">as</span> <span class="nn">la</span>
+<span class="kn">from</span> <span class="nn">numpy.linalg</span> <span class="k">import</span> <span class="n">svd</span><span class="p">,</span> <span class="n">LinAlgError</span>
+<span class="c1"># See if this will speed up inversions.  I call `.compute()` on the</span>
+<span class="c1"># output to keep the rest of the code numpy-only.  I think this is</span>
+<span class="c1"># implicitly called on the operator2.dot(chunk) that usually follows</span>
+<span class="c1"># this.</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">einsum</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">concatenate</span><span class="p">,</span> <span class="n">zeros</span><span class="p">,</span> <span class="n">nonzero</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">asarray</span><span class="p">,</span> <span class="n">atleast_2d</span><span class="p">,</span> <span class="n">stack</span><span class="p">,</span> <span class="n">where</span><span class="p">,</span> <span class="n">sqrt</span>
+
+<span class="kn">from</span> <span class="nn">scipy.sparse.linalg</span> <span class="k">import</span> <span class="n">lgmres</span>
+<span class="kn">from</span> <span class="nn">scipy.sparse.linalg.interface</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">LinearOperator</span><span class="p">,</span>
+    <span class="n">MatrixLinearOperator</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">scipy.sparse.linalg.eigen</span> <span class="k">import</span> <span class="n">eigsh</span> <span class="k">as</span> <span class="n">linop_eigsh</span>
+<span class="kn">from</span> <span class="nn">scipy.sparse.linalg</span> <span class="k">import</span> <span class="n">svds</span>
+
+<span class="kn">from</span> <span class="nn">scipy.linalg</span> <span class="k">import</span> <span class="n">cholesky</span>
+
+<span class="kn">from</span> <span class="nn">.linalg_interface</span> <span class="k">import</span> <span class="n">DaskLinearOperator</span><span class="p">,</span> <span class="n">DaskMatrixLinearOperator</span>
+<span class="kn">from</span> <span class="nn">.linalg_interface</span> <span class="k">import</span> <span class="n">tolinearoperator</span><span class="p">,</span> <span class="n">ProductLinearOperator</span>
+<span class="kn">from</span> <span class="nn">.linalg_interface</span> <span class="k">import</span> <span class="n">ARRAY_TYPES</span><span class="p">,</span> <span class="n">REAL_DTYPE_KINDS</span>
+
+<span class="n">NEAR_ZERO</span> <span class="o">=</span> <span class="mf">1e-20</span>
+<span class="sd">&quot;&quot;&quot;Where correlations are rounded to zero.</span>
+
+<span class="sd">The method of assuring positive definiteness increases some values</span>
+<span class="sd">away from zero due to roundoff. Values that were originally smaller</span>
+<span class="sd">than this are reset to zero.</span>
+
+<span class="sd">See Also</span>
+<span class="sd">--------</span>
+<span class="sd">inversion.correlations.NEAR_ZERO</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="n">OPTIMAL_ELEMENTS</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">**</span> <span class="mi">16</span>
+<span class="sd">&quot;&quot;&quot;Maximum size for the approximate square root of a LinearOperator.</span>
+
+<span class="sd">Bounding the eigenvector matrix by this should keep everything in</span>
+<span class="sd">memory.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="c1"># TODO: Get preconditioner working</span>
+<div class="viewcode-block" id="linop_solve"><a class="viewcode-back" href="../../inversion.linalg.html#inversion.linalg.linop_solve">[docs]</a><span class="k">def</span> <span class="nf">linop_solve</span><span class="p">(</span><span class="n">operator</span><span class="p">,</span> <span class="n">arr</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Solve `operator @ x = arr`.</span>
+
+<span class="sd">    deal with arr possibly having multiple columns.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    operator: LinearOperator</span>
+<span class="sd">    arr: array_like</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    array_like</span>
+<span class="sd">        The solution to the linear equation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">asarray</span><span class="p">(</span><span class="n">lgmres</span><span class="p">(</span><span class="n">operator</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">arr</span><span class="p">),</span>
+                              <span class="n">atol</span><span class="o">=</span><span class="mf">1e-7</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">asarray</span><span class="p">(</span>
+        <span class="n">stack</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">lgmres</span><span class="p">(</span><span class="n">operator</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">col</span><span class="p">),</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-7</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+             <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">atleast_2d</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">],</span>
+            <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="solve"><a class="viewcode-back" href="../../inversion.linalg.html#inversion.linalg.solve">[docs]</a><span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="n">arr1</span><span class="p">,</span> <span class="n">arr2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Solve arr1 @ x = arr2 for x.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    arr1: array_like[N, N]</span>
+<span class="sd">        A square matrix</span>
+<span class="sd">    arr2: array_like[N]</span>
+<span class="sd">        A vector</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    array_like[N]</span>
+<span class="sd">        The solution to the linear equation</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        if the dimensions do not match up</span>
+<span class="sd">    LinAlgError</span>
+<span class="sd">        if `arr1` is not square</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">arr1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">arr2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">arr1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">arr2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Dimension mismatch&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">arr1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">arr1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="n">LinAlgError</span><span class="p">(</span><span class="s2">&quot;arr1 is not square&quot;</span><span class="p">)</span>
+    <span class="c1"># Get everything in a standard form</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arr2</span><span class="p">,</span> <span class="n">MatrixLinearOperator</span><span class="p">):</span>
+        <span class="n">arr2</span> <span class="o">=</span> <span class="n">arr2</span><span class="o">.</span><span class="n">A</span>
+    <span class="c1"># Deal with arr2 being a LinearOperator</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arr2</span><span class="p">,</span> <span class="n">ARRAY_TYPES</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">solver</span><span class="p">(</span><span class="n">vec</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Solve `arr1 x = vec`.</span>
+
+<span class="sd">            Parameters</span>
+<span class="sd">            ----------</span>
+<span class="sd">            vec: array_like</span>
+<span class="sd">                The vector for which the solution is wanted</span>
+
+<span class="sd">            Returns</span>
+<span class="sd">            -------</span>
+<span class="sd">            array_like</span>
+<span class="sd">                The solution of the linear equation</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="k">return</span> <span class="n">solve</span><span class="p">(</span><span class="n">arr1</span><span class="p">,</span> <span class="n">vec</span><span class="p">)</span>
+        <span class="n">inverse</span> <span class="o">=</span> <span class="n">DaskLinearOperator</span><span class="p">(</span><span class="n">matvec</span><span class="o">=</span><span class="n">solver</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">arr1</span><span class="o">.</span><span class="n">shape</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">inverse</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">arr2</span><span class="p">)</span>
+
+    <span class="c1"># arr2 is an array</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">arr1</span><span class="p">,</span> <span class="s2">&quot;solve&quot;</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">arr1</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">arr2</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">NotImplementedError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arr1</span><span class="p">,</span> <span class="n">MatrixLinearOperator</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">la</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">asarray</span><span class="p">(</span><span class="n">arr1</span><span class="o">.</span><span class="n">A</span><span class="p">),</span> <span class="n">asarray</span><span class="p">(</span><span class="n">arr2</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arr1</span><span class="p">,</span> <span class="n">LinearOperator</span><span class="p">):</span>
+        <span class="c1"># Linear operators with neither an underlying matrix nor a</span>
+        <span class="c1"># provided solver. Use iterative sparse solvers.</span>
+        <span class="k">return</span> <span class="n">linop_solve</span><span class="p">(</span><span class="n">arr1</span><span class="p">,</span> <span class="n">arr2</span><span class="p">)</span>
+        <span class="c1"># return da.Array(</span>
+        <span class="c1">#     {(chunkname, 0):</span>
+        <span class="c1">#      (spsolve, arr1, arr2.rechunk(1, whatever))},</span>
+        <span class="c1">#     &quot;solve-arr1.name-arr2.name&quot;,</span>
+        <span class="c1">#     chunks)</span>
+    <span class="c1"># Shorter method for assuring dask arrays</span>
+    <span class="k">return</span> <span class="n">la</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">asarray</span><span class="p">(</span><span class="n">arr1</span><span class="p">),</span> <span class="n">asarray</span><span class="p">(</span><span class="n">arr2</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="kron"><a class="viewcode-back" href="../../inversion.linalg.html#inversion.linalg.kron">[docs]</a><span class="k">def</span> <span class="nf">kron</span><span class="p">(</span><span class="n">matrix1</span><span class="p">,</span> <span class="n">matrix2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Kronecker product of two matrices.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    matrix1: array_like[M, N]</span>
+<span class="sd">        One of the matrixes for the product</span>
+<span class="sd">    matrix2: array_like[J, K]</span>
+<span class="sd">        The other matrix for the product</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    array_like[M*J, N*K]</span>
+<span class="sd">        The kronecker product of the matrices</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    scipy.linalg.kron</span>
+<span class="sd">        Where I got the overview of the implementation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">matrix1</span> <span class="o">=</span> <span class="n">atleast_2d</span><span class="p">(</span><span class="n">matrix1</span><span class="p">)</span>
+    <span class="n">matrix2</span> <span class="o">=</span> <span class="n">atleast_2d</span><span class="p">(</span><span class="n">matrix2</span><span class="p">)</span>
+
+    <span class="n">total_shape</span> <span class="o">=</span> <span class="n">matrix1</span><span class="o">.</span><span class="n">shape</span> <span class="o">+</span> <span class="n">matrix2</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">change</span> <span class="o">=</span> <span class="n">matrix1</span><span class="o">.</span><span class="n">ndim</span>
+
+    <span class="n">matrix1_index</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">change</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span>
+                          <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">total_shape</span><span class="p">)))</span>
+    <span class="n">matrix2_index</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">change</span> <span class="k">else</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+                          <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">total_shape</span><span class="p">)))</span>
+
+    <span class="n">product</span> <span class="o">=</span> <span class="n">matrix1</span><span class="p">[</span><span class="n">matrix1_index</span><span class="p">]</span> <span class="o">*</span> <span class="n">matrix2</span><span class="p">[</span><span class="n">matrix2_index</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">concatenate</span><span class="p">(</span><span class="n">concatenate</span><span class="p">(</span><span class="n">product</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="schmidt_decomposition"><a class="viewcode-back" href="../../inversion.linalg.html#inversion.linalg.schmidt_decomposition">[docs]</a><span class="k">def</span> <span class="nf">schmidt_decomposition</span><span class="p">(</span><span class="n">vector</span><span class="p">,</span> <span class="n">dim1</span><span class="p">,</span> <span class="n">dim2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Decompose a state vector into a sum of Kronecker products.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    vector: array_like[dim1 * dim2]</span>
+<span class="sd">    dim1, dim2: int</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of (weights, unit_vecs[dim1], unit_vecs[dim2]</span>
+<span class="sd">        The rows form the separate vectors.</span>
+<span class="sd">        The weights are guaranteed to be greater than zero</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        if `vector` isn&#39;t actually a vector.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Algorithm from stackexchange:</span>
+<span class="sd">    https://physics.stackexchange.com/questions/251522/how-do-you-find-a-schmidt-basis-and-how-can-the-schmidt-decomposition-be-used-f</span>
+<span class="sd">    Also from Mathematica code I wrote based on description in the green</span>
+<span class="sd">    Quantum Computation book in the reading library</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">vector</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">vector</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Schmidt decomposition only valid for vectors&quot;</span><span class="p">)</span>
+    <span class="n">state_matrix</span> <span class="o">=</span> <span class="n">asarray</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">dim1</span><span class="p">,</span> <span class="n">dim2</span><span class="p">)</span>
+    <span class="n">min_dim</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">dim1</span><span class="p">,</span> <span class="n">dim2</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">min_dim</span> <span class="o">&gt;</span> <span class="mi">6</span><span class="p">:</span>
+        <span class="n">n_singular_vectors</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="mf">0.05</span> <span class="o">*</span> <span class="n">min_dim</span><span class="p">)),</span> <span class="n">min_dim</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">vecs1</span><span class="p">,</span> <span class="n">lambdas</span><span class="p">,</span> <span class="n">vecs2</span> <span class="o">=</span> <span class="n">svds</span><span class="p">(</span><span class="n">state_matrix</span><span class="p">,</span> <span class="n">n_singular_vectors</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">vecs1</span><span class="p">,</span> <span class="n">lambdas</span><span class="p">,</span> <span class="n">vecs2</span> <span class="o">=</span> <span class="n">svd</span><span class="p">(</span><span class="n">state_matrix</span><span class="p">)</span>
+
+    <span class="n">big_lambdas</span> <span class="o">=</span> <span class="n">nonzero</span><span class="p">(</span><span class="n">lambdas</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">lambdas</span><span class="p">[</span><span class="n">big_lambdas</span><span class="p">],</span> <span class="n">vecs1</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="n">big_lambdas</span><span class="p">,</span> <span class="p">:],</span> <span class="n">vecs2</span><span class="p">[</span><span class="n">big_lambdas</span><span class="p">,</span> <span class="p">:]</span></div>
+
+
+<div class="viewcode-block" id="matrix_sqrt"><a class="viewcode-back" href="../../inversion.linalg.html#inversion.linalg.matrix_sqrt">[docs]</a><span class="k">def</span> <span class="nf">matrix_sqrt</span><span class="p">(</span><span class="n">mat</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Find a matrix S such that S.T @ S == mat.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mat: array_like or LinearOperator</span>
+<span class="sd">        The square matrix for which the square root is desired</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    array_like or LinearOperator</span>
+<span class="sd">        A matrix such that S.T @ S == mat</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        if mat is not symmetric</span>
+<span class="sd">    TypeError</span>
+<span class="sd">        if mat is of an unrecognized type</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">mat</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">mat</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Matrix square root only defined for square arrays&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">mat</span><span class="p">,</span> <span class="s2">&quot;sqrt&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">mat</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mat</span><span class="p">,</span> <span class="n">MatrixLinearOperator</span><span class="p">):</span>
+        <span class="n">mat</span> <span class="o">=</span> <span class="n">mat</span><span class="o">.</span><span class="n">A</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mat</span><span class="p">,</span> <span class="n">ARRAY_TYPES</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">cholesky</span><span class="p">(</span>
+            <span class="n">asarray</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mat</span><span class="p">,</span> <span class="n">LinearOperator</span><span class="p">):</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;The square root will be approximate.&quot;</span><span class="p">)</span>
+        <span class="n">vals</span><span class="p">,</span> <span class="n">vecs</span> <span class="o">=</span> <span class="n">linop_eigsh</span><span class="p">(</span>
+            <span class="n">mat</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">mat</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="n">OPTIMAL_ELEMENTS</span> <span class="o">//</span> <span class="n">mat</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="n">sqrt_valop</span> <span class="o">=</span> <span class="n">DiagonalOperator</span><span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="n">vals</span><span class="p">))</span>
+        <span class="n">vecop</span> <span class="o">=</span> <span class="n">DaskMatrixLinearOperator</span><span class="p">(</span><span class="n">vecs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ProductLinearOperator</span><span class="p">(</span><span class="n">vecop</span><span class="p">,</span> <span class="n">sqrt_valop</span><span class="p">,</span> <span class="n">vecop</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+
+    <span class="c1"># TODO: test on xarray datasets or iris cubes</span>
+    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Don&#39;t know how to find square root of </span><span class="si">{cls!s}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="o">=</span><span class="nb">type</span><span class="p">(</span><span class="n">mat</span><span class="p">)))</span></div>
+
+
+<div class="viewcode-block" id="DaskKroneckerProductOperator"><a class="viewcode-back" href="../../inversion.linalg.html#inversion.linalg.DaskKroneckerProductOperator">[docs]</a><span class="k">class</span> <span class="nc">DaskKroneckerProductOperator</span><span class="p">(</span><span class="n">DaskLinearOperator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Operator for Kronecker product.</span>
+
+<span class="sd">    Uses the :math:`O(n^{2.5})` algorithm of Yadav and Michalak (2013)</span>
+<span class="sd">    to make memory and computational requirements practical.</span>
+
+<span class="sd">    Left argument to Kronecker product must be array.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    V. Yadav and A.M. Michalak. &quot;Improving computational efficiency in</span>
+<span class="sd">    large linear inverse problems: an example from carbon dioxide flux</span>
+<span class="sd">    estimation&quot; *Geosci. Model Dev.* 2013. Vol 6, pp. 583--590.</span>
+<span class="sd">    URL: https://www.geosci-model-dev.net/6/583/2013</span>
+<span class="sd">    DOI: 10.5194/gmd-6-583-2013.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">operator1</span><span class="p">,</span> <span class="n">operator2</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set up the instance.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        operator1: array_like</span>
+<span class="sd">        operator2: array_like or LinearOperator</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">operator1</span><span class="p">,</span> <span class="n">MatrixLinearOperator</span><span class="p">):</span>
+            <span class="n">operator1</span> <span class="o">=</span> <span class="n">asarray</span><span class="p">(</span><span class="n">operator1</span><span class="o">.</span><span class="n">A</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">operator1</span> <span class="o">=</span> <span class="n">asarray</span><span class="p">(</span><span class="n">operator1</span><span class="p">)</span>
+        <span class="n">operator2</span> <span class="o">=</span> <span class="n">tolinearoperator</span><span class="p">(</span><span class="n">operator2</span><span class="p">)</span>
+
+        <span class="n">total_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">operator1</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">operator2</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">DaskKroneckerProductOperator</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">shape</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">total_shape</span><span class="p">),</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">result_type</span><span class="p">(</span><span class="n">operator1</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">operator2</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_operator1</span> <span class="o">=</span> <span class="n">operator1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_operator2</span> <span class="o">=</span> <span class="n">operator2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_block_size</span> <span class="o">=</span> <span class="n">operator2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_n_chunks</span> <span class="o">=</span> <span class="n">operator1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__transp</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">_transpose</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Transpose the operator.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__transp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">operator1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_operator1</span>
+            <span class="n">operator2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_operator2</span>
+            <span class="k">if</span> <span class="p">((</span><span class="n">operator1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">operator1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">and</span>
+                 <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">operator1</span><span class="p">,</span> <span class="n">operator1</span><span class="o">.</span><span class="n">T</span><span class="p">))):</span>
+                <span class="k">if</span> <span class="n">operator2</span><span class="o">.</span><span class="n">T</span> <span class="ow">is</span> <span class="n">operator2</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__transp</span> <span class="o">=</span> <span class="bp">self</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__transp</span> <span class="o">=</span> <span class="n">DaskKroneckerProductOperator</span><span class="p">(</span>
+                        <span class="n">operator1</span><span class="p">,</span> <span class="n">operator2</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__transp</span> <span class="o">=</span> <span class="n">DaskKroneckerProductOperator</span><span class="p">(</span>
+                    <span class="n">operator1</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">operator2</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__transp</span>
+
+<div class="viewcode-block" id="DaskKroneckerProductOperator.sqrt"><a class="viewcode-back" href="../../inversion.linalg.html#inversion.linalg.DaskKroneckerProductOperator.sqrt">[docs]</a>    <span class="k">def</span> <span class="nf">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Find an operator S such that S.T @ S == self.</span>
+
+<span class="sd">        Requires self be symmetric.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        DaskKroneckerProductOperator</span>
+<span class="sd">            The square root S of the operator</span>
+<span class="sd">            S.T @ S == self</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            if operator not self-adjoint</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            if operator not symmetric</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">operator1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_operator1</span>
+        <span class="k">if</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">or</span>
+             <span class="n">operator1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">operator1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Square root not defined for </span><span class="si">{shape!s}</span><span class="s2"> operators.&quot;</span>
+                <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Square root not defined for non-symmetric operators.&quot;</span><span class="p">)</span>
+        <span class="c1"># Cholesky can be fragile, so delegate to central location for</span>
+        <span class="c1"># handling that.</span>
+        <span class="n">sqrt1</span> <span class="o">=</span> <span class="n">matrix_sqrt</span><span class="p">(</span><span class="n">operator1</span><span class="p">)</span>
+        <span class="n">sqrt2</span> <span class="o">=</span> <span class="n">matrix_sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_operator2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">DaskKroneckerProductOperator</span><span class="p">(</span>
+            <span class="n">sqrt1</span><span class="p">,</span> <span class="n">sqrt2</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_matmat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Compute matrix-matrix product.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        X: array_like</span>
+<span class="sd">            The matrix with which the product is desired.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        array_like</span>
+<span class="sd">            The product of self with X.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Implementation depends on the structure of the Kronecker</span>
+<span class="sd">        product:</span>
+
+<span class="sd">        .. math::</span>
+<span class="sd">            A \otimes B = \begin{pmatrix}</span>
+<span class="sd">                A_{11} B &amp; A_{12} B &amp; \cdots &amp; A_{1n} B \\</span>
+<span class="sd">                A_{21} B &amp; A_{22} B &amp; \cdots &amp; A_{2n} B \\</span>
+<span class="sd">                \vdots   &amp; \vdots   &amp; \ddots &amp; \vdots   \\</span>
+<span class="sd">                A_{m1} B &amp; A_{m2} B &amp; \cdots &amp; A_{mn} B</span>
+<span class="sd">            \end{pmatrix}</span>
+
+<span class="sd">        Matrix-scalar products are commutative, and :math:`B` is the</span>
+<span class="sd">        same for each block.  When right-multiplying by a matrix</span>
+<span class="sd">        :math:`C`, we can take advantage of this by splitting</span>
+<span class="sd">        :math:`C` into chunks, multiplying each by the corresponding</span>
+<span class="sd">        element of :math:`A`, adding them up, and multiplying by</span>
+<span class="sd">        :math:`B`.</span>
+
+<span class="sd">        This function uses :mod:`dask` for the splitting, multiplication, and</span>
+<span class="sd">        addition, which defaults to using all available cores.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">block_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_block_size</span>
+        <span class="n">operator1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_operator1</span>
+        <span class="n">operator2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_operator2</span>
+        <span class="n">in_chunk</span> <span class="o">=</span> <span class="p">(</span><span class="n">operator1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">block_size</span><span class="p">,</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="n">chunks</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">operator2</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span>
+                <span class="n">einsum</span><span class="p">(</span>
+                    <span class="s2">&quot;ij,jkl-&gt;kil&quot;</span><span class="p">,</span> <span class="n">operator1</span><span class="p">,</span> <span class="n">X</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">in_chunk</span><span class="p">),</span>
+                    <span class="c1"># Column-major output should speed the</span>
+                    <span class="c1"># operator2 @ tmp bit</span>
+                    <span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">block_size</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="c1"># Reshape to separate out the block dimension from the</span>
+            <span class="c1"># original second dim of X</span>
+            <span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">operator2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_chunks</span><span class="p">,</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="c1"># Transpose back to have block dimension first</span>
+            <span class="o">.</span><span class="n">transpose</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="p">)</span>
+        <span class="c1"># Reshape back to expected result size</span>
+        <span class="k">return</span> <span class="n">chunks</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+<div class="viewcode-block" id="DaskKroneckerProductOperator.quadratic_form"><a class="viewcode-back" href="../../inversion.linalg.html#inversion.linalg.DaskKroneckerProductOperator.quadratic_form">[docs]</a>    <span class="k">def</span> <span class="nf">quadratic_form</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mat</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Calculate the quadratic form mat.T @ self @ mat.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        mat: array_like[N, M]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        array_like[M, M]</span>
+<span class="sd">            The product mat.T @ self @ mat</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        TypeError</span>
+<span class="sd">            if mat is not an array or if self is not square</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            if the shapes of self and mat are not compatible</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Implementation depends on Kronecker structure, using the</span>
+<span class="sd">        :meth:`._matmat` algorithm for self @ mat.  If mat is a lazy</span>
+<span class="sd">        dask array, this implementation will load it multiple times to</span>
+<span class="sd">        avoid dask keeping it all in memory.</span>
+
+<span class="sd">        This function uses :mod:`dask` for the splitting, multiplication, and</span>
+<span class="sd">        addition, which defaults to using all available cores.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mat</span><span class="p">,</span> <span class="n">ARRAY_TYPES</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Unsupported&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">mat</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">mat</span> <span class="o">=</span> <span class="n">mat</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+        <span class="n">mat</span> <span class="o">=</span> <span class="n">asarray</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">mat</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Dim mismatch: </span><span class="si">{mat:d}</span><span class="s2"> != </span><span class="si">{self:d}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">mat</span><span class="o">=</span><span class="n">mat</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">outer_size</span> <span class="o">=</span> <span class="n">mat</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">result_shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">outer_size</span><span class="p">,</span> <span class="n">outer_size</span><span class="p">)</span>
+        <span class="n">result_dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">result_type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">mat</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="c1"># I load this into memory, so may as well keep as one chunk</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="n">result_shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">result_dtype</span><span class="p">)</span>
+
+        <span class="n">block_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_block_size</span>
+        <span class="n">operator1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_operator1</span>
+        <span class="n">operator2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_operator2</span>
+        <span class="n">in_chunk</span> <span class="o">=</span> <span class="p">(</span><span class="n">operator1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">block_size</span><span class="p">,</span> <span class="n">mat</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="c1"># row_chunk_size = mat.chunks[0][0]</span>
+
+        <span class="k">for</span> <span class="n">row1</span><span class="p">,</span> <span class="n">row_start</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span>
+                <span class="mi">0</span><span class="p">,</span> <span class="n">mat</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">block_size</span><span class="p">)):</span>
+            <span class="c1"># Two function calls and a C loop, instead of python loop</span>
+            <span class="c1"># with lots of indexing.</span>
+            <span class="c1"># Having the chunk be fortran-contiguous should speed the</span>
+            <span class="c1"># next steps (operator2 @ chunk)</span>
+            <span class="n">chunk</span> <span class="o">=</span> <span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;j,jkl-&gt;kl&quot;</span><span class="p">,</span> <span class="n">operator1</span><span class="p">[</span><span class="n">row1</span><span class="p">,</span> <span class="p">:],</span>
+                           <span class="n">mat</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">in_chunk</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">+=</span> <span class="n">mat</span><span class="p">[</span><span class="n">row_start</span><span class="p">:(</span><span class="n">row_start</span> <span class="o">+</span> <span class="n">block_size</span><span class="p">)]</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span>
+                <span class="n">operator2</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">chunk</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">result</span></div></div>
+
+
+<div class="viewcode-block" id="SelfAdjointLinearOperator"><a class="viewcode-back" href="../../inversion.linalg.html#inversion.linalg.SelfAdjointLinearOperator">[docs]</a><span class="k">class</span> <span class="nc">SelfAdjointLinearOperator</span><span class="p">(</span><span class="n">DaskLinearOperator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Self-adjoint linear operators.</span>
+
+<span class="sd">    Provides :meth:`_rmatvec` and :meth:`_adjoint` methods.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Also set up transpose if operator is real.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            if operator would not be square</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Self-adjoint operators must be square&quot;</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SelfAdjointLinearOperator</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">kind</span> <span class="ow">in</span> <span class="n">REAL_DTYPE_KINDS</span><span class="p">:</span>
+            <span class="c1"># Real array; implies symmetric</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_transpose</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_adjoint</span>
+
+    <span class="k">def</span> <span class="nf">_rmatvec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;self.H.dot(vec).</span>
+
+<span class="sd">        Since self is self-adjoint, self is self.H</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        vector: array_like</span>
+<span class="sd">            The vector with which the product is desired.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        array_like</span>
+<span class="sd">            The product of self and vector</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO: Figure out how to test this and do it</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_matvec</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">_adjoint</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return transpose.</span>
+
+<span class="sd">        Self-adjoint operators are their own transpose.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        SelfAdjointLinearOperator</span>
+<span class="sd">            The self-adjoint Hermitian adjoint of self.</span>
+<span class="sd">            Since self is self-adjoint, this is self.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="DiagonalOperator"><a class="viewcode-back" href="../../inversion.linalg.html#inversion.linalg.DiagonalOperator">[docs]</a><span class="k">class</span> <span class="nc">DiagonalOperator</span><span class="p">(</span><span class="n">SelfAdjointLinearOperator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Operator with entries only on the diagonal.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set up diagonal operator.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        array: array_like</span>
+<span class="sd">            The array of values to go on the diagonal.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">DiagonalOperator</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_diag</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">_diag</span>  <span class="c1"># noqa: W0212</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_diag</span> <span class="o">=</span> <span class="n">asarray</span><span class="p">(</span><span class="n">array</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">side</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diag</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">DiagonalOperator</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_diag</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">side</span><span class="p">,</span> <span class="n">side</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_diag_near_zero</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diag</span> <span class="o">&lt;</span> <span class="n">NEAR_ZERO</span>
+
+    <span class="k">def</span> <span class="nf">_matvec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Multiply self and vector.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        vector: array_like</span>
+<span class="sd">            The vector with which the product is desired</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        array_like</span>
+<span class="sd">            The product</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">vector</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diag</span><span class="p">[:,</span> <span class="n">newaxis</span><span class="p">]</span> <span class="o">*</span> <span class="n">vector</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diag</span> <span class="o">*</span> <span class="n">vector</span>
+
+    <span class="k">def</span> <span class="nf">_matmat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Multiply self and other.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        other: array_like</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        array_like</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diag</span><span class="p">[:,</span> <span class="n">newaxis</span><span class="p">]</span> <span class="o">*</span> <span class="n">other</span>
+
+<div class="viewcode-block" id="DiagonalOperator.solve"><a class="viewcode-back" href="../../inversion.linalg.html#inversion.linalg.DiagonalOperator.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Solve A @ x == vector.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        vector: array_like</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        array_like</span>
+<span class="sd">            Solution of self @ x == vec</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">vector</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diag</span>
+        <span class="c1"># result[self._diag_near_zero] = 0</span>
+        <span class="k">return</span> <span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_diag_near_zero</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DiagonalOperator.sqrt"><a class="viewcode-back" href="../../inversion.linalg.html#inversion.linalg.DiagonalOperator.sqrt">[docs]</a>    <span class="k">def</span> <span class="nf">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Find S such that S.T @ S == self.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">DiagonalOperator</span><span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_diag</span><span class="p">))</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Inversions 0.4.0.dev0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../inversion.html" >inversion</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, Daniel Wesloh.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+  </body>
+</html>
