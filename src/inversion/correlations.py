@@ -70,13 +70,21 @@ DTYPE = np.float64
 class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):
     """Homogeneous isotropic correlations using FFTs.
 
-    Assumes periodic domain.  Use padding or a larger domain to avoid
-    this causing problems.
+    This embeds the physical domain passed in a larger computational
+    domain, which allows for treatment of domains that should not be
+    considered periodic.
+
+    .. note::
+
+        Do not invoke this directly. Use
+        :func:`HomogeneousIsotropicCorrelation.from_function` or
+        :func:`HomogeneousIsotropicCorrelaiton.from_array` instead.
 
     See Also
     --------
     :func:`scipy.linalg.solve_circulant`
         I stole the idea from here.
+
     """
 
     def __init__(self, shape, computational_shape=None):
