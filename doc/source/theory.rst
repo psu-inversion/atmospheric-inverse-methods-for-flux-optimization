@@ -7,7 +7,7 @@ Theory of Atmospheric Flux Inversions
 Atmospheric flux inversions attempt to find what fluxes
 :math:`\vec{x}_a` are consistent with a set of atmospheric
 observations :math:`\vec{y}` that are related by the observation
-operator :math:`H` via :math:`\vec{y} \approx \vec{x}_a`.
+operator :math:`H` via :math:`\vec{y} \approx H \vec{x}_a`.
 
 Since there tend to be fewer observations than there are fluxes of
 interest, we need a previous estimate of the fluxes,
