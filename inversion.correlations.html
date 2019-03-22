@@ -48,92 +48,24 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="module-inversion.correlations">
-<span id="inversion-correlations-module"></span><h1>inversion.correlations module<a class="headerlink" href="#module-inversion.correlations" title="Permalink to this headline">¶</a></h1>
-<p>Correlations; used for assumed background covariances.</p>
-<p>Multiply by diagonal matrices of the assumed standard deviations on
-the right and left to obtain covariance matrices.</p>
-<dl class="class">
-<dt id="inversion.correlations.BalgovindCorrelation">
-<em class="property">class </em><code class="descclassname">inversion.correlations.</code><code class="descname">BalgovindCorrelation</code><span class="sig-paren">(</span><em>length</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/correlations.html#BalgovindCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.correlations.BalgovindCorrelation" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#inversion.correlations.DistanceCorrelationFunction" title="inversion.correlations.DistanceCorrelationFunction"><code class="xref py py-class docutils literal notranslate"><span class="pre">inversion.correlations.DistanceCorrelationFunction</span></code></a></p>
-<p>A Balgovind 3D correlation structure.</p>
-<p>Follows Balgovind et al. 1983 recommendations for a 3D field,
-modified so the correlation length better matches that used by
-other correlation functions.</p>
-<p class="rubric">Notes</p>
-<p>Correlation given by <span class="math notranslate nohighlight">\((1 + 2*dist/length) exp(-2*dist/length)\)</span></p>
-<p>This implementation has problems for length == 10.
-I have no idea why.  3 and 30 are fine.</p>
-<p class="rubric">References</p>
-<p>Balgovind, R and Dalcher, A. and Ghil, M. and Kalnay, E. (1983).
-A Stochastic-Dynamic Model for the Spatial Structure of Forecast
-Error Statistics <em>Monthly Weather Review</em> 111(4) 701–722.
-<a class="reference external" href="https://dx.doi.org/10.1175/1520-0493(1983)111&lt;0701:asdmft&gt;2.0.co;2">doi:10.1175/1520-0493(1983)111&lt;0701:asdmft&gt;2.0.co;2</a></p>
-</dd></dl>
-
-<dl class="class">
-<dt id="inversion.correlations.DistanceCorrelationFunction">
-<em class="property">class </em><code class="descclassname">inversion.correlations.</code><code class="descname">DistanceCorrelationFunction</code><span class="sig-paren">(</span><em>length</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/correlations.html#DistanceCorrelationFunction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.correlations.DistanceCorrelationFunction" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/functions.html#object" title="(in Python v3.4)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
-<p>A correlation function that depends only on distance.</p>
-<dl class="method">
-<dt id="inversion.correlations.DistanceCorrelationFunction.correlation_from_index">
-<code class="descname">correlation_from_index</code><span class="sig-paren">(</span><em>*indices</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/correlations.html#DistanceCorrelationFunction.correlation_from_index"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.correlations.DistanceCorrelationFunction.correlation_from_index" title="Permalink to this definition">¶</a></dt>
-<dd><p>Find the correlation between the indices.</p>
-<p>Should be independent of the length of the underlying shape,
-but <cite>indices</cite> must still be even.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>indices</strong> (<em>tuple of int</em>) – </td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Find the correlation of the point contained in the first
-half of the indices with that contained in the second.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)">float</a></td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="inversion.correlations.ExponentialCorrelation">
-<em class="property">class </em><code class="descclassname">inversion.correlations.</code><code class="descname">ExponentialCorrelation</code><span class="sig-paren">(</span><em>length</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/correlations.html#ExponentialCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.correlations.ExponentialCorrelation" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#inversion.correlations.DistanceCorrelationFunction" title="inversion.correlations.DistanceCorrelationFunction"><code class="xref py py-class docutils literal notranslate"><span class="pre">inversion.correlations.DistanceCorrelationFunction</span></code></a></p>
-<p>A exponential correlation structure.</p>
-<p class="rubric">Notes</p>
-<p>Correlation given by exp(-dist/length)
-where dist is the distance between the points.</p>
-</dd></dl>
-
-<dl class="data">
-<dt id="inversion.correlations.FOURIER_NEAR_ZERO">
-<code class="descclassname">inversion.correlations.</code><code class="descname">FOURIER_NEAR_ZERO</code><em class="property"> = 1e-15</em><a class="headerlink" href="#inversion.correlations.FOURIER_NEAR_ZERO" title="Permalink to this definition">¶</a></dt>
-<dd><p>Where fourier coefficients are treated as zero.</p>
-<p>1e-20 produces overflow with the dask tests</p>
-</dd></dl>
-
-<dl class="class">
-<dt id="inversion.correlations.GaussianCorrelation">
-<em class="property">class </em><code class="descclassname">inversion.correlations.</code><code class="descname">GaussianCorrelation</code><span class="sig-paren">(</span><em>length</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/correlations.html#GaussianCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.correlations.GaussianCorrelation" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#inversion.correlations.DistanceCorrelationFunction" title="inversion.correlations.DistanceCorrelationFunction"><code class="xref py py-class docutils literal notranslate"><span class="pre">inversion.correlations.DistanceCorrelationFunction</span></code></a></p>
-<p>A gaussian correlation structure.</p>
-<p class="rubric">Notes</p>
-<p>Correlation given by exp(-dist**2 / (length**2)) where dist is the
-distance between the points.</p>
-</dd></dl>
-
+  <div class="section" id="inversion-correlations-module">
+<h1>inversion.correlations module<a class="headerlink" href="#inversion-correlations-module" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="generating-correlation-operators">
+<h2>Generating correlation operators<a class="headerlink" href="#generating-correlation-operators" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="inversion.correlations.HomogeneousIsotropicCorrelation">
 <em class="property">class </em><code class="descclassname">inversion.correlations.</code><code class="descname">HomogeneousIsotropicCorrelation</code><span class="sig-paren">(</span><em>shape</em>, <em>computational_shape=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/correlations.html#HomogeneousIsotropicCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.correlations.HomogeneousIsotropicCorrelation" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="inversion.linalg.html#inversion.linalg.SelfAdjointLinearOperator" title="inversion.linalg.SelfAdjointLinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">inversion.linalg.SelfAdjointLinearOperator</span></code></a></p>
 <p>Homogeneous isotropic correlations using FFTs.</p>
-<p>Assumes periodic domain.  Use padding or a larger domain to avoid
-this causing problems.</p>
+<p>This embeds the physical domain passed in a larger computational
+domain, which allows for treatment of domains that should not be
+considered periodic.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Do not invoke this directly. Use
+<a class="reference internal" href="#inversion.correlations.HomogeneousIsotropicCorrelation.from_function" title="inversion.correlations.HomogeneousIsotropicCorrelation.from_function"><code class="xref py py-func docutils literal notranslate"><span class="pre">HomogeneousIsotropicCorrelation.from_function()</span></code></a> or
+<code class="xref py py-func docutils literal notranslate"><span class="pre">HomogeneousIsotropicCorrelaiton.from_array()</span></code> instead.</p>
+</div>
 <div class="admonition seealso">
 <p class="first admonition-title">See also</p>
 <dl class="last docutils">
@@ -223,7 +155,7 @@ shape.</li>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>other</strong> (<a class="reference internal" href="#inversion.correlations.HomogeneousIsotropicCorrelation" title="inversion.correlations.HomogeneousIsotropicCorrelation"><em>HomogeneousIsotropicCorrelation</em></a>) – The other operator for the Kronecker product.
 This implementation will accept other objects,
-passing them along to <a class="reference internal" href="#inversion.correlations.SchmidtKroneckerProduct" title="inversion.correlations.SchmidtKroneckerProduct"><code class="xref py py-class docutils literal notranslate"><span class="pre">SchmidtKroneckerProduct</span></code></a>.</td>
+passing them along to <code class="xref py py-class docutils literal notranslate"><span class="pre">SchmidtKroneckerProduct</span></code>.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
 </tr>
@@ -278,78 +210,6 @@ passing them along to <a class="reference internal" href="#inversion.correlation
 
 </dd></dl>
 
-<dl class="class">
-<dt id="inversion.correlations.MaternCorrelation">
-<em class="property">class </em><code class="descclassname">inversion.correlations.</code><code class="descname">MaternCorrelation</code><span class="sig-paren">(</span><em>length</em>, <em>kappa=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/correlations.html#MaternCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.correlations.MaternCorrelation" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#inversion.correlations.DistanceCorrelationFunction" title="inversion.correlations.DistanceCorrelationFunction"><code class="xref py py-class docutils literal notranslate"><span class="pre">inversion.correlations.DistanceCorrelationFunction</span></code></a></p>
-<p>A Matern correlation structure.</p>
-<p>Follows Matern (1986) <em>Spatial Variation</em>.  The specific
-definition seems to be similar to the parameterization in Stern’s
-<em>Interpolation of Spatial Data</em></p>
-<p class="rubric">Notes</p>
-<p>Correlation given by
-<span class="math notranslate nohighlight">\([2^{\kappa-1}\Gamma(\kappa)]^{-1} (d/L)^{\kappa} K_{\kappa}(d/L)\)</span>
-where <span class="math notranslate nohighlight">\(\kappa\)</span> is a smoothness parameter and
-<span class="math notranslate nohighlight">\(K_{\kappa}\)</span> is a modified Bessel function of the third kind.</p>
-<p class="rubric">References</p>
-<p>Stein, Michael L. <em>Interpolation of Spatial Data: Some Theory for
-Kridging</em> Springer-Verlag New York.  Part of Springer Series in
-Statistics (issn:0172-7397) isbn:978-1-4612-7166-6.
-<a class="reference external" href="https://dx.doi.org/10.1007/978-1-4612-1494-6">doi:10.1007/978-1-4612-1494-6</a></p>
-</dd></dl>
-
-<dl class="data">
-<dt id="inversion.correlations.NEAR_ZERO">
-<code class="descclassname">inversion.correlations.</code><code class="descname">NEAR_ZERO</code><em class="property"> = 1e-20</em><a class="headerlink" href="#inversion.correlations.NEAR_ZERO" title="Permalink to this definition">¶</a></dt>
-<dd><p>Where correlations are rounded to zero.</p>
-<p>The method of assuring positive definiteness increases some values
-away from zero due to roundoff. Values that were originally smaller
-than this are reset to zero.</p>
-</dd></dl>
-
-<dl class="data">
-<dt id="inversion.correlations.NUM_THREADS">
-<code class="descclassname">inversion.correlations.</code><code class="descname">NUM_THREADS</code><em class="property"> = 8</em><a class="headerlink" href="#inversion.correlations.NUM_THREADS" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of threads <a class="reference external" href="https://pyfftw.readthedocs.io/en/latest/source/pyfftw/pyfftw.html#module-pyfftw" title="(in pyFFTW v0.11.1+4.g5bf1dda)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">pyfftw</span></code></a> should use for each transform.</p>
-</dd></dl>
-
-<dl class="data">
-<dt id="inversion.correlations.ROUNDOFF">
-<code class="descclassname">inversion.correlations.</code><code class="descname">ROUNDOFF</code><em class="property"> = 1e-13</em><a class="headerlink" href="#inversion.correlations.ROUNDOFF" title="Permalink to this definition">¶</a></dt>
-<dd><p>Approximate size of roundoff error for correlation matrices.</p>
-<p>Eigenvalues less than this value will be reset to this.</p>
-<p>Gaussian correlations with a correlation length between five and ten
-cells need <cite>ROUNDOFF</cite> greater than 1e-15 to be numerically positive
-definite.</p>
-<p>Gaussian(15) needs 1e-13 &gt; ROUNDOFF &gt; 1e-14</p>
-<p>Also used in SchmidtKroneckerProduct to determine how many terms in the
-Schmidt decomposition should be used.</p>
-</dd></dl>
-
-<dl class="class">
-<dt id="inversion.correlations.SchmidtKroneckerProduct">
-<em class="property">class </em><code class="descclassname">inversion.correlations.</code><code class="descname">SchmidtKroneckerProduct</code><span class="sig-paren">(</span><em>operator1</em>, <em>operator2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/correlations.html#SchmidtKroneckerProduct"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.correlations.SchmidtKroneckerProduct" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">inversion.linalg_interface.DaskLinearOperator</span></code></p>
-<p>Kronecker product of two operators using Schmidt decomposition.</p>
-<p>This works best when the input vectors are nearly Kronecker
-products as well, dominated by some underlying structure with
-small variations.  One example would be average net flux + trend
-in net flux + average daily cycle + daily cycle timing variations
-across domain + localized events + …</p>
-<p>Multiplications are roughly the same time complexity class as with
-an explicit Kronecker Product, perhaps a factor of two or three
-slower in the best case, but the memory requirements are
-<span class="math notranslate nohighlight">\(N_1^2 + N_2^2\)</span> rather than <span class="math notranslate nohighlight">\((N_1 * N_2)^2\)</span>, plus this
-approach works with sparse matrices and other LinearOperators
-which can further reduce the memory requirements and may decrease
-the time complexity.</p>
-<p>Forming the Kronecker product from the component vectors currently
-requires the whole thing to be in memory, so a new implementation
-of kron would be needed to take advantage of this. There may be
-some difficulties with the dask cache getting flushed and causing
-repeat work in this case. I don’t know how to get around this.</p>
-</dd></dl>
-
 <dl class="function">
 <dt id="inversion.correlations.make_matrix">
 <code class="descclassname">inversion.correlations.</code><code class="descname">make_matrix</code><span class="sig-paren">(</span><em>corr_func</em>, <em>shape</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/correlations.html#make_matrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.correlations.make_matrix" title="Permalink to this definition">¶</a></dt>
@@ -390,6 +250,103 @@ the shape of that array.
 </dd></dl>
 
 </div>
+<div class="section" id="correlation-shapes">
+<h2>Correlation shapes<a class="headerlink" href="#correlation-shapes" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="interface">
+<h3>Interface<a class="headerlink" href="#interface" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="inversion.correlations.DistanceCorrelationFunction">
+<em class="property">class </em><code class="descclassname">inversion.correlations.</code><code class="descname">DistanceCorrelationFunction</code><span class="sig-paren">(</span><em>length</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/correlations.html#DistanceCorrelationFunction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.correlations.DistanceCorrelationFunction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/functions.html#object" title="(in Python v3.4)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A correlation function that depends only on distance.</p>
+<dl class="method">
+<dt id="inversion.correlations.DistanceCorrelationFunction.correlation_from_index">
+<code class="descname">correlation_from_index</code><span class="sig-paren">(</span><em>*indices</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/correlations.html#DistanceCorrelationFunction.correlation_from_index"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.correlations.DistanceCorrelationFunction.correlation_from_index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the correlation between the indices.</p>
+<p>Should be independent of the length of the underlying shape,
+but <cite>indices</cite> must still be even.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>indices</strong> (<em>tuple of int</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Find the correlation of the point contained in the first
+half of the indices with that contained in the second.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)">float</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="provided-shapes">
+<h3>Provided shapes<a class="headerlink" href="#provided-shapes" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="inversion.correlations.ExponentialCorrelation">
+<em class="property">class </em><code class="descclassname">inversion.correlations.</code><code class="descname">ExponentialCorrelation</code><span class="sig-paren">(</span><em>length</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/correlations.html#ExponentialCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.correlations.ExponentialCorrelation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#inversion.correlations.DistanceCorrelationFunction" title="inversion.correlations.DistanceCorrelationFunction"><code class="xref py py-class docutils literal notranslate"><span class="pre">inversion.correlations.DistanceCorrelationFunction</span></code></a></p>
+<p>A exponential correlation structure.</p>
+<p class="rubric">Notes</p>
+<p>Correlation given by exp(-dist/length)
+where dist is the distance between the points.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="inversion.correlations.BalgovindCorrelation">
+<em class="property">class </em><code class="descclassname">inversion.correlations.</code><code class="descname">BalgovindCorrelation</code><span class="sig-paren">(</span><em>length</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/correlations.html#BalgovindCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.correlations.BalgovindCorrelation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#inversion.correlations.DistanceCorrelationFunction" title="inversion.correlations.DistanceCorrelationFunction"><code class="xref py py-class docutils literal notranslate"><span class="pre">inversion.correlations.DistanceCorrelationFunction</span></code></a></p>
+<p>A Balgovind 3D correlation structure.</p>
+<p>Follows Balgovind et al. 1983 recommendations for a 3D field,
+modified so the correlation length better matches that used by
+other correlation functions.</p>
+<p class="rubric">Notes</p>
+<p>Correlation given by <span class="math notranslate nohighlight">\((1 + 2*dist/length) exp(-2*dist/length)\)</span></p>
+<p>This implementation has problems for length == 10.
+I have no idea why.  3 and 30 are fine.</p>
+<p class="rubric">References</p>
+<p>Balgovind, R and Dalcher, A. and Ghil, M. and Kalnay, E. (1983).
+A Stochastic-Dynamic Model for the Spatial Structure of Forecast
+Error Statistics <em>Monthly Weather Review</em> 111(4) 701–722.
+<a class="reference external" href="https://dx.doi.org/10.1175/1520-0493(1983)111&lt;0701:asdmft&gt;2.0.co;2">doi:10.1175/1520-0493(1983)111&lt;0701:asdmft&gt;2.0.co;2</a></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="inversion.correlations.MaternCorrelation">
+<em class="property">class </em><code class="descclassname">inversion.correlations.</code><code class="descname">MaternCorrelation</code><span class="sig-paren">(</span><em>length</em>, <em>kappa=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/correlations.html#MaternCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.correlations.MaternCorrelation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#inversion.correlations.DistanceCorrelationFunction" title="inversion.correlations.DistanceCorrelationFunction"><code class="xref py py-class docutils literal notranslate"><span class="pre">inversion.correlations.DistanceCorrelationFunction</span></code></a></p>
+<p>A Matern correlation structure.</p>
+<p>Follows Matern (1986) <em>Spatial Variation</em>.  The specific
+definition seems to be similar to the parameterization in Stern’s
+<em>Interpolation of Spatial Data</em></p>
+<p class="rubric">Notes</p>
+<p>Correlation given by
+<span class="math notranslate nohighlight">\([2^{\kappa-1}\Gamma(\kappa)]^{-1} (d/L)^{\kappa} K_{\kappa}(d/L)\)</span>
+where <span class="math notranslate nohighlight">\(\kappa\)</span> is a smoothness parameter and
+<span class="math notranslate nohighlight">\(K_{\kappa}\)</span> is a modified Bessel function of the third kind.</p>
+<p class="rubric">References</p>
+<p>Stein, Michael L. <em>Interpolation of Spatial Data: Some Theory for
+Kridging</em> Springer-Verlag New York.  Part of Springer Series in
+Statistics (issn:0172-7397) isbn:978-1-4612-7166-6.
+<a class="reference external" href="https://dx.doi.org/10.1007/978-1-4612-1494-6">doi:10.1007/978-1-4612-1494-6</a></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="inversion.correlations.GaussianCorrelation">
+<em class="property">class </em><code class="descclassname">inversion.correlations.</code><code class="descname">GaussianCorrelation</code><span class="sig-paren">(</span><em>length</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/correlations.html#GaussianCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.correlations.GaussianCorrelation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#inversion.correlations.DistanceCorrelationFunction" title="inversion.correlations.DistanceCorrelationFunction"><code class="xref py py-class docutils literal notranslate"><span class="pre">inversion.correlations.DistanceCorrelationFunction</span></code></a></p>
+<p>A gaussian correlation structure.</p>
+<p class="rubric">Notes</p>
+<p>Correlation given by exp(-dist**2 / (length**2)) where dist is the
+distance between the points.</p>
+</dd></dl>
+
+</div>
+</div>
+</div>
 
 
           </div>
@@ -397,6 +354,19 @@ the shape of that array.
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">inversion.correlations module</a><ul>
+<li><a class="reference internal" href="#generating-correlation-operators">Generating correlation operators</a></li>
+<li><a class="reference internal" href="#correlation-shapes">Correlation shapes</a><ul>
+<li><a class="reference internal" href="#interface">Interface</a></li>
+<li><a class="reference internal" href="#provided-shapes">Provided shapes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
   <h4>Previous topic</h4>
   <p class="topless"><a href="inversion.html"
                         title="previous chapter">inversion package</a></p>

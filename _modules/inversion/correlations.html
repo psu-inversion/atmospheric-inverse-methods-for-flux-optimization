@@ -114,13 +114,21 @@
 <div class="viewcode-block" id="HomogeneousIsotropicCorrelation"><a class="viewcode-back" href="../../inversion.correlations.html#inversion.correlations.HomogeneousIsotropicCorrelation">[docs]</a><span class="k">class</span> <span class="nc">HomogeneousIsotropicCorrelation</span><span class="p">(</span><span class="n">SelfAdjointLinearOperator</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Homogeneous isotropic correlations using FFTs.</span>
 
-<span class="sd">    Assumes periodic domain.  Use padding or a larger domain to avoid</span>
-<span class="sd">    this causing problems.</span>
+<span class="sd">    This embeds the physical domain passed in a larger computational</span>
+<span class="sd">    domain, which allows for treatment of domains that should not be</span>
+<span class="sd">    considered periodic.</span>
+
+<span class="sd">    .. note::</span>
+
+<span class="sd">        Do not invoke this directly. Use</span>
+<span class="sd">        :func:`HomogeneousIsotropicCorrelation.from_function` or</span>
+<span class="sd">        :func:`HomogeneousIsotropicCorrelaiton.from_array` instead.</span>
 
 <span class="sd">    See Also</span>
 <span class="sd">    --------</span>
 <span class="sd">    :func:`scipy.linalg.solve_circulant`</span>
 <span class="sd">        I stole the idea from here.</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">computational_shape</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -462,7 +470,7 @@
         <span class="k">return</span> <span class="n">newinst</span></div></div>
 
 
-<div class="viewcode-block" id="SchmidtKroneckerProduct"><a class="viewcode-back" href="../../inversion.correlations.html#inversion.correlations.SchmidtKroneckerProduct">[docs]</a><span class="k">class</span> <span class="nc">SchmidtKroneckerProduct</span><span class="p">(</span><span class="n">DaskLinearOperator</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">SchmidtKroneckerProduct</span><span class="p">(</span><span class="n">DaskLinearOperator</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Kronecker product of two operators using Schmidt decomposition.</span>
 
 <span class="sd">    This works best when the input vectors are nearly Kronecker</span>
@@ -548,7 +556,7 @@
                 <span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_operator2</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">vec2</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
             <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">result_shape</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">asarray</span><span class="p">(</span><span class="n">result</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">asarray</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="make_matrix"><a class="viewcode-back" href="../../inversion.correlations.html#inversion.correlations.make_matrix">[docs]</a><span class="k">def</span> <span class="nf">make_matrix</span><span class="p">(</span><span class="n">corr_func</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>

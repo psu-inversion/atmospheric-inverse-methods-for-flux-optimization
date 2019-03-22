@@ -48,7 +48,7 @@
           <div class="body" role="main">
             
   <div class="section" id="inversion-user-guide">
-<h1>Inversion User Guide<a class="headerlink" href="#inversion-user-guide" title="Permalink to this headline">¶</a></h1>
+<span id="user-guide"></span><h1>Inversion User Guide<a class="headerlink" href="#inversion-user-guide" title="Permalink to this headline">¶</a></h1>
 <p>We are interested in using a set of <span class="math notranslate nohighlight">\(M\)</span> atmospheric measurements
 to obtain an estimate for a set of <span class="math notranslate nohighlight">\(N\)</span> surface fluxes.</p>
 <p>To start off, we need some previous estimate of the fluxes of interest,
@@ -95,7 +95,7 @@ independent of the spatial location of those problems, and similarly
 the spatial correlations of the problems with the previous estimate
 with their neighbors are independent of the time those problems
 occured.  Both <a class="reference internal" href="inversion.linalg.html#inversion.linalg.DaskKroneckerProductOperator" title="inversion.linalg.DaskKroneckerProductOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">DaskKroneckerProductOperator</span></code></a>
-and <a class="reference internal" href="inversion.correlations.html#inversion.correlations.SchmidtKroneckerProduct" title="inversion.correlations.SchmidtKroneckerProduct"><code class="xref py py-class docutils literal notranslate"><span class="pre">SchmidtKroneckerProduct</span></code></a> are
+and <code class="xref py py-class docutils literal notranslate"><span class="pre">SchmidtKroneckerProduct</span></code> are
 designed for this type of matrix.</p>
 <p>I tend to assume that the pointwise variances, which are related to
 how big we expect the problems in our previous estimate to be at any
