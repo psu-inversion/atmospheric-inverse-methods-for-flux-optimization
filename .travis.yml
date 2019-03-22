@@ -5,7 +5,7 @@ python:
   - 3.6
 install:
   - pip install --upgrade pip
-  - head -n 12 requirements.txt >test-requirements.txt
+  - head -n 11 requirements.txt >test-requirements.txt
   - pip install -r test-requirements.txt --only-binary ':all:'
 script:
   - python setup.py test

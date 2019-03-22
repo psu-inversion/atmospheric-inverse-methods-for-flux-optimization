@@ -47,16 +47,6 @@ import inversion.psas
 import inversion.util
 from inversion.linalg import tolinearoperator
 
-import dask
-import dask.array as da
-
-try:
-    from dask import set_options as config_set
-    config_set(get=dask.get)
-except (ImportError, TypeError):
-    from dask.config import set as config_set
-    config_set(scheduler="single-threaded")
-
 
 if os.path.exists(".pyfftw.pickle"):
     with open(".pyfftw.pickle", "rb") as wis_in:
@@ -1601,10 +1591,9 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
             with self.subTest(vec1=vec1[:, 0], vec2=vec2[:, 0]):
                 composite_state = scipy.linalg.kron(vec1, vec2)
 
-                reported_decomposition = (
+                lambdas, vecs1, vecs2 = (
                     inversion.linalg.schmidt_decomposition(
                         composite_state, vec1.shape[0], vec2.shape[0]))
-                lambdas, vecs1, vecs2 = da.compute(*reported_decomposition)
 
                 np_tst.assert_allclose(np.nonzero(lambdas),
                                        [[0]])
@@ -1613,10 +1602,10 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
                 np_tst.assert_allclose(np.abs(vecs2[0]),
                                        vec2[:, 0])
                 np_tst.assert_allclose(
-                    reported_decomposition[0][0] *
+                    lambdas[0] *
                     scipy.linalg.kron(
-                        np.asarray(reported_decomposition[1][:1].T),
-                        np.asarray(reported_decomposition[2][:1].T)),
+                        np.asarray(vecs1[:1].T),
+                        np.asarray(vecs2[:1].T)),
                     composite_state)
 
     def test_composite_compination(self):
@@ -1735,7 +1724,7 @@ class TestUtilToLinearOperator(unittest2.TestCase):
 
         for trial in (0, 1., (0, 1), [0, 1], ((1, 0), (0, 1)),
                       [[0, 1.], [1., 0]], np.arange(5),
-                      scipy.sparse.identity(8), da.arange(10, chunks=10)):
+                      scipy.sparse.identity(8), np.arange(10)):
             with self.subTest(trial=trial):
                 self.assertIsInstance(tolinearoperator(trial),
                                       LinearOperator)
@@ -1746,8 +1735,7 @@ class TestUtilKron(unittest2.TestCase):
 
     def test_util_kron(self):
         """Test my kronecker implementation against scipy's."""
-        trial_inputs = (1, (1,), [0], np.arange(10), np.eye(5),
-                        da.arange(10, chunks=10), da.eye(5, chunks=5))
+        trial_inputs = (1, (1,), [0], np.arange(10), np.eye(5))
         my_kron = inversion.linalg.kron
         scipy_kron = scipy.linalg.kron
 
@@ -1828,8 +1816,8 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
 
     def test_simple(self):
         """Test for identity matrix."""
-        mat1 = da.eye(2, chunks=2)
-        vectors = da.eye(4, chunks=4)
+        mat1 = np.eye(2)
+        vectors = np.eye(4)
 
         product = inversion.linalg.DaskKroneckerProductOperator(mat1, mat1)
 
@@ -2099,36 +2087,6 @@ class TestCorrelationStandardDeviation(unittest2.TestCase):
         np_tst.assert_allclose(sqrt._operators[1]._diag, stds)
 
 
-class TestOddChunks(unittest2.TestCase):
-    """Test that input with odd chunks still works.
-
-    The chunking required for influence functions to load into memory
-    might not work all the way through the inversion, since
-    :func:`dask.array.linalg.solve` needs square chunks.  Make sure
-    inversion functions provide this.
-    """
-
-    N_BG = 50
-    BG_CHUNK = 30
-    N_OBS = 30
-    OBS_CHUNK = 20
-
-    def test_unusual(self):
-        """Test unusual chunking schemes."""
-        bg_cov = da.eye(self.N_BG, chunks=self.BG_CHUNK)
-        background = da.zeros(self.N_BG, chunks=self.BG_CHUNK)
-        observations = da.ones(self.N_OBS, chunks=self.OBS_CHUNK)
-        obs_cov = da.eye(self.N_OBS, chunks=self.OBS_CHUNK)
-        obs_op = da.eye(N=self.N_OBS, M=self.N_BG,
-                        chunks=30).rechunk(
-            (self.OBS_CHUNK, self.BG_CHUNK))
-
-        for inversion_method in ALL_METHODS:
-            with self.subTest(method=getname(inversion_method)):
-                post, post_cov = inversion_method(
-                    background, bg_cov, observations, obs_cov, obs_op)
-
-
 class TestCovariances(unittest2.TestCase):
     """Test the covariance classes."""
 
@@ -2171,7 +2129,7 @@ class TestCovariances(unittest2.TestCase):
         op = inversion.covariances.DiagonalOperator(diag)
         vec = np.arange(10.)[:, np.newaxis]
         result = op.dot(vec)
-        self.assertEqual(da.squeeze(result).ndim, 1)
+        self.assertEqual(np.squeeze(result).ndim, 1)
         self.assertEqual(result.shape, (10, 1))
 
     def test_diagonal_self_adjoint(self):
@@ -2376,7 +2334,7 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
             mat = scipy.linalg.toeplitz((1, .5, .25, .125))
 
             proposed = matrix_sqrt(mat)
-            expected = cholesky(da.asarray(mat))
+            expected = cholesky(np.asarray(mat))
 
             np_tst.assert_allclose(proposed, expected)
 
