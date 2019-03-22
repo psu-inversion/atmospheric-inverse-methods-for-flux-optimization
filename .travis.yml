@@ -4,6 +4,7 @@ python:
   - 3.4
   - 3.6
 install:
-  - pip install -r requirements.txt
+  - head -n 12 requirements.txt >test-requirements.txt
+  - pip install -r test-requirements.txt
 script:
   - python setup.py test
