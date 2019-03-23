@@ -70,13 +70,21 @@ DTYPE = np.float64
 class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):
     """Homogeneous isotropic correlations using FFTs.
 
-    Assumes periodic domain.  Use padding or a larger domain to avoid
-    this causing problems.
+    This embeds the physical domain passed in a larger computational
+    domain, which allows for treatment of domains that should not be
+    considered periodic.
+
+    .. note::
+
+        Do not invoke this directly. Use
+        :func:`HomogeneousIsotropicCorrelation.from_function` or
+        :func:`HomogeneousIsotropicCorrelaiton.from_array` instead.
 
     See Also
     --------
     :func:`scipy.linalg.solve_circulant`
         I stole the idea from here.
+
     """
 
     def __init__(self, shape, computational_shape=None):
@@ -662,6 +670,13 @@ class BalgovindCorrelation(DistanceCorrelationFunction):
 
     This implementation has problems for length == 10.
     I have no idea why.  3 and 30 are fine.
+
+    References
+    ----------
+    Balgovind, R and Dalcher, A. and Ghil, M. and Kalnay, E. (1983).
+    A Stochastic-Dynamic Model for the Spatial Structure of Forecast
+    Error Statistics *Monthly Weather Review* 111(4) 701--722.
+    :doi:`10.1175/1520-0493(1983)111<0701:asdmft>2.0.co;2`
     """
 
     _distance_scaling = 0.5
@@ -702,7 +717,7 @@ class MaternCorrelation(DistanceCorrelationFunction):
     Stein, Michael L. *Interpolation of Spatial Data: Some Theory for
     Kridging* Springer-Verlag New York.  Part of Springer Series in
     Statistics (issn:0172-7397) isbn:978-1-4612-7166-6.
-    doi:10.1007/978-1-4612-1494-6
+    :doi:`10.1007/978-1-4612-1494-6`
     """
 
     _distance_scaling = 1.25

@@ -39,6 +39,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
+    'sphinx.ext.extlinks',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -103,6 +104,25 @@ pygments_style = 'sphinx'
 
 # If true, keep warnings as "system message" paragraphs in the built documents.
 #keep_warnings = False
+
+# Mapping of new roles to sites and substitution prefixes
+extlinks = dict(
+    doi=("https://dx.doi.org/%s", "doi:"),
+    arxiv=("https://arxiv.org/abs/%s", "arxiv:"),
+    jstor=("https://www.jstor.org/stable/%s", "jstor:"),
+)
+
+# List of regexes linkcheck should ignore
+linkcheck_ignore = [r"https://www.jstor.org/stable/\w+"]
+
+# Mathjax configuration
+mathjax_config = dict(
+    extensions=["tex2jax.js"],
+    jax=["input/TeX", "output/HTML-CSS"],
+    TeX=dict(
+        extensions=["AMSmath.js"],
+    ),
+)
 
 
 # -- Options for HTML output ----------------------------------------------

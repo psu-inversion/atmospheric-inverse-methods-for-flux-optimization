@@ -8,11 +8,25 @@ Welcome to Inversion's documentation!
 
 This package contains functions and classes developed for the
 application of inverse methods to the optimization of carbon dioxide
-surface fluxes using atmospheric mixing ratio measurements.  The
-recommended function is
-:py:func:`inversion.optimal_interpolation.save_sum`, which is best
-able to take advantage of functionality offered by
-:py:func:`inversion.linalg.DaskKroneckerProductOperator`.
+surface fluxes using atmospheric mixing ratio measurements.
+Derivations of the equations and terminology are given in :ref:`the
+section on the theory <theory>`.  The :ref:`User Guide <user_guide>`
+walks through an example of using the code.
+
+Theory
+------
+.. toctree::
+   :maxdepth: 3
+
+   theory
+
+User Guide
+----------
+
+.. toctree::
+   :maxdepth: 3
+
+   user_guide
 
 API Reference
 -------------
@@ -29,3 +43,11 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+Code Repository
+===============
+
+The `main code repository for this package
+<https://github.com/psu-inversion/atmospheric-inverse-methods-for-flux-optimization>`_
+is hosted by the `PSU-inversion GitHub organization
+<https://github.com/psu-inversion>`_.
