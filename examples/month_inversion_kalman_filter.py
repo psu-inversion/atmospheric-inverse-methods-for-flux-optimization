@@ -794,7 +794,7 @@ for i, inversion_period in enumerate(grouper(
 
     print(posterior_ds)
     obs_to_save = used_observations.reset_index("observation")
-    obs_enc = {name: {"_FillValue": False}
+    obs_enc = {name: {"_FillValue": None}
                for name in obs_to_save.coords}
     for var_name, var_enc in obs_to_save.coords.items():
         if "time" in var_name:
@@ -810,7 +810,7 @@ for i, inversion_period in enumerate(grouper(
 
     post_encoding = {name: {"_FillValue": -99}
                      for name in posterior_ds.data_vars}
-    post_encoding.update({name: {"_FillValue": False}
+    post_encoding.update({name: {"_FillValue": None}
                           for name in posterior_ds.coords})
     for var_name, var_enc in posterior_ds.coords.items():
         if "time" in var_name:

@@ -297,7 +297,7 @@ sys.stdout.flush(); sys.stderr.flush()
 
 encoding = {name: {"_FillValue": -1e38}
             for name in osse_prior_dataset.data_vars}
-encoding.update({name: {"_FillValue": False}
+encoding.update({name: {"_FillValue": None}
                  for name in osse_prior_dataset.coords})
 # osse_prior_dataset = osse_prior_dataset.chunk(
 #     dict(flux_time=FLUX_CHUNKS, dim_y=NY, dim_x=NX,
