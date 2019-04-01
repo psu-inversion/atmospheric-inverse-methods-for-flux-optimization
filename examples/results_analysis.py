@@ -991,6 +991,19 @@ yticks = np.arange(0, 1.61, .2)
 ax.set_yticks(yticks)
 ax.set_yticklabels(["{:.1f}".format(tick) for tick in yticks])
 
+color_blue = dict(color="tab:blue", marker=None)
+ax.boxplot(mean_error_df["prior_error"], vert=False, positions=(1.64,),
+           widths=.19, manage_xticks=False, showmeans=True,
+           boxprops=color_blue, whiskerprops=color_blue, capprops=color_blue,
+           flierprops=dict(color="tab:blue", marker="o"),
+           meanprops=dict(alpha=.7), medianprops=color_blue)
+color_orange = dict(color="tab:orange", marker=None)
+ax.boxplot(mean_error_df["posterior_error"], vert=False, positions=(1.88,),
+           widths=.19, manage_xticks=False, showmeans=True,
+           boxprops=color_orange, whiskerprops=color_orange, capprops=color_orange,
+           flierprops=dict(color="tab:orange", marker="o"),
+           meanprops=dict(alpha=.7), medianprops=color_orange)
+
 fig.savefig(
     "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
     "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
