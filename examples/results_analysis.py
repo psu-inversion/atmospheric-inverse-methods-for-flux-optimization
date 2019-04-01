@@ -927,7 +927,7 @@ with open(
           scipy.stats.chi2.sf(statistic, df=degrees_freedom))
 
 
-sample_fluxes = np.linspace(-3, 3, 100)
+sample_fluxes = np.linspace(-3, 3, 200)
 prior_mean_flux_density = (
     np.exp(-0.5 * sample_fluxes ** 2 / prior_theoretical_variance) /
     np.sqrt(2 * np.pi * prior_theoretical_variance)
@@ -959,19 +959,13 @@ posterior_flux_densities = (
 )
 posterior_flux_density_estimate = posterior_flux_densities.mean(axis=1)
 
-fig, ax = plt.subplots(1, 1)
-# mean_error_df.plot.kde(
-#     ax=ax, subplots=False, xlim=(-2, 2), ylim=(0, None),
-# )
-# sns.kdeplot(all_mean_error.sel(type="prior_error"), ax=ax,
-#             shade=True, label="Prior")
-# sns.kdeplot(all_mean_error.sel(type="posterior_error"), ax=ax,
-#             shade=True, label="Posterior")
-
+fig, ax = plt.subplots(1, 1, figsize=(6, 3.1))
+fig.subplots_adjust(top=.82, bottom=.15, left=.1, right=.9)
+ax.axvline(0, linewidth=.5)
 ax.plot(sample_fluxes, prior_mean_flux_density,  # 'r--',
-        label="Analytic prior mean density")
+        label="Analytic density for prior means")
 ax.plot(sample_fluxes, posterior_mean_flux_density,  # "m--"
-        label="Analytic posterior mean density")
+        label="Analytic density for posterior means")
 
 ax.plot(sample_fluxes, prior_flux_density_estimate,
         label="Combined prior density")
@@ -980,24 +974,22 @@ ax.plot(sample_fluxes, posterior_flux_density_estimate,
 
 for prior_density in prior_flux_densities.T:
     ax.plot(sample_fluxes, prior_density,
-            alpha=.1, color="b")
+            alpha=.1, color="tab:blue",
+            linewidth=.2)
 
 for posterior_density in posterior_flux_densities.T:
     ax.plot(sample_fluxes, posterior_density,
-            alpha=.1, color="tab:orange")
+            alpha=.1, color="tab:orange",
+            linewidth=.2)
 
-fig.legend()
+fig.legend(ncol=2, loc="upper center")
 ax.set_ylabel("Density")
 ax.set_xlabel("Error in mean estimate (\N{MICRO SIGN}mol/m$^2$/s)")
 ax.set_ylim(0, 2)
 ax.set_xlim(-3, 3)
-
-ax.boxplot(mean_error_df["prior_error"], color="tab:blue", vert=False,
-           positions=(1.6,), widths=.15, manage_xticks=False,
-           showmeans=True)
-ax.boxplot(mean_error_df["posterior_error"], color="tab:orange", vert=False,
-           positions=(1.8,), widths=.15, manage_xticks=False,
-           showmeans=True)
+yticks = np.arange(0, 1.61, .2)
+ax.set_yticks(yticks)
+ax.set_yticklabels(["{:.1f}".format(tick) for tick in yticks])
 
 fig.savefig(
     "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
