@@ -17,7 +17,7 @@ authors = man_pages[0][3]
 setup(
     version=release,
     author=authors,
-    author_email="dfw5129@psu.edu",
+    author_email="22566757+DWesl@users.noreply.github.com",
     test_suite="inversion.tests",
     package_dir={"": "src"},
 )
