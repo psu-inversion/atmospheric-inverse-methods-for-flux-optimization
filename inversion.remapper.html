@@ -15,6 +15,7 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -52,8 +53,8 @@
 <p>Intended for use in calculating the uncertainties at a coarser
 resolution than the fluxes.</p>
 <dl class="function">
-<dt id="inversion.remapper.get_remappers">
-<code class="descclassname">inversion.remapper.</code><code class="descname">get_remappers</code><span class="sig-paren">(</span><em>domain_size</em>, <em>block_side=3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/remapper.html#get_remappers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.remapper.get_remappers" title="Permalink to this definition">¶</a></dt>
+<dt id="inversion.remapper.get_spatial_remappers">
+<code class="descclassname">inversion.remapper.</code><code class="descname">get_spatial_remappers</code><span class="sig-paren">(</span><em>domain_size</em>, <em>block_side=3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inversion/remapper.html#get_spatial_remappers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inversion.remapper.get_spatial_remappers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get matrices to remap from original to coarser resolution.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -86,8 +87,8 @@ In this package, that would be the fluxes.</li>
 <p>It is assumed that the blocks are n by n_flux_points_space,
 and that the block column index represents time.</p>
 <p>If you have a full array you want on a different temporal
-frequency, attach metadata to make it a <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.12.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataArray</span></code></a>
-and use its <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.resample.html#xarray.DataArray.resample" title="(in xarray v0.12.0)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">resample()</span></code></a>.</p>
+frequency, attach metadata to make it a <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.12.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataArray</span></code></a>
+and use its <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.resample.html#xarray.DataArray.resample" title="(in xarray v0.12.1)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">resample()</span></code></a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -171,7 +172,7 @@ and use its <a class="reference external" href="http://xarray.pydata.org/en/stab
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2018, Daniel Wesloh.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
     </div>
   </body>
 </html>

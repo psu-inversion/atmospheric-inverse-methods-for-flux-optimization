@@ -78,8 +78,23 @@
 
 <span class="n">NUM_THREADS</span> <span class="o">=</span> <span class="mi">8</span>
 <span class="sd">&quot;&quot;&quot;Number of threads :mod:`pyfftw` should use for each transform.&quot;&quot;&quot;</span>
+<span class="n">ADVANCE_PLANNER_EFFORT</span> <span class="o">=</span> <span class="s2">&quot;FFTW_MEASURE&quot;</span>
+<span class="sd">&quot;&quot;&quot;Amount of advance planning FFTW should do.</span>
+
+<span class="sd">This is done when the :class:`HomogeneousIsotropicCorrelation`</span>
+<span class="sd">instance is created.  It is set to &quot;FFTW_MEASURE&quot; to keep test runs</span>
+<span class="sd">fast, but applications should probably set this to do `a more</span>
+<span class="sd">extensive exploration of the possibilities</span>
+<span class="sd">&lt;https://pyfftw.readthedocs.io/en/latest/source/tutorial.html#configuring-fftw-planning-effort-and-number-of-threads&gt;`_.</span>
+<span class="sd">&quot;&quot;&quot;</span>
 <span class="n">PLANNER_EFFORT</span> <span class="o">=</span> <span class="s2">&quot;FFTW_ESTIMATE&quot;</span>
-<span class="n">ADVANCE_PLANNER_EFFORT</span> <span class="o">=</span> <span class="s2">&quot;FFTW_EXHAUSTIVE&quot;</span>
+<span class="sd">&quot;&quot;&quot;How much effort to expend planning for subsequent inversions.</span>
+
+<span class="sd">Used by :meth:`HomogeneousIsotropicCorrelation.matmat`.  This is used</span>
+<span class="sd">more frequently than :data:`ADVANCE_PLANNER_EFFORT` and should</span>
+<span class="sd">probably stay set to &quot;FFTW_ESTIMATE&quot;.  Increasing this can increase</span>
+<span class="sd">application runtime by a factor of two.</span>
+<span class="sd">&quot;&quot;&quot;</span>
 <span class="n">pyfftw</span><span class="o">.</span><span class="n">interfaces</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">enable</span><span class="p">()</span>
 
 <span class="n">ROUNDOFF</span> <span class="o">=</span> <span class="mf">1e-13</span>
@@ -869,7 +884,7 @@
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2018, Daniel Wesloh.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
     </div>
   </body>
 </html>

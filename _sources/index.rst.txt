@@ -43,3 +43,11 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+Code Repository
+===============
+
+The `main code repository for this package
+<https://github.com/psu-inversion/atmospheric-inverse-methods-for-flux-optimization>`_
+is hosted by the `PSU-inversion GitHub organization
+<https://github.com/psu-inversion>`_.

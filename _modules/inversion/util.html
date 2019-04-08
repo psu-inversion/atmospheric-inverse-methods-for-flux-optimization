@@ -55,12 +55,10 @@
 <span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">atleast_1d</span><span class="p">,</span> <span class="n">atleast_2d</span>
 <span class="kn">from</span> <span class="nn">scipy.sparse.linalg</span> <span class="k">import</span> <span class="n">LinearOperator</span>
 
-<span class="kn">import</span> <span class="nn">dask.array</span> <span class="k">as</span> <span class="nn">da</span>
-
 <span class="kn">from</span> <span class="nn">.linalg</span> <span class="k">import</span> <span class="n">DaskKroneckerProductOperator</span><span class="p">,</span> <span class="n">kron</span><span class="p">,</span> <span class="n">solve</span>
 <span class="kn">from</span> <span class="nn">.linalg_interface</span> <span class="k">import</span> <span class="n">ProductLinearOperator</span><span class="p">,</span> <span class="n">tolinearoperator</span>
 
-<span class="n">ARRAY_TYPES</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">da</span><span class="o">.</span><span class="n">Array</span><span class="p">)</span>
+<span class="n">ARRAY_TYPES</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,)</span>
 <span class="sd">&quot;&quot;&quot;Array types for determining Kronecker product type.</span>
 
 <span class="sd">These are combined for a direct product.</span>
@@ -299,7 +297,7 @@
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2018, Daniel Wesloh.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
     </div>
   </body>
 </html>
