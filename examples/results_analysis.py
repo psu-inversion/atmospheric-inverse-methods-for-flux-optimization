@@ -975,12 +975,12 @@ ax.plot(sample_fluxes, posterior_flux_density_estimate,
 for prior_density in prior_flux_densities.T:
     ax.plot(sample_fluxes, prior_density,
             alpha=.1, color="tab:blue",
-            linewidth=.2)
+            linewidth=.5)
 
 for posterior_density in posterior_flux_densities.T:
     ax.plot(sample_fluxes, posterior_density,
             alpha=.1, color="tab:orange",
-            linewidth=.2)
+            linewidth=.5)
 
 fig.legend(ncol=2, loc="upper center")
 ax.set_ylabel("Density")
@@ -1013,7 +1013,6 @@ fig.savefig(
         noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
         inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
         inv_time_len=INV_TIME_LEN))
-
 plt.close(fig)
 
 ############################################################
