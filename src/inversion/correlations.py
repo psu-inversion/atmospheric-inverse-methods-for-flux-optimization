@@ -34,8 +34,23 @@ from .linalg_interface import DaskLinearOperator
 
 NUM_THREADS = 8
 """Number of threads :mod:`pyfftw` should use for each transform."""
+ADVANCE_PLANNER_EFFORT = "FFTW_MEASURE"
+"""Amount of advance planning FFTW should do.
+
+This is done when the :class:`HomogeneousIsotropicCorrelation`
+instance is created.  It is set to "FFTW_MEASURE" to keep test runs
+fast, but applications should probably set this to do `a more
+extensive exploration of the possibilities
+<https://pyfftw.readthedocs.io/en/latest/source/tutorial.html#configuring-fftw-planning-effort-and-number-of-threads>`_.
+"""
 PLANNER_EFFORT = "FFTW_ESTIMATE"
-ADVANCE_PLANNER_EFFORT = "FFTW_EXHAUSTIVE"
+"""How much effort to expend planning for subsequent inversions.
+
+Used by :meth:`HomogeneousIsotropicCorrelation.matmat`.  This is used
+more frequently than :data:`ADVANCE_PLANNER_EFFORT` and should
+probably stay set to "FFTW_ESTIMATE".  Increasing this can increase
+application runtime by a factor of two.
+"""
 pyfftw.interfaces.cache.enable()
 
 ROUNDOFF = 1e-13

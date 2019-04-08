@@ -3,7 +3,6 @@ six
 numpy>=1.13
 scipy
 pyfftw
-dask[array]>=1.1.0
 
 # Additional requirements for tests
 unittest2
@@ -15,6 +14,7 @@ tox
 
 # Additional requirements for examples
 cf_units
+dask[array]>=1.1.0
 
 # Additional requirements for building documentation
 Sphinx

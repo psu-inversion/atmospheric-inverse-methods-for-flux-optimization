@@ -11,12 +11,10 @@ import numpy as np
 from numpy import atleast_1d, atleast_2d
 from scipy.sparse.linalg import LinearOperator
 
-import dask.array as da
-
 from .linalg import DaskKroneckerProductOperator, kron, solve
 from .linalg_interface import ProductLinearOperator, tolinearoperator
 
-ARRAY_TYPES = (np.ndarray, da.Array)
+ARRAY_TYPES = (np.ndarray,)
 """Array types for determining Kronecker product type.
 
 These are combined for a direct product.
