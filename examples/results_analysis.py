@@ -922,9 +922,9 @@ with open(
     print("\N{GREEK SMALL LETTER CHI}\N{SUPERSCRIPT TWO} test for variance", file=out_file)
     degrees_freedom = ldesc.loc["count", :] - 1
     statistic = degrees_freedom * ldesc.loc["std", :] ** 2 / np.asarray([prior_theoretical_variance, posterior_theoretical_variance])
-    print("Statistics are\n", statistic)
+    print("Statistics are\n", statistic, file=out_file)
     print("One-sided test for sample variance larger than theoretical variance:\n", 
-          scipy.stats.chi2.sf(statistic, df=degrees_freedom))
+          scipy.stats.chi2.sf(statistic, df=degrees_freedom), file=out_file)
 
 
 sample_fluxes = np.linspace(-3, 3, 200)
