@@ -36,6 +36,13 @@ Installation
 
     pip install "git+https://github.com/psu-inversion/atmospheric-inverse-methods-for-flux-optimization.git"
 
+Documentation
+-------------
+
+Documentation, including both high-level theory and details on what 
+each function does, is available at
+https://psu-inversion.github.io/atmospheric-inverse-methods-for-flux-optimization/
+
 Dependencies
 ------------
 
@@ -59,6 +66,17 @@ To run only code correctness tests for the current interpreter:
 .. code::
 
     python setup.py test
+
+Collaboration
+-------------
+
+`The repository <https://github.com/psu-inversion/atmospheric-inverse-methods-for-flux-optimization>`_
+is maintained within `the PSU Inversion GitHub organization <https://github.com/psu-inversion>`_.
+Unexpected behavior can be reported with the expected response at
+`the issue tracker <https://github.com/psu-inversion/atmospheric-inverse-methods-for-flux-optimization/issues/new/choose>`_.
+Code you would like to be included in future versions of this
+package can be submitted as 
+`a pull request <https://github.com/psu-inversion/atmospheric-inverse-methods-for-flux-optimization/compare>`_.
 
 License
 -------
