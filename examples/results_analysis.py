@@ -281,6 +281,8 @@ INVERSION_DS = xarray.open_dataset(
     POSTERIOR_PATH,
     chunks=dict(realization=1, flux_time=8 * 14)
 )
+INVERSION_DS = INVERSION_DS.set_index(observation=["observation_time", "site"])
+
 PSEUDO_OBS_DS = INVERSION_DS["pseudo_observations"]
 POSTERIOR_DS = INVERSION_DS[["posterior", "prior", "truth"]].rename(
     dict(dim_x="projection_x_coordinate", dim_y="projection_y_coordinate",
@@ -926,8 +928,17 @@ with open(
     print("One-sided test for sample variance larger than theoretical variance:\n", 
           scipy.stats.chi2.sf(statistic, df=degrees_freedom), file=out_file)
 
+    print("\nPearson product-moment correlations\n",
+          mean_error_df.corr(),
+          "\nSpearman rank correlations\n",
+          mean_error_df.corr("spearman"),
+          "\nKendall Tau correlation\n",
+          mean_error_df.corr("kendall"),
+          file=out_file)
 
-sample_fluxes = np.linspace(-3, 3, 200)
+
+N_FLUXES = 200
+sample_fluxes = np.linspace(-3, 3, N_FLUXES)
 prior_mean_flux_density = (
     np.exp(-0.5 * sample_fluxes ** 2 / prior_theoretical_variance) /
     np.sqrt(2 * np.pi * prior_theoretical_variance)
@@ -959,30 +970,39 @@ posterior_flux_densities = (
 )
 posterior_flux_density_estimate = posterior_flux_densities.mean(axis=1)
 
-fig, ax = plt.subplots(1, 1, figsize=(6, 3.1))
-fig.subplots_adjust(top=.82, bottom=.15, left=.1, right=.9)
+fig, ax = plt.subplots(1, 1, figsize=(6, 3))
+fig.subplots_adjust(top=.85, bottom=.15, left=.1, right=.9)
 ax.axvline(0, linewidth=.5)
-ax.plot(sample_fluxes, prior_mean_flux_density,  # 'r--',
-        label="Analytic density for prior means")
-ax.plot(sample_fluxes, posterior_mean_flux_density,  # "m--"
-        label="Analytic density for posterior means")
+# ax.plot(sample_fluxes, prior_mean_flux_density,  # 'r--',
+#         label="Analytic density for prior means")
+# ax.plot(sample_fluxes, posterior_mean_flux_density,  # "m--"
+#         label="Analytic density for posterior means")
 
-ax.plot(sample_fluxes, prior_flux_density_estimate,
-        label="Combined prior density")
-ax.plot(sample_fluxes, posterior_flux_density_estimate,
-        label="Combined posterior density")
+# Confusing, and Dr. Keller backed off on them being useful
+# ax.plot(sample_fluxes, prior_flux_density_estimate,
+#         label="Combined prior density")
+# ax.plot(sample_fluxes, posterior_flux_density_estimate,
+#         label="Combined posterior density")
 
 for prior_density in prior_flux_densities.T:
-    ax.plot(sample_fluxes, prior_density,
-            alpha=.1, color="tab:blue",
-            linewidth=.5)
+    prior_lines = ax.plot(
+        sample_fluxes, prior_density,
+        alpha=.2, color="tab:blue",
+        linewidth=.5, label="Prior densities",
+    )
 
 for posterior_density in posterior_flux_densities.T:
-    ax.plot(sample_fluxes, posterior_density,
-            alpha=.1, color="tab:orange",
-            linewidth=.5)
+    posterior_lines = ax.plot(
+        sample_fluxes, posterior_density,
+        alpha=.2, color="tab:orange",
+        linewidth=.5, label="Posterior densities",
+    )
 
-fig.legend(ncol=2, loc="upper center")
+fig.legend(
+    handles=prior_lines + posterior_lines,
+    labels=("Prior densities", "Posterior densities"),
+    ncol=2, loc="upper center"
+)
 ax.set_ylabel("Density")
 ax.set_xlabel("Error in mean estimate (\N{MICRO SIGN}mol/m$^2$/s)")
 ax.set_ylim(0, 2)
@@ -1036,7 +1056,7 @@ small_mean_error_df.plot.kde(
 sns.rugplot(small_mean_error_df["prior_error"], axis=ax, color="b")
 sns.rugplot(small_mean_error_df["posterior_error"], axis=ax, color="tab:orange")
 
-sample_fluxes = np.linspace(-20, 20, 50)
+sample_fluxes = np.linspace(-20, 20, N_FLUXES)
 prior_flux_density = (
     np.exp(-0.5 * sample_fluxes ** 2 / prior_small_theoretical_variance) /
     np.sqrt(2 * np.pi * prior_small_theoretical_variance)
@@ -1173,4 +1193,26 @@ axes.add_feature(STATES)
 fig.savefig("{year:04d}-{month:02d}_integrated_influence_functions.png".format(
     year=YEAR, month=MONTH), dpi=400)
 plt.close(fig)
+
+############################################################
+# Scatter plot of prior and posterior
+fig, ax = plt.subplots(1, 1, figsize=(4, 3))
+mean_error_df.plot("prior_error", "posterior_error", style='.',
+                   ax=ax, legend=False)
+ax.set_xlabel("Prior error (\N{MICRO SIGN}mol/m$^2$/s)");
+ax.set_ylabel("Posterior error (\N{MICRO SIGN}mol/m$^2$/s)");
+ax.set_xlim(-2, 2);
+ax.set_ylim(-1, 1)
+
+fig.tight_layout()
+fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_flux_error_scatter.pdf".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,inv_len=INV_LENGTH,
+        inv_time_fun=INV_TIME_FUN, inv_time_len=INV_TIME_LEN))
+plt.close(fig)
+
 write_console_message("Done all figures")
