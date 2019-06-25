@@ -34,6 +34,11 @@ import pyfftw
 
 import pandas as pd
 import xarray
+try:
+    import sparse
+    HAVE_SPARSE = True
+except ImportError:
+    HAVE_SPARSE = False
 
 import inversion.optimal_interpolation
 import inversion.correlations
@@ -1161,6 +1166,17 @@ class TestCorrelations(unittest2.TestCase):
         np_tst.assert_allclose(op.dot(np.eye(*mat.shape)),
                                mat)
 
+    @unittest2.skipUnless(HAVE_SPARSE, "sparse not installed")
+    def test_sparse(self):
+        """Test HomogeneousIsotropicCorrelations work on sparse.COO."""
+        array = 2. ** -np.arange(6)
+        op = (inversion.correlations.HomogeneousIsotropicCorrelation.
+              from_array(array, False))
+        mat = scipy.linalg.toeplitz(array)
+
+        np_tst.assert_allclose(op.dot(sparse.eye(*mat.shape)),
+                               mat)
+
 
 class TestSchmidtKroneckerProduct(unittest2.TestCase):
     """Test the Schmidt Kronecker product implementation for LinearOperators.
@@ -1322,6 +1338,21 @@ class TestYMKroneckerProduct(unittest2.TestCase):
             operator.dot(epr_state),
             matrix.dot(epr_state))
 
+    @unittest2.skipUnless(HAVE_SPARSE, "sparse not installed")
+    def test_sparse(self):
+        """Test that DaskKroneckerProductOperator works on sparse.COO."""
+        sigmax = np.array(((0, 1), (1, 0)))
+        sigmaz = np.array(((1, 0), (0, -1)))
+
+        operator = inversion.linalg.DaskKroneckerProductOperator(
+            sigmax, sigmaz)
+        matrix = scipy.linalg.kron(sigmax, sigmaz)
+        epr_state = np.array((0, .7071, -.7071, 0))
+
+        np_tst.assert_allclose(
+            operator.dot(sparse.COO(epr_state)),
+            matrix.dot(epr_state))
+
     def test_transpose(self):
         """Test whether the transpose is properly implemented."""
         mat1 = np.eye(3)
@@ -1417,6 +1448,19 @@ class TestYMKroneckerProduct(unittest2.TestCase):
             ValueError,
             product.quadratic_form,
             test_vec[:-1])
+
+    @unittest2.skipUnless(HAVE_SPARSE, "sparse not installed")
+    def test_quadratic_form_sparse(self):
+        """Test that quadratic_form works on sparse.COO."""
+        matrix1 = scipy.linalg.toeplitz(3. ** -np.arange(4))
+        matrix2 = scipy.linalg.toeplitz(5. ** -np.arange(5))
+
+        product = inversion.linalg.DaskKroneckerProductOperator(
+            matrix1, matrix2)
+        tester = sparse.eye(product.shape[0])
+        dense_product = scipy.linalg.kron(matrix1, matrix2)
+        np_tst.assert_allclose(product.quadratic_form(tester),
+                               dense_product)
 
     def test_matrix_linop(self):
         """Test that the implementation works with MatrixLinearOperator."""
@@ -1784,6 +1828,9 @@ class TestHomogeneousInversions(unittest2.TestCase):
                        # matrices don't do this.
                        obs_op.toarray())
 
+        if HAVE_SPARSE:
+            self.obs_op += (sparse.COO(obs_op.toarray()),)
+
     def test_combinations_produce_answer(self):
         """Test that background error as a LinearOperator doesn't crash."""
         for inversion_method in ALL_METHODS:
@@ -1854,6 +1901,21 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
         np_tst.assert_allclose(
             linop_kron.quadratic_form(test_arry),
             test_arry.T.dot(scipy_kron.dot(test_arry)))
+
+    @unittest2.skipUnless(HAVE_SPARSE, "sparse not installed")
+    def test_coo(self):
+        """Test that `sparse.COO` works for the operator."""
+        mat1 = scipy.linalg.toeplitz(3.**-np.arange(5))
+        mat2 = scipy.linalg.toeplitz(2.**-np.arange(10))
+
+        scipy_kron = scipy.linalg.kron(mat1, mat2)
+        linop_kron = inversion.linalg.DaskKroneckerProductOperator(mat1, mat2)
+
+        test_arry = sparse.eye(50, 20)
+
+        np_tst.assert_allclose(
+            linop_kron.quadratic_form(test_arry),
+            test_arry.T.dot(scipy_kron.dot(test_arry.todense())))
 
     def test_failure_modes(self):
         """Test the failure modes of YMKron.quadratic_form."""

@@ -15,7 +15,11 @@ from scipy.sparse.linalg.interface import (
 
 try:
     import dask.array as da
-    ARRAY_TYPES = (np.ndarray, da.Array)
+    try:
+        import sparse
+        ARRAY_TYPES = (np.ndarray, da.Array, sparse.COO)
+    except ImportError:
+        ARRAY_TYPES = (np.ndarray, da.Array)
 except ImportError:
     ARRAY_TYPES = (np.ndarray,)
 """Array types for determining Kronecker product type.
@@ -142,6 +146,18 @@ class DaskLinearOperator(LinearOperator):
             result[:, i] = self.matvec(X[:, i])
         return result
 
+    def _matvec(self, x):
+        """Handle matrix-vector multiplication in default manner.
+
+        If self is a linear operator of shape (M, N), then this method will
+        be called on a shape (N,) or (N, 1) ndarray, and should return a
+        shape (M,) or (M, 1) ndarray.
+
+        This default implementation falls back on _matmat, so defining that
+        will define matrix-vector multiplication as well.
+        """
+        return self.matmat(x.reshape((-1, 1)))
+
     def matvec(self, x):
         """
 
@@ -167,7 +183,8 @@ class DaskLinearOperator(LinearOperator):
         _matvec method to ensure that y has the correct shape and type.
 
         """
-        x = asarray(x)
+        if not isinstance(x, ARRAY_TYPES):
+            x = asarray(x)
 
         M, N = self.shape
 
@@ -254,7 +271,8 @@ class DaskLinearOperator(LinearOperator):
         _matmat method to ensure that y has the correct type.
 
         """
-        X = asarray(X)
+        if not isinstance(X, ARRAY_TYPES):
+            X = asarray(X)
 
         if X.ndim != 2:
             raise ValueError('expected 2-d ndarray or matrix, not %d-d'
@@ -310,7 +328,8 @@ class DaskLinearOperator(LinearOperator):
         elif np.isscalar(x):
             return _DaskScaledLinearOperator(self, x)
         else:
-            x = asarray(x)
+            if not isinstance(x, ARRAY_TYPES):
+                x = asarray(x)
 
             if x.ndim == 1 or x.ndim == 2 and x.shape[1] == 1:
                 return self.matvec(x)
@@ -328,12 +347,14 @@ class DaskLinearOperator(LinearOperator):
                                          dtype=self.dtype)
 
 
-class _DaskCustomLinearOperator(DaskLinearOperator, _CustomLinearOperator):
+class _DaskCustomLinearOperator(_CustomLinearOperator, DaskLinearOperator):
     """This should let the factory functions above work."""
 
     def __init__(self, shape, matvec, rmatvec=None, matmat=None, dtype=None):
         super(_DaskCustomLinearOperator, self).__init__(
-            shape, matvec, rmatvec, matmat, dtype)
+            shape=shape, matvec=matvec, rmatvec=rmatvec,
+            matmat=matmat, dtype=dtype
+        )
 
         if ((self.dtype.kind in REAL_DTYPE_KINDS and
              not hasattr(self, "_transpose"))):

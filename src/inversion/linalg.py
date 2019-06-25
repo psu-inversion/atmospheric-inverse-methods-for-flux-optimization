@@ -8,13 +8,13 @@ import numpy as np
 from numpy import newaxis
 import numpy.linalg as la
 from numpy.linalg import svd, LinAlgError
-# See if this will speed up inversions.  I call `.compute()` on the
-# output to keep the rest of the code numpy-only.  I think this is
-# implicitly called on the operator2.dot(chunk) that usually follows
-# this.
 from numpy import einsum
 from numpy import concatenate, zeros, nonzero
 from numpy import asarray, atleast_2d, stack, where, sqrt
+try:
+    from sparse import tensordot
+except ImportError:
+    pass
 
 from scipy.sparse.linalg import lgmres
 from scipy.sparse.linalg.interface import (
@@ -65,13 +65,22 @@ def linop_solve(operator, arr):
     array_like
         The solution to the linear equation.
     """
+    _asarray = np.asarray
+
+    def toarray(arr):
+        """Make `arr` an array."""
+        try:
+            return arr.todense()
+        except AttributeError:
+            return _asarray(arr)
+
     if arr.ndim == 1:
-        return asarray(lgmres(operator, np.asarray(arr),
+        return asarray(lgmres(operator, toarray(arr),
                               atol=1e-7)[0])
     return asarray(
         stack(
-            [lgmres(operator, np.asarray(col), atol=1e-7)[0]
-             for col in atleast_2d(arr).T],
+            [lgmres(operator, toarray(col), atol=1e-7)[0]
+             for col in arr.T],
             axis=1))
 
 
@@ -143,7 +152,15 @@ def solve(arr1, arr2):
         #     "solve-arr1.name-arr2.name",
         #     chunks)
     # Shorter method for assuring dask arrays
-    return la.solve(asarray(arr1), asarray(arr2))
+
+    def toarray(arr):
+        """Make `arr` an array."""
+        try:
+            return arr.todense()
+        except AttributeError:
+            return asarray(arr)
+
+    return la.solve(toarray(arr1), toarray(arr2))
 
 
 def kron(matrix1, matrix2):
@@ -403,14 +420,21 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         operator2 = self._operator2
         in_chunk = (operator1.shape[1], block_size, X.shape[1])
 
+        if isinstance(X, np.ndarray):
+            partial_answer = einsum(
+                "ij,jkl->kil", operator1, X.reshape(in_chunk),
+                # Column-major output should speed the
+                # operator2 @ tmp bit
+                order="F"
+            ).reshape(block_size, -1)
+        else:
+            partial_answer = tensordot(
+                operator1, X.reshape(in_chunk),
+                (1, 0)
+            ).transpose((1, 0, 2)).reshape((block_size, -1))
         chunks = (
             operator2.dot(
-                einsum(
-                    "ij,jkl->kil", operator1, X.reshape(in_chunk),
-                    # Column-major output should speed the
-                    # operator2 @ tmp bit
-                    order="F"
-                ).reshape(block_size, -1)
+                partial_answer
             )
             # Reshape to separate out the block dimension from the
             # original second dim of X
@@ -454,7 +478,6 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
             raise TypeError("Unsupported")
         elif mat.ndim == 1:
             mat = mat[:, np.newaxis]
-        mat = asarray(mat)
         if mat.shape[0] != self.shape[1]:
             raise ValueError("Dim mismatch: {mat:d} != {self:d}".format(
                 mat=mat.shape[0], self=self.shape[1]))
@@ -476,8 +499,11 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
             # with lots of indexing.
             # Having the chunk be fortran-contiguous should speed the
             # next steps (operator2 @ chunk)
-            chunk = einsum("j,jkl->kl", operator1[row1, :],
-                           mat.reshape(in_chunk), order="F")
+            if isinstance(mat, np.ndarray):
+                chunk = einsum("j,jkl->kl", operator1[row1, :],
+                               mat.reshape(in_chunk), order="F")
+            else:
+                chunk = tensordot(operator1[row1, :], mat.reshape(in_chunk), 1)
             result += mat[row_start:(row_start + block_size)].T.dot(
                 operator2.dot(chunk))
         return result
