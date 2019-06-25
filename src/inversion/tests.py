@@ -1889,7 +1889,7 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
                 np_tst.assert_allclose(result, vectors[:stop, :stop])
 
     def test_off_diagonal(self):
-        """Test a case with off-diagonal elements."""
+        """Test a case with off-diagonal elements in the operator."""
         mat1 = scipy.linalg.toeplitz(3.**-np.arange(5))
         mat2 = scipy.linalg.toeplitz(2.**-np.arange(10))
 
