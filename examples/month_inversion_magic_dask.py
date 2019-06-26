@@ -12,11 +12,13 @@ import os.path
 import glob
 import sys
 
+import dask.array as da
 import pandas as pd
 import dateutil.tz
 import numpy as np
 import cf_units
 import netCDF4
+import sparse
 import xarray
 import wrf
 
@@ -498,8 +500,16 @@ flush_output_streams()
 aligned_influences = aligned_influences.fillna(0)
 aligned_true_fluxes.load()
 aligned_prior_fluxes.load()
-aligned_influences.load()
 print(datetime.datetime.now(UTC).strftime("%c"), "Loaded data")
+flush_output_streams()
+
+# 23 min for seven towers over a month
+# 11 min next run
+# This includes the realignment time deferred with dask above
+sparse_influences = sparse.COO(aligned_influences.values)
+aligned_influences.data = da.asarray(sparse_influences)
+
+print(datetime.datetime.now(UTC).strftime("%c"), "Converted to COO")
 flush_output_streams()
 
 posterior_var_atts = aligned_prior_fluxes.attrs.copy()
@@ -714,9 +724,21 @@ reduced_influences = (
     .resample(flux_time=UNCERTAINTY_TEMPORAL_RESOLUTION).sum("flux_time")
 ).rename(dim_x_bins="reduced_dim_x", dim_y_bins="reduced_dim_y",
          flux_time="reduced_flux_time")
-reduced_influences.load()
+sparse_reduced_influences_coords = sparse_influences.coords.copy()
+# dim 0 is obs
+# dim 1 is flux_time
+assert UNCERTAINTY_TEMPORAL_RESOLUTION == "1W"
+sparse_reduced_influences_coords[1, :] //= 7 * INTERVALS_PER_DAY
+# dims 2 and 3 are y and x
+sparse_reduced_influences_coords[2:, :] //= UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR
+reduced_influences_sparse = sparse.COO(
+    sparse_reduced_influences_coords,
+    sparse_influences.data
+)
+del sparse_reduced_influences_coords
+
 print(datetime.datetime.now(UTC).strftime("%c"),
-      "Have influence for monthly average plots")
+      "Have reduced influence for covariance calculation.")
 flush_output_streams()
 
 prior_covariance = kronecker_product(
@@ -790,6 +812,8 @@ flush_output_streams()
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Got covariance parts, getting posterior")
 flush_output_streams()
+assert sparse_influences.shape == (aligned_influences.shape[0], N_FLUX_TIMES, NY, NX)
+assert reduced_influences_sparse.shape == reduced_influences.shape
 posterior, reduced_posterior_covariances = (
     inversion.optimal_interpolation.save_sum(
         aligned_prior_fluxes.values.reshape(
@@ -798,15 +822,11 @@ posterior, reduced_posterior_covariances = (
         prior_covariance,
         used_observations.values,
         observation_covariance,
-        aligned_influences.stack(
-            fluxes=("flux_time", "dim_y", "dim_x")
-        ).values,
-        # .reshape(aligned_influences.shape[0],
-        #          np.prod(aligned_influences.shape[-3:]))),
+        sparse_influences.reshape((aligned_influences.shape[0],
+                                   np.prod(aligned_influences.shape[-3:]))),
         reduced_prior_covariance,
-        reduced_influences.stack(
-            fluxes=("reduced_flux_time", "reduced_dim_y",
-                    "reduced_dim_x")).values
+        reduced_influences_sparse.reshape((reduced_influences.shape[0],
+                                           np.prod(reduced_influences.shape[-3:])))
     )
 )
 print(datetime.datetime.now(UTC).strftime("%c"),
@@ -838,7 +858,7 @@ posterior_ds.to_netcdf(
     ("2010-07_monthly_inversion_{flux_interval:02d}h_027km_"
      "noise{ncorr_fun:s}{ncorr_len:d}km{ncorr_fun_time:s}{ncorr_len_time:d}d_"
      "icov{icorr_fun:s}{icorr_len:d}km{icorr_fun_time:s}{icorr_len_time:d}d_"
-     "output.nc4")
+     "sparse_output.nc4")
     .format(flux_interval=FLUX_INTERVAL, ncorr_fun=CORR_FUN,
             ncorr_len=CORR_LEN, icorr_len=CORRELATION_LENGTH, icorr_fun="exp",
             icorr_len_time=DAILY_FLUX_TIMESCALE, icorr_fun_time=DAILY_FLUX_FUN,
@@ -959,7 +979,7 @@ posterior_covariance_ds.to_netcdf(
     ("2010-07_monthly_inversion_{flux_interval:02d}h_027km_"
      "noise{ncorr_fun:s}{ncorr_len:d}km{ncorr_fun_time:s}{ncorr_len_time:d}d_"
      "icov{icorr_fun:s}{icorr_len:d}km{icorr_fun_time:s}{icorr_len_time:d}d_"
-     "covariance_output.nc4")
+     "sparse_covariance_output.nc4")
     .format(flux_interval=FLUX_INTERVAL, ncorr_fun=CORR_FUN,
             ncorr_len=CORR_LEN, icorr_len=CORRELATION_LENGTH, icorr_fun="exp",
             icorr_len_time=DAILY_FLUX_TIMESCALE, icorr_fun_time=DAILY_FLUX_FUN,
