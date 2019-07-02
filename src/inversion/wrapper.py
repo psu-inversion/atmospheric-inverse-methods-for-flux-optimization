@@ -372,7 +372,7 @@ def get_installed_modules():
 
     # Conda not present or not providing current executable
     pip_args = []
-    if sys.executable is not None:
+    if sys.executable is not None:  # pragma: no branch
         pip_args = [sys.executable, "-m"]
     pip_args.extend(["pip", "freeze"])
     try:  # pragma: no branch

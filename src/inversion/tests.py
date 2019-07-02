@@ -1305,7 +1305,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
     def test_identical_submatrices(self):
         """Test whether the implementation will generate identical blocks."""
         mat1 = np.ones((3, 3))
-        mat2 = ((1, .5, .25), (.5, 1, .5), (.25, .5, 1))
+        mat2 = np.array(((1, .5, .25), (.5, 1, .5), (.25, .5, 1)))
 
         np_tst.assert_allclose(
             inversion.linalg.DaskKroneckerProductOperator(
@@ -1314,7 +1314,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
 
     def test_constant_blocks(self):
         """Test whether the implementation will produce constant blocks."""
-        mat1 = ((1, .5, .25), (.5, 1, .5), (.25, .5, 1))
+        mat1 = np.array(((1, .5, .25), (.5, 1, .5), (.25, .5, 1)))
         mat2 = np.ones((3, 3))
 
         np_tst.assert_allclose(
@@ -1513,6 +1513,42 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         self.assertRaises(
             ValueError,
             kron_op(np.array([[1, 1], [0, 1]]), np.eye(3)).sqrt)
+
+    @unittest2.skipUnless(HAVE_SPARSE, "sparse not installed")
+    def test_sparse_first_argument(self):
+        """Test sparse.COO in the first position."""
+        row = np.exp(-np.arange(20))
+        row[row < 0.005] = 0
+        matrix1 = scipy.linalg.toeplitz(row)
+        operator1 = sparse.COO(matrix1)
+        operator2 = sparse.eye(15)
+
+        kron_op = inversion.linalg.DaskKroneckerProductOperator(
+            operator1, operator2)
+        kron_mat = scipy.linalg.kron(matrix1, operator2.todense())
+
+        np_tst.assert_allclose(
+            kron_op.dot(np.eye(kron_op.shape[0])),
+            kron_mat)
+        np_tst.assert_allclose(
+            kron_op.dot(sparse.eye(kron_op.shape[0])).todense(),
+            kron_mat)
+
+    @unittest2.skipUnless(HAVE_SPARSE, "sparse not installed")
+    @unittest2.expectedFailure
+    def test_sparse_kron_quadratic_form(self):
+        """Test that quadratic form of all sparse works."""
+        row = np.exp(-np.arange(20))
+        row[row < 0.005] = 0
+        matrix1 = scipy.linalg.toeplitz(row)
+        operator1 = sparse.COO(row)
+        operator2 = sparse.eye(15)
+        kron_op = inversion.linalg.DaskKroneckerProductOperator(
+            operator1, operator2)
+        kron_mat = scipy.linalg.kron(matrix1, operator2.todense())
+        np_tst.assert_allclose(
+            kron_op.quadratic_form(sparse.eye(kron_op.shape[0])).todense(),
+            kron_mat)
 
 
 class TestUtilKroneckerProduct(unittest2.TestCase):
@@ -1771,7 +1807,16 @@ class TestUtilToLinearOperator(unittest2.TestCase):
                       scipy.sparse.identity(8), np.arange(10)):
             with self.subTest(trial=trial):
                 self.assertIsInstance(tolinearoperator(trial),
-                                      LinearOperator)
+                                      MatrixLinearOperator)
+
+    @unittest2.skipUnless(HAVE_SPARSE, "sparse not installed")
+    def test_tolinearoperator_sparse(self):
+        """Test that tolinearoperator works with sparse.COO."""
+        test_op = tolinearoperator(sparse.eye(20))
+        self.assertIsInstance(
+            test_op, LinearOperator)
+        self.assertSequenceEqual(
+            test_op.shape, (20, 20))
 
 
 class TestUtilKron(unittest2.TestCase):

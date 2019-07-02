@@ -6,6 +6,7 @@ import numpy as np
 from numpy import promote_types
 from numpy import empty, asarray, atleast_2d
 
+from scipy.sparse import spmatrix as _spmatrix
 from scipy.sparse.linalg import aslinearoperator
 from scipy.sparse.linalg.interface import (
     LinearOperator,
@@ -15,11 +16,7 @@ from scipy.sparse.linalg.interface import (
 
 try:
     import dask.array as da
-    try:
-        import sparse
-        ARRAY_TYPES = (np.ndarray, da.Array, sparse.COO)
-    except ImportError:
-        ARRAY_TYPES = (np.ndarray, da.Array)
+    ARRAY_TYPES = (np.ndarray, da.Array)
 except ImportError:
     ARRAY_TYPES = (np.ndarray,)
 """Array types for determining Kronecker product type.
@@ -31,6 +28,13 @@ REAL_DTYPE_KINDS = "fiu"
 
 Includes subsets.
 """
+try:
+    import sparse
+    _COO = sparse.COO
+    ARRAY_NO_COERCE = ARRAY_TYPES + (_COO, _spmatrix)
+except ImportError:
+    _COO = LinearOperator
+    ARRAY_NO_COERCE = ARRAY_TYPES + (_spmatrix,)
 
 
 def is_odd(num):
@@ -68,13 +72,25 @@ def tolinearoperator(operator):
         Used for everything but array_likes that are not
         :class:`np.ndarrays` or :class:`scipy.sparse.spmatrix`.
     """
-    if isinstance(operator, ARRAY_TYPES):
+    if isinstance(operator, ARRAY_TYPES + (list, tuple)):
         return DaskMatrixLinearOperator(atleast_2d(operator))
+    if isinstance(operator, ARRAY_NO_COERCE):
+        return DaskMatrixLinearOperator(operator)
     try:
         return DaskLinearOperator.fromlinearoperator(
             aslinearoperator(operator))
     except TypeError:
+        pass
+    try:
         return DaskMatrixLinearOperator(atleast_2d(operator))
+    except RuntimeError:
+        # Assume this is some duck array that prefers explicit
+        # coercion to ndarray
+        if operator.ndim == 1:
+            operator = operator[np.newaxis, :]
+        elif operator.ndim == 0:
+            operator = operator[np.newaxis, np.newaxis]
+        return DaskMatrixLinearOperator(operator)
 
 
 ############################################################
@@ -183,7 +199,7 @@ class DaskLinearOperator(LinearOperator):
         _matvec method to ensure that y has the correct shape and type.
 
         """
-        if not isinstance(x, ARRAY_TYPES):
+        if not isinstance(x, ARRAY_NO_COERCE):
             x = asarray(x)
 
         M, N = self.shape
@@ -271,7 +287,7 @@ class DaskLinearOperator(LinearOperator):
         _matmat method to ensure that y has the correct type.
 
         """
-        if not isinstance(X, ARRAY_TYPES):
+        if not isinstance(X, ARRAY_NO_COERCE):
             X = asarray(X)
 
         if X.ndim != 2:
@@ -328,7 +344,7 @@ class DaskLinearOperator(LinearOperator):
         elif np.isscalar(x):
             return _DaskScaledLinearOperator(self, x)
         else:
-            if not isinstance(x, ARRAY_TYPES):
+            if not isinstance(x, ARRAY_NO_COERCE):
                 x = asarray(x)
 
             if x.ndim == 1 or x.ndim == 2 and x.shape[1] == 1:

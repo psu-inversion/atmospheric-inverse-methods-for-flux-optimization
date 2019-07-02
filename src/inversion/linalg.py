@@ -115,7 +115,7 @@ def solve(arr1, arr2):
     if isinstance(arr2, MatrixLinearOperator):
         arr2 = arr2.A
     # Deal with arr2 being a LinearOperator
-    if not isinstance(arr2, ARRAY_TYPES):
+    if isinstance(arr2, LinearOperator):
         def solver(vec):
             """Solve `arr1 x = vec`.
 
@@ -130,7 +130,7 @@ def solve(arr1, arr2):
                 The solution of the linear equation
             """
             return solve(arr1, vec)
-        inverse = DaskLinearOperator(matvec=solver, shape=arr1.shape[::-1])
+        inverse = DaskLinearOperator(matvec=solver, shape=arr1.shape)
         return inverse.dot(arr2)
 
     # arr2 is an array
@@ -308,13 +308,13 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
 
         Parameters
         ----------
-        operator1: array_like
-        operator2: array_like or LinearOperator
+        operator1: duck_array
+        operator2: duck_array or LinearOperator
         """
         if isinstance(operator1, MatrixLinearOperator):
-            operator1 = asarray(operator1.A)
-        else:
-            operator1 = asarray(operator1)
+            operator1 = operator1.A
+        elif isinstance(operator1, LinearOperator):
+            raise ValueError("operator1 must be an array")
         operator2 = tolinearoperator(operator2)
 
         total_shape = np.multiply(operator1.shape, operator2.shape)
@@ -420,7 +420,7 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         operator2 = self._operator2
         in_chunk = (operator1.shape[1], block_size, X.shape[1])
 
-        if isinstance(X, np.ndarray):
+        if isinstance(X, ARRAY_TYPES) and isinstance(operator1, ARRAY_TYPES):
             partial_answer = einsum(
                 "ij,jkl->kil", operator1, X.reshape(in_chunk),
                 # Column-major output should speed the
@@ -438,12 +438,12 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
             )
             # Reshape to separate out the block dimension from the
             # original second dim of X
-            .reshape(operator2.shape[0], self._n_chunks, X.shape[1])
+            .reshape((operator2.shape[0], self._n_chunks, X.shape[1]))
             # Transpose back to have block dimension first
             .transpose((1, 0, 2))
         )
         # Reshape back to expected result size
-        return chunks.reshape(self.shape[0], X.shape[1])
+        return chunks.reshape((self.shape[0], X.shape[1]))
 
     def quadratic_form(self, mat):
         r"""Calculate the quadratic form mat.T @ self @ mat.
@@ -474,8 +474,13 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         This function uses :mod:`dask` for the splitting, multiplication, and
         addition, which defaults to using all available cores.
         """
-        if not isinstance(mat, ARRAY_TYPES) or self.shape[0] != self.shape[1]:
-            raise TypeError("Unsupported")
+        if self.shape[0] != self.shape[1]:
+            raise TypeError("quadratic_form only defined for square matrices.")
+        elif isinstance(mat, LinearOperator):
+            raise TypeError("quadratic_form only supports explicit arrays.")
+        elif not isinstance(mat, ARRAY_TYPES):
+            warnings.warn("mat not a recognised array type.  "
+                          "Proceed with caution.")
         elif mat.ndim == 1:
             mat = mat[:, np.newaxis]
         if mat.shape[0] != self.shape[1]:
