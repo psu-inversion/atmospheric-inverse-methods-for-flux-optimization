@@ -510,7 +510,9 @@ posterior_var_atts.update(dict(
     origin="OI using dask for a month",
     prior_flux_name=PRIOR_FLUX_NAME,
     flux_window=FLUX_WINDOW,
-    observation_window=OBS_WINDOW))
+    observation_window=OBS_WINDOW,
+    ancillary_variables="reduced_posterior_covariance",
+))
 increment_var_atts = aligned_prior_fluxes.attrs.copy()
 increment_var_atts.update(dict(
     long_name="flux_increment",
@@ -528,6 +530,7 @@ posterior_global_atts.update(dict(
     cdm_data_type="grid",
     institution="PSU Department of Meteorology",
     source="Test inversion using OI for a monthlong window",
+    external_variables="reduced_posterior_covariance reduced_prior_covariance",
 ))
 
 ############################################################
@@ -866,6 +869,9 @@ posterior_covariance_ds = xarray.Dataset(
                 reduced_influences.shape[3]
             ),
             dict(
+                standard_name=("surface_upward_mole_flux_of_carbon_dioxide "
+                               "standard_error"),
+                standard_error_multiplier=1.,
                 long_name="reduced_covariance_matrix_for_posterior_fluxes",
                 units=(FLUX_UNITS ** 2).format(),
             ),
@@ -887,6 +893,9 @@ posterior_covariance_ds = xarray.Dataset(
                 reduced_influences.shape[3]
             ),
             dict(
+                standard_name=("surface_upward_mole_flux_of_carbon_dioxide "
+                               "standard_error"),
+                standard_error_multiplier=1.,
                 long_name="reduced_covariance_matrix_for_prior_fluxes",
                 units=(FLUX_UNITS ** 2).format(),
             ),
