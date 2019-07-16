@@ -333,14 +333,6 @@ SMALL_COVARIANCE_DS = COVARIANCE_DS.sel(
     reduced_dim_y=slice(*LPDM_BOUNDS[:, 1]),
 )
 
-PSEUDO_OBS_DS = xarray.open_mfdataset(
-    "observation_realizations_for_06h_0?.nc4",
-    concat_dim="observation",
-    chunks=dict(observation=24 * 7),
-).set_index(
-    observation=("observation_time", "site")).transpose(
-    "realization", "observation")
-
 INFLUENCE_PATHS = ["/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
                    "ACT-America_trial5/2010/01/GROUP1",
                    "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
@@ -395,7 +387,7 @@ fig, axes = plt.subplots(len(PSEUDO_OBS_DS.site),
                          figsize=(8, 1.5 * len(PSEUDO_OBS_DS.site)))
 write_console_message("Made figure")
 fig.autofmt_xdate()
-pseudo_obs = PSEUDO_OBS_DS.pseudo_observations
+pseudo_obs = PSEUDO_OBS_DS
 for i, site in enumerate(set(PSEUDO_OBS_DS.site.values)):
     site_obs = pseudo_obs.sel(site=site)
     axes[i].plot(site_obs.observation_time.values, site_obs.values.T)
