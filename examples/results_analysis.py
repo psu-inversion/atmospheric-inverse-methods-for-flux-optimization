@@ -359,6 +359,27 @@ FULL_INFLUENCE_DS = xarray.open_mfdataset(
 print(datetime.datetime.now(), "Files", flush=True)
 sys.stderr.flush()
 
+write_console_message("Getting observational constraint")
+INFLUENCE_TEMPORAL_ONLY = FULL_INFLUENCE_DS.H.sum(
+    ["dim_x", "dim_y"]
+).mean("site")
+ALIGNED_TEMPORAL_INFLUENCES = xarray.concat(
+    [here_infl.set_index(
+         time_before_observation="flux_time"
+     ).rename(
+         dict(time_before_observation="flux_time"))
+     for here_infl in INFLUENCE_TEMPORAL_ONLY],
+    "observation_time"
+)
+OBSERVATIONAL_CONSTRAINT = ALIGNED_TEMPORAL_INFLUENCES.sum("observation_time")
+OBSERVATIONAL_CONSTRAINT.coords["flux_time"] = (
+    OBSERVATIONAL_CONSTRAINT.coords["flux_time"] +
+    (np.array("2010-07-01T00:00:00", dtype="M8[ns]") -
+     np.array("2010-01-01T00:00:00", dtype="M8[ns]"))
+)
+OBSERVATIONAL_CONSTRAINT.load()
+write_console_message("Got observational constraint")
+
 ############################################################
 # Plot standard deviations
 fig, axes = plt.subplots(
@@ -806,6 +827,67 @@ fig.savefig(
         inv_time_len=INV_TIME_LEN))
 plt.close(fig)
 write_console_message("Done increment plots")
+
+spatial_avg_differences.load()
+spatial_avg_increment.load()
+
+############################################################
+# Make big combined plot
+fig, axes = plt.subplots(3, 1, figsize=(6, 5), sharex=True)
+fig.subplots_adjust(hspace=.27, bottom=.12)
+ax = axes[0]
+spatial_avg_differences.sel(
+    type="prior_error", realization=0).plot.line(
+    "-", label="Prior", ax=ax)
+spatial_avg_differences.sel(
+    type="posterior_error", realization=0).plot.line(
+    "--", label="Posterior", ax=ax)
+
+ax.set_xlim(mpl.dates.datestr2num(
+    ["2010-06-18T00:00:00Z", "2010-08-01T00:00:00Z"]))
+ax.axhline(0, color="black", linewidth=.75)
+ax.set_ylim(-5, 5)
+
+ax.legend()
+ax.set_ylabel("Average flux error\n(\N{MICRO SIGN}mol/m\N{SUPERSCRIPT TWO}/s)")
+ax.set_xlabel("")
+ax.set_title("Spatial average flux error")
+
+ax = axes[1]
+spatial_avg_increment.isel(realization=0).plot.line('-', ax=ax)
+
+ax.axhline(0, color="black", linewidth=.75)
+ax.set_ylabel("Average increment\n(\N{MICRO SIGN}mol/m\N{SUPERSCRIPT TWO}/s)")
+ax.set_xlabel("")
+ax.set_title("Spatial average increment")
+
+ax = axes[2]
+OBSERVATIONAL_CONSTRAINT.plot.line("-", ax=ax)
+ax.axhline(0, color="black", linewidth=.75)
+ax.set_ylabel("Observational Constraint\n"
+              "(ppm/(\N{MICRO SIGN}mol/m\N{SUPERSCRIPT TWO}/s))")
+ax.set_xlabel("OSSE Flux Time")
+ax.set_title("Observational Constraint")
+ax.set_ylim(0, 5e7)
+
+for ax in axes:
+    ax.axvline(mpl.dates.datestr2num("2010-07-01T00:00:00Z"),
+               color="black", linewidth=.75)
+
+fig.suptitle("Average fluxes, increment, and constraint over whole domain")
+fig.savefig(
+    "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
+    "{noise_time_fun:s}{noise_time_len:02d}d_inv_{inv_fun:s}{inv_len:03d}km_"
+    "{inv_time_fun:s}{inv_time_len:02d}d_realization_spatial_"
+    "avg_combined_timeseries.pdf".format(
+        year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
+        noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
+plt.close(fig)
+write_console_message("Done combined timeseries plot")
+
 
 ############################################################
 # Calculate prior and posterior variances
