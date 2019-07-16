@@ -683,7 +683,8 @@ ax.set_xlim(mpl.dates.datestr2num(
 ax.axhline(0, color="black", linewidth=.75)
 
 plt.legend()
-ax.set_ylabel("Average flux error over whole domain\n(\N{MICRO SIGN}mol/m²/s)")
+ax.set_ylabel("Average flux error over whole domain\n"
+              "(\N{MICRO SIGN}mol/m\N{SUPERSCRIPT TWO}/s)")
 ax.set_xlabel("")
 plt.title("Spatial average flux error")
 
@@ -729,7 +730,8 @@ ax.set_xlim(mpl.dates.datestr2num(
 ax.axhline(0, color="black", linewidth=.75)
 
 plt.legend()
-ax.set_ylabel("Average flux error over West Virginia\n(\N{MICRO SIGN}mol/m²/s)")
+ax.set_ylabel("Average flux error over West Virginia\n"
+              "(\N{MICRO SIGN}mol/m\N{SUPERSCRIPT TWO}/s)")
 ax.set_xlabel("")
 plt.title("Spatial average flux error")
 
@@ -769,7 +771,8 @@ spatial_avg_increment.isel(realization=0).plot.line('-')
 #     ax.axvline(xval, color=color)
 
 ax.axhline(0, color="black", linewidth=.75)
-ax.set_ylabel("Average increment over whole domain\n(\N{MICRO SIGN}mol/m²/s)")
+ax.set_ylabel("Average increment over whole domain\n"
+              "(\N{MICRO SIGN}mol/m\N{SUPERSCRIPT TWO}/s)")
 ax.set_xlabel("")
 plt.title("Spatial average increment")
 
@@ -811,7 +814,8 @@ except ValueError:
 #     ax.axvline(xval, color=color)
 
 ax.axhline(0, color="black", linewidth=.75)
-ax.set_ylabel("Average increment over West Virginia\n(\N{MICRO SIGN}mol/m²/s)")
+ax.set_ylabel("Average increment over West Virginia\n"
+              "(\N{MICRO SIGN}mol/m\N{SUPERSCRIPT TWO}/s)")
 ax.set_xlabel("")
 plt.title("Spatial average increment")
 
