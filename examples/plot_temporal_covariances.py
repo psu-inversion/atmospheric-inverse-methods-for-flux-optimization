@@ -285,7 +285,7 @@ plt.ylabel("Days since start")
 plt.savefig("temporal_correlation_matrix_exp{day_corr:d}day_exp3hour.png"
             .format(day_corr=DAILY_FLUX_TIMESCALE))
 
-fig = plt.figure(figsize=(4, 3))
+fig = plt.figure(figsize=(5, 2.5))
 plt.plot(array.coords["time_in_days2"], array.isel(time1=0))
 plt.xlim(0, 30)
 plt.ylim(0, 1)
@@ -293,7 +293,7 @@ plt.ylabel("Correlation")
 plt.xlabel("Days since start")
 plt.suptitle("Correlations of each time with first")
 plt.tight_layout()
-plt.subplots_adjust(top=.95)
+plt.subplots_adjust(top=.9)
 fig.savefig("temporal_correlation_function_exp{day_corr:d}days_exp3hours.pdf"
             .format(day_corr=DAILY_FLUX_TIMESCALE))
 
