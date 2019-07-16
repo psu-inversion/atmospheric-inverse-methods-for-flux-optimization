@@ -95,7 +95,7 @@ POSTERIOR_PATH = (
     "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
     "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d"
     "_icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d"
-    "_output.nc4"
+    "_dense_output.nc4"
 ).format(year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
          noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
          noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
@@ -316,7 +316,7 @@ COVARIANCE_DS = xarray.open_dataset(
     "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
     "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d_"
     "icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d_"
-    "covariance_output.nc4".format(
+    "dense_covariance_output.nc4".format(
         year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
         noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
         noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
