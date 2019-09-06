@@ -39,7 +39,7 @@ than this are reset to zero.
 
 See Also
 --------
-inversion.correlations.NEAR_ZERO
+atmos_flux_inversion.correlations.NEAR_ZERO
 """
 OPTIMAL_ELEMENTS = 2 ** 16
 """Maximum size for the approximate square root of a LinearOperator.

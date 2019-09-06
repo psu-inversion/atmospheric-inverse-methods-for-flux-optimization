@@ -5,9 +5,9 @@ Also known as Kalman Matrix Inversion or batch inversion.
 import scipy.linalg
 from scipy.sparse.linalg import LinearOperator
 
-from inversion.util import method_common
-from inversion.linalg import (ProductLinearOperator, ARRAY_TYPES,
-                              solve, tolinearoperator)
+from atmos_flux_inversion.util import method_common
+from atmos_flux_inversion.linalg import (ProductLinearOperator, ARRAY_TYPES,
+                                         solve, tolinearoperator)
 
 
 @method_common

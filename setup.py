@@ -18,6 +18,6 @@ setup(
     version=release,
     author=authors,
     author_email="22566757+DWesl@users.noreply.github.com",
-    test_suite="inversion.tests",
+    test_suite="atmos_flux_inversion.tests",
     package_dir={"": "src"},
 )

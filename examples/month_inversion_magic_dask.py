@@ -29,13 +29,13 @@ sys.path.insert(0, os.path.join(
     THIS_DIR, "..", "src"))
 sys.path.append(THIS_DIR)
 
-import inversion.optimal_interpolation
-import inversion.variational
-import inversion.correlations
-import inversion.covariances
-from inversion.util import kronecker_product
-from inversion.linalg import asarray, kron
-from inversion.noise import gaussian_noise
+import atmos_flux_inversion.optimal_interpolation
+import atmos_flux_inversion.variational
+import atmos_flux_inversion.correlations
+import atmos_flux_inversion.covariances
+from atmos_flux_inversion.util import kronecker_product
+from atmos_flux_inversion.linalg import asarray, kron
+from atmos_flux_inversion.noise import gaussian_noise
 import cf_acdd
 
 INFLUENCE_PATHS = ["/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
@@ -214,6 +214,17 @@ def flush_output_streams():
     sys.stderr.flush()
 
 
+def write_progress_message(msg):
+    """Write the message to stdout with time.
+
+    Parameters
+    ----------
+    msg: str
+    """
+    flush_output_streams()
+    print(datetime.datetime.now(UTC).strftime("%c"), msg)
+
+
 UTC = dateutil.tz.tzutc()
 SECONDS_PER_HOUR = 3600
 
@@ -349,7 +360,7 @@ OBS_DATASET_5 = xarray.open_mfdataset(
 OBS_DATASET = xarray.concat([OBS_DATASET_4, OBS_DATASET_5],
                             dim="dim1")
 
-print(datetime.datetime.now(UTC).strftime("%c"), "Have obs, normalizing")
+write_progress_message("Have obs, normalizing")
 flush_output_streams()
 
 wrf_times = OBS_DATASET.indexes["forecast_reference_time"].round("S")
@@ -410,7 +421,7 @@ WRF_OBS_START = WRF_OBS_MATCHED.indexes["observation_time"][0]
 WRF_OBS_INTERVAL = (WRF_OBS_START -
                     WRF_OBS_MATCHED.indexes["observation_time"][1])
 
-print(datetime.datetime.now(UTC).strftime("%c"), "Getting solar times")
+write_progress_message("Getting solar times")
 ############################################################
 # Get time zone representing local solar time for each site
 LOCAL_TIME_ZONES = list(map(
@@ -436,7 +447,7 @@ obs_times = (INFLUENCE_FUNCTIONS.indexes["observation_time"][::-1])
 # Takes 6 min with everything in memory
 # Two minutes with big chunks?
 site_obs_index = []
-print(datetime.datetime.now(UTC).strftime("%c"), "Selecting observations")
+write_progress_message("Selecting observations")
 for i, site in enumerate(INFLUENCE_FUNCTIONS.indexes["site"]):
     if site in BAD_SITES:
         continue
@@ -493,13 +504,13 @@ aligned_prior_fluxes = aligned_prior_fluxes.transpose(
     "flux_time", "dim_y", "dim_x", "realization")
 aligned_influences = aligned_influences.transpose(
     "observation", "flux_time", "dim_y", "dim_x")
-print(datetime.datetime.now(UTC).strftime("%c"), "Rechunked to square")
+write_progress_message("Rechunked to square")
 flush_output_streams()
 aligned_influences = aligned_influences.fillna(0)
 aligned_true_fluxes.load()
 aligned_prior_fluxes.load()
 aligned_influences.load()
-print(datetime.datetime.now(UTC).strftime("%c"), "Loaded data")
+write_progress_message("Loaded data")
 flush_output_streams()
 
 posterior_var_atts = aligned_prior_fluxes.attrs.copy()
@@ -535,14 +546,14 @@ posterior_global_atts.update(dict(
 
 ############################################################
 # Define correlation constants and get covariances
-print(datetime.datetime.now(UTC).strftime("%c"), "Getting covariances")
+write_progress_message("Getting covariances")
 flush_output_streams()
 CORRELATION_LENGTH = 200
 GRID_RESOLUTION = 27
 spatial_correlations = (
-    inversion.correlations.HomogeneousIsotropicCorrelation.
+    atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.
     from_function(
-        inversion.correlations.ExponentialCorrelation(
+        atmos_flux_inversion.correlations.ExponentialCorrelation(
             CORRELATION_LENGTH / GRID_RESOLUTION),
         (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
          len(TRUE_FLUXES_MATCHED.coords["dim_x"])),
@@ -555,38 +566,40 @@ spatial_correlations = (
 # # reduced_spatial_correlations = (
 # #     spatial_correlation_remapper.dot(
 # #         spatial_correlations.dot(spatial_correlation_remapper)))
-import inversion.remapper
+import atmos_flux_inversion.remapper
 spatial_obs_op_remapper, spatial_correlation_remapper = (
-    inversion.remapper.get_remappers(
+    atmos_flux_inversion.remapper.get_remappers(
         (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
          len(TRUE_FLUXES_MATCHED.coords["dim_x"])),
         UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR))
 REDUCED_NY, REDUCED_NX = spatial_correlation_remapper.shape[:2]
 REDUCED_N_GRID_POINTS = REDUCED_NY * REDUCED_NX
-print(datetime.datetime.now(UTC).strftime("%c"), "Have spatial correlations")
+write_progress_message("Have spatial correlations")
 flush_output_streams()
 
 HOURLY_FLUX_TIMESCALE = 3
 INTERVALS_PER_DAY = HOURS_PER_DAY // FLUX_INTERVAL
 hour_correlations = (
-    inversion.correlations.HomogeneousIsotropicCorrelation.
+    atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.
     from_function(
-        inversion.correlations.ExponentialCorrelation(
+        atmos_flux_inversion.correlations.ExponentialCorrelation(
             HOURLY_FLUX_TIMESCALE / FLUX_INTERVAL),
         (INTERVALS_PER_DAY,),
         is_cyclic=True))
 hour_correlations_matrix = hour_correlations.dot(np.eye(
     hour_correlations.shape[0]))
-print(datetime.datetime.now(UTC).strftime("%c"), "Have hourly correlations")
+write_progress_message("Have hourly correlations")
 flush_output_streams()
 DAILY_FLUX_TIMESCALE = 21
 DAILY_FLUX_FUN = "exp"
 day_correlations = (
-    inversion.correlations.make_matrix(
-        inversion.correlations.ExponentialCorrelation(DAILY_FLUX_TIMESCALE),
+    atmos_flux_inversion.correlations.make_matrix(
+        atmos_flux_inversion.correlations.ExponentialCorrelation(
+            DAILY_FLUX_TIMESCALE
+        ),
         (len(aligned_prior_fluxes.indexes["flux_time"]) *
          FLUX_INTERVAL // HOURS_PER_DAY,)))
-print(datetime.datetime.now(UTC).strftime("%c"), "Have daily correlations")
+write_progress_message("Have daily correlations")
 flush_output_streams()
 temporal_correlations = kron(day_correlations,
                              hour_correlations_matrix)
@@ -606,9 +619,11 @@ temporal_correlation_ds = xarray.DataArray(
 reduced_temporal_correlation_ds = (
     temporal_correlation_ds
     .resample(flux_time=UNCERTAINTY_TEMPORAL_RESOLUTION).mean("flux_time")
-    .resample(flux_time_adjoint=UNCERTAINTY_TEMPORAL_RESOLUTION).mean("flux_time_adjoint")
+    .resample(flux_time_adjoint=UNCERTAINTY_TEMPORAL_RESOLUTION).mean(
+        "flux_time_adjoint"
+    )
 )
-print(datetime.datetime.now(UTC).strftime("%c"), "Have temporal correlations")
+write_progress_message("Have temporal correlations")
 print(reduced_temporal_correlation_ds.values)
 flush_output_streams()
 
@@ -616,7 +631,7 @@ full_correlations = kronecker_product(
     temporal_correlations,
     spatial_correlations)
 print("Full:", type(full_correlations))
-print(datetime.datetime.now(UTC).strftime("%c"), "Have combined correlations")
+write_progress_message("Have combined correlations")
 flush_output_streams()
 
 # I would like to add a fixed minimum at some point.
@@ -654,12 +669,15 @@ for flux_part in flux_std_pattern.data_vars.values():
 reduced_flux_stds = (
     FLUX_VARIANCE_VARYING_FRACTION *
     flux_std_pattern["E_TRA1"].data)
-print(datetime.datetime.now(UTC).strftime("%c"), "Have standard deviations")
+write_progress_message("Have standard deviations")
 flush_output_streams()
 
-spatial_covariance = inversion.covariances.CorrelationStandardDeviation(
-    spatial_correlations, reduced_flux_stds)
-print(datetime.datetime.now(UTC).strftime("%c"), "Have full spatial covariance")
+spatial_covariance = (
+    atmos_flux_inversion.covariances.CorrelationStandardDeviation(
+        spatial_correlations, reduced_flux_stds
+    )
+)
+write_progress_message("Have full spatial covariance")
 flush_output_streams()
 
 reduced_spatial_covariance = spatial_correlation_remapper.reshape(
@@ -671,10 +689,10 @@ reduced_spatial_covariance = spatial_correlation_remapper.reshape(
         ).T
     )
 )
-print(datetime.datetime.now(UTC).strftime("%c"), "Have reduced spatial covariance")
+write_progress_message("Have reduced spatial covariance")
 flush_output_streams()
 
-print(datetime.datetime.now(UTC).strftime("%c"), "Have spatial covariances")
+write_progress_message("Have spatial covariances")
 print(reduced_spatial_covariance)
 flush_output_streams()
 
@@ -695,23 +713,27 @@ reduced_influences = (
         "dim_x",
         pd.interval_range(
             0,
-            aligned_influences.indexes["dim_x"][-1] + UNCERTAINTY_FLUX_RESOLUTION,
+            (aligned_influences.indexes["dim_x"][-1] +
+             UNCERTAINTY_FLUX_RESOLUTION),
             freq=UNCERTAINTY_FLUX_RESOLUTION,
             closed="left")
         # np.arange(
         #     -1,
-        #     aligned_influences.indexes["dim_x"][-1] + UNCERTAINTY_FLUX_RESOLUTION,
+        #     (aligned_influences.indexes["dim_x"][-1] +
+        #      UNCERTAINTY_FLUX_RESOLUTION),
         #     UNCERTAINTY_FLUX_RESOLUTION),
     ).sum("dim_x")
     .groupby_bins(
         "dim_y",
         pd.interval_range(
             0,
-            aligned_influences.indexes["dim_y"][-1] + UNCERTAINTY_FLUX_RESOLUTION,
+            (aligned_influences.indexes["dim_y"][-1] +
+             UNCERTAINTY_FLUX_RESOLUTION),
             freq=UNCERTAINTY_FLUX_RESOLUTION, closed="left")
         # np.arange(
         #     -1,
-        #      aligned_influences.indexes["dim_y"][-1] + UNCERTAINTY_FLUX_RESOLUTION,
+        #      (aligned_influences.indexes["dim_y"][-1] +
+        #       UNCERTAINTY_FLUX_RESOLUTION),
         #      UNCERTAINTY_FLUX_RESOLUTION),
     ).sum("dim_y")
     .resample(flux_time=UNCERTAINTY_TEMPORAL_RESOLUTION).sum("flux_time")
@@ -729,14 +751,14 @@ reduced_prior_covariance = kron(
     reduced_temporal_correlation_ds.data,
     reduced_spatial_covariance)
 print("Covariance:", type(prior_covariance))
-print(datetime.datetime.now(UTC).strftime("%c"), "Have covariances")
+write_progress_message("Have covariances")
 print(reduced_prior_covariance)
 flush_output_streams()
 
 # I realize this isn't quite the intended use for OBS_CHUNK
 prior_fluxes = aligned_prior_fluxes.transpose(
     "flux_time", "dim_y", "dim_x", "realization")
-print(datetime.datetime.now(UTC).strftime("%c"), "Have prior noise")
+write_progress_message("Have prior noise")
 flush_output_streams()
 
 # TODO: use actual heights
@@ -755,7 +777,7 @@ This assumes similar deviations can be expected at each site.
 Representativeness error from Gerbig et al 2003 for 27 km is .2 ppm
 Ken says transport error is usually given as O(2-3ppm)
 """
-OBS_CORR_FUN = inversion.correlations.ExponentialCorrelation(3)
+OBS_CORR_FUN = atmos_flux_inversion.correlations.ExponentialCorrelation(3)
 """Temporal correlations in observation error.
 
 Mostly reflects transport error.  Given in units of obs_time.
@@ -787,14 +809,14 @@ used_observations = xarray.DataArray(
 used_observations.coords["realization"] = range(N_REALIZATIONS)
 used_observations.coords["realization"].attrs.update(dict(
     standard_name="realization"))
-print(datetime.datetime.now(UTC).strftime("%c"), "Have observation noise")
+write_progress_message("Have observation noise")
 flush_output_streams()
 
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Got covariance parts, getting posterior")
 flush_output_streams()
 posterior, reduced_posterior_covariances = (
-    inversion.optimal_interpolation.save_sum(
+    atmos_flux_inversion.optimal_interpolation.save_sum(
         aligned_prior_fluxes.values.reshape(
             N_GRID_POINTS * len(aligned_prior_fluxes.indexes["flux_time"]),
             N_REALIZATIONS),
@@ -847,7 +869,7 @@ posterior_ds.to_netcdf(
             icorr_len_time=DAILY_FLUX_TIMESCALE, icorr_fun_time=DAILY_FLUX_FUN,
             ncorr_fun_time=TIME_CORR_FUN, ncorr_len_time=TIME_CORR_LEN),
     encoding=encoding, engine=NC_ENGINE)
-print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior")
+write_progress_message("Wrote posterior")
 flush_output_streams()
 
 posterior_covariance_ds = xarray.Dataset(
@@ -859,7 +881,7 @@ posterior_covariance_ds = xarray.Dataset(
              "reduced_flux_time",
              "reduced_dim_y",
              "reduced_dim_x",
-            ),
+             ),
             reduced_posterior_covariances.reshape(
                 reduced_temporal_correlation_ds.shape[0],
                 reduced_influences.shape[2],
@@ -902,8 +924,12 @@ posterior_covariance_ds = xarray.Dataset(
         ),
     ),
     dict(
-        reduced_flux_time=reduced_temporal_correlation_ds.coords["flux_time"].values,
-        reduced_flux_time_adjoint=reduced_temporal_correlation_ds.coords["flux_time_adjoint"].values,
+        reduced_flux_time=(
+            reduced_temporal_correlation_ds.coords["flux_time"].values
+        ),
+        reduced_flux_time_adjoint=(
+            reduced_temporal_correlation_ds.coords["flux_time_adjoint"].values
+        ),
         wrf_proj=reduced_influences.coords["wrf_proj"]
     ),
     posterior_global_atts
@@ -974,5 +1000,5 @@ posterior_covariance_ds.to_netcdf(
             icorr_len_time=DAILY_FLUX_TIMESCALE, icorr_fun_time=DAILY_FLUX_FUN,
             ncorr_fun_time=TIME_CORR_FUN, ncorr_len_time=TIME_CORR_LEN),
     encoding=encoding, engine=NC_ENGINE)
-print(datetime.datetime.now(UTC).strftime("%c"), "Wrote posterior covariance")
+write_progress_message("Wrote posterior covariance")
 flush_output_streams()

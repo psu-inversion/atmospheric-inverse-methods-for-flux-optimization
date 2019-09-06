@@ -505,7 +505,7 @@ class ProductLinearOperator(DaskLinearOperator):
 
         See Also
         --------
-        inversion.util.linop_solve
+        atmos_flux_inversion.util.linop_solve
             Will likely be faster if there are multiple linear
             operators in the chain
         """

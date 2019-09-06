@@ -54,20 +54,20 @@ the temporal correlations in problems with our previous estimate are
 independent of the spatial location of those problems, and similarly
 the spatial correlations of the problems with the previous estimate
 with their neighbors are independent of the time those problems
-occured.  Both :class:`~inversion.linalg.DaskKroneckerProductOperator`
-and :class:`~inversion.correlations.SchmidtKroneckerProduct` are
+occured.  Both :class:`~atmos_flux_inversion.linalg.DaskKroneckerProductOperator`
+and :class:`~atmos_flux_inversion.correlations.SchmidtKroneckerProduct` are
 designed for this type of matrix.
 
 I tend to assume that the pointwise variances, which are related to
 how big we expect the problems in our previous estimate to be at any
 given point, are a function only of space, and are independent of
 time.  We can then use
-:class:`~inversion.covariances.CorrelationStandardDeviation` to
+:class:`~atmos_flux_inversion.covariances.CorrelationStandardDeviation` to
 represent the spatial part of the covariance, and are left with only
 the spatial and temporal correlations to completely specify the
 uncertainty estimate we need here.
 
-:class:`~inversion.linalg.DaskKroneckerProductOperator` requires an
+:class:`~atmos_flux_inversion.linalg.DaskKroneckerProductOperator` requires an
 explicit array for its first argument.  The `Climate and Forecast
 conventions <http://cfconventions.org>`_ suggest ordering the dimensions for
 a gridded flux estimate as time by y by x, which means this would be
@@ -84,38 +84,38 @@ again.
    hour_correlation_time = 3  # hours
    day_correlation_time = 14  # days
 
-   hour_correlation_function = inversion.correlations.ExponentialCorrelation(
+   hour_correlation_function = atmos_flux_inversion.correlations.ExponentialCorrelation(
        hour_correlation_time / flux_dt)
-   hour_correlations = inversion.correlations.make_matrix(
+   hour_correlations = atmos_flux_inversion.correlations.make_matrix(
        hour_correlation_function, 4)
 
-   day_correlation_function = inversion.correlations.ExponentialCorrelation(
+   day_correlation_function = atmos_flux_inversion.correlations.ExponentialCorrelation(
        day_correlation_time)
-   day_correlations = inversion.correlations.make_matrix(
+   day_correlations = atmos_flux_inversion.correlations.make_matrix(
        day_correlation_function, n_flux_days)
 
-   temporal_correlations = inversion.util.kron(
+   temporal_correlations = atmos_flux_inversion.util.kron(
        day_correlations, hour_correlations)
 
 We are left with the spatial correlations.  I have seen no evidence
 that the spatial correlations are related to Plant Functional Type, so
 I use correlations that are a function only of distance.
-:class:`~inversion.correlations.HomogeneousIsotropicCorrelation.from_function`
+:class:`~atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.from_function`
 makes this somewhat easier, and is designed to work with instances of
-:class:`~inversion.correlations.DistanceCorrelationFunction`.
+:class:`~atmos_flux_inversion.correlations.DistanceCorrelationFunction`.
 
 .. code-block:: python
 
    correlation_length = 200  # km
-   spatial_correlation_function = inversion.correlations.ExponentialCorrelation(
+   spatial_correlation_function = atmos_flux_inversion.correlations.ExponentialCorrelation(
        correlation_length / dx)
-   spatial_correlations = inversion.correlations.HomogeneousIsotropicCorrelation.from_function(
+   spatial_correlations = atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.from_function(
        spatial_correlation_function, previous_surface_flux_estimate.shape[-2:],
        False)
-   spatial_covariance = inversion.covariances.CorrelationStandardDeviation(
+   spatial_covariance = atmos_flux_inversion.covariances.CorrelationStandardDeviation(
        spatial_correlations, standard_deviations)
 
-   full_covariance = inversion.linalg.DaskKroneckerProductOperator(
+   full_covariance = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
        temporal_correlations, spatial_covariance)
 
 The measurements tend to be somewhat less regular than the previous
@@ -130,7 +130,7 @@ correlated in time.
    observation_correlation_time = 3  # hours
    observation_standard_deviation = 2  # ppm
    observation_correlation_function = (
-       inversion.correlations.ExponentialCorrelation(
+       atmos_flux_inversion.correlations.ExponentialCorrelation(
        observation_correlation_time /
        observation_dt)
    )
@@ -147,14 +147,14 @@ correlated in time.
    observation_covariance *= observation_standard_deviation ** 2
 
 At this point, we are nearly ready to pass everything to
-:func:`~inversion.optimal_interpolation.save_sum`; however, just
+:func:`~atmos_flux_inversion.optimal_interpolation.save_sum`; however, just
 passing everything now would result in that function calculating a
 full-resolution covariance matrix for its estimate.  If we want many
 fluxes, this is too big to fit in memory and will crash the system.
-Fortunately, :func:`~inversion.remapper.get_remappers` will give us
+Fortunately, :func:`~atmos_flux_inversion.remapper.get_remappers` will give us
 matrices to aggregate our flux uncertainty and influence functions to
 a coarser resolution.  If we pass these to
-:func:`~inversion.optimal_interpolation.save_sum`, it will calculate
+:func:`~atmos_flux_inversion.optimal_interpolation.save_sum`, it will calculate
 the uncertainty for its estimate at this reduced resolution, as:
 
 .. math::
@@ -173,7 +173,7 @@ taking advantage of calculations already done for the flux estimate
    uncertainty_spatial_resolution = dx * resolution_reduction_factor
    uncertainty_temporal_resolution = "7D"
    influence_function_remapper, covariance_remapper = (
-       inversion.remapper.get_remappers(
+       atmos_flux_inversion.remapper.get_remappers(
            previous_surface_flux_estimate.shape[-2:],
 	   resolution_reduction_factor
        )
@@ -233,12 +233,12 @@ taking advantage of calculations already done for the flux estimate
        .resample(flux_time_adjoint=uncertainty_temporal_resolution)
        .mean("flux_time_adjoint")
    )
-   reduced_covariance = inversion.linalg.DaskKroneckerProductOperator(
+   reduced_covariance = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
        reduced_temporal_correlation_ds.values,
        reduced_spatial_covariance,
    )
 
-The results from :func:`~inversion.optimal_interpolation.save_sum` are
+The results from :func:`~atmos_flux_inversion.optimal_interpolation.save_sum` are
 the combined flux estimate, which uses both the previous estimate and
 the atmospheric measurements, and the uncertainty of that estimate
 represented as a covariance matrix, at reduced resolution if
@@ -247,7 +247,7 @@ applicable.
 .. code-block:: python
 
    combined_flux_estimate, reduced_uncertainty = (
-       inversion.optimal_interpolation.save_sum(
+       atmos_flux_inversion.optimal_interpolation.save_sum(
            previous_surface_flux_estimate.stack(
 	       state_space=(
 	           "flux_time",
@@ -276,7 +276,7 @@ applicable.
 If there are multiple previous estimates for which the same
 uncertainty estimate applies, including those estimates as the columns
 of the first argument to
-:func:`~inversion.optimal_interpolation.save_sum` will produce a
+:func:`~atmos_flux_inversion.optimal_interpolation.save_sum` will produce a
 collection of combined estimates, with the columns again corresponding
 to the different previous estimates.  This has only been tested with
 corresponding columns in the observations; a simple way to obtain
