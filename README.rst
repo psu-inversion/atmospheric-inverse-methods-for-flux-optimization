@@ -1,6 +1,9 @@
 Atmospheric Inverse Methods for Flux Optimization
 =================================================
 
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3338692.svg
+   :target: https://doi.org/10.5281/zenodo.3338692
+
 Python package containing functions for the application of inverse
 methods to the optimization of surface fluxes to be consistent with
 atmospheric observations.
