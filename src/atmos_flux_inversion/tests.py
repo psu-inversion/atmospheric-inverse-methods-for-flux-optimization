@@ -1023,7 +1023,7 @@ class TestCorrelations(unittest2.TestCase):
 
         self.assertIsInstance(
             combined_op,
-            atmos_flux_inversion.correlations.SchmidtKroneckerProduct
+            atmos_flux_inversion.linalg.SchmidtKroneckerProduct
         )
 
     def test_sqrt_direct(self):
@@ -1193,7 +1193,7 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
         """Test that the implementation works with identity matrices."""
         test_sizes = (4, 5)
         SchmidtKroneckerProduct = (
-            atmos_flux_inversion.correlations.SchmidtKroneckerProduct)
+            atmos_flux_inversion.linalg.SchmidtKroneckerProduct)
 
         # I want to be sure either being smaller works.
         # Even versus odd also causes problems occasionally
@@ -1216,7 +1216,7 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
         mat2 = ((1, .5, .25), (.5, 1, .5), (.25, .5, 1))
 
         np_tst.assert_allclose(
-            atmos_flux_inversion.correlations.SchmidtKroneckerProduct(
+            atmos_flux_inversion.linalg.SchmidtKroneckerProduct(
                 mat1, mat2).dot(np.eye(9)),
             np.tile(mat2, (3, 3)))
 
@@ -1226,7 +1226,7 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
         mat2 = np.ones((3, 3))
 
         np_tst.assert_allclose(
-            atmos_flux_inversion.correlations.SchmidtKroneckerProduct(
+            atmos_flux_inversion.linalg.SchmidtKroneckerProduct(
                 mat1, mat2).dot(np.eye(9)),
             np.repeat(np.repeat(mat1, 3, 0), 3, 1))
 
@@ -1235,7 +1235,7 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
         sigmax = np.array(((0, 1), (1, 0)))
         sigmaz = np.array(((1, 0), (0, -1)))
 
-        operator = atmos_flux_inversion.correlations.SchmidtKroneckerProduct(
+        operator = atmos_flux_inversion.linalg.SchmidtKroneckerProduct(
             sigmax, sigmaz)
         matrix = scipy.linalg.kron(sigmax, sigmaz)
 
@@ -1249,7 +1249,7 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
     def test_drop_small(self):
         """Test that the implementation properly drops small components."""
         SchmidtKroneckerProduct = (
-            atmos_flux_inversion.correlations.SchmidtKroneckerProduct)
+            atmos_flux_inversion.linalg.SchmidtKroneckerProduct)
 
         # I want to be sure either being smaller works.
         # Even versus odd also causes problems occasionally
@@ -1270,7 +1270,7 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
         mat1 = np.eye(2)
         mat2 = np.eye(3)
 
-        op = atmos_flux_inversion.correlations.SchmidtKroneckerProduct(
+        op = atmos_flux_inversion.linalg.SchmidtKroneckerProduct(
             mat1, mat2
         )
 
@@ -1576,7 +1576,7 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
 
         self.assertIsInstance(
             combined_op,
-            atmos_flux_inversion.correlations.SchmidtKroneckerProduct
+            atmos_flux_inversion.linalg.SchmidtKroneckerProduct
         )
         self.assertSequenceEqual(combined_op.shape,
                                  tuple(np.multiply(op1.shape, mat2.shape)))

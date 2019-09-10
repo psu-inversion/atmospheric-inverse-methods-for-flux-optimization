@@ -3,6 +3,7 @@
 I figured it would be more useful to have it separate
 """
 import warnings
+from itertools import islice
 
 import numpy as np
 from numpy import newaxis
@@ -47,6 +48,8 @@ OPTIMAL_ELEMENTS = 2 ** 16
 Bounding the eigenvector matrix by this should keep everything in
 memory.
 """
+ROUNDOFF = 1e-10
+"""Determines how many terms should be kept from SVD."""
 
 
 # TODO: Get preconditioner working
@@ -481,6 +484,95 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
             result += mat[row_start:(row_start + block_size)].T.dot(
                 operator2.dot(chunk))
         return result
+
+
+class SchmidtKroneckerProduct(DaskLinearOperator):
+    """Kronecker product of two operators using Schmidt decomposition.
+
+    This works best when the input vectors are nearly Kronecker
+    products as well, dominated by some underlying structure with
+    small variations.  One example would be average net flux + trend
+    in net flux + average daily cycle + daily cycle timing variations
+    across domain + localized events + ...
+
+    Multiplications are roughly the same time complexity class as with
+    an explicit Kronecker Product, perhaps a factor of two or three
+    slower in the best case, but the memory requirements are
+    :math:`N_1^2 + N_2^2` rather than :math:`(N_1 * N_2)^2`, plus this
+    approach works with sparse matrices and other LinearOperators
+    which can further reduce the memory requirements and may decrease
+    the time complexity.
+
+    Forming the Kronecker product from the component vectors currently
+    requires the whole thing to be in memory, so a new implementation
+    of kron would be needed to take advantage of this. There may be
+    some difficulties with the dask cache getting flushed and causing
+    repeat work in this case. I don't know how to get around this.
+    """
+
+    def __init__(self, operator1, operator2):
+        """Set up the instance.
+
+        Parameters
+        ----------
+        operator1, operator2: scipy.sparse.linalg.LinearOperator
+            The operators input to the Kronecker product.
+        """
+        operator1 = tolinearoperator(operator1)
+        operator2 = tolinearoperator(operator2)
+        total_shape = np.multiply(operator1.shape, operator2.shape)
+
+        super(SchmidtKroneckerProduct, self).__init__(
+            shape=tuple(total_shape),
+            dtype=np.result_type(operator1.dtype, operator2.dtype))
+
+        self._inshape1 = operator1.shape[1]
+        self._inshape2 = operator2.shape[1]
+        self._operator1 = operator1
+        self._operator2 = operator2
+
+    def _transpose(self):
+        """Return the transpose of the operator."""
+        return type(self)(self._operator1.T, self._operator2.T)
+
+    def _matvec(self, vector):
+        """Evaluate the indicated matrix-vector product.
+
+        Parameters
+        ----------
+        vector: array_like[N]
+
+        Returns
+        -------
+        array_like[M]
+        """
+        result_shape = self.shape[0]
+
+        lambdas, vecs1, vecs2 = schmidt_decomposition(
+            asarray(vector), self._inshape1, self._inshape2)
+
+        # The vector should fit in memory, and I need specific
+        # elements of lambdas
+        lambdas = np.asarray(lambdas)
+        vecs1 = np.asarray(vecs1)
+        vecs2 = np.asarray(vecs2)
+
+        small_lambdas = np.nonzero(lambdas < lambdas[0] * ROUNDOFF)[0]
+        if small_lambdas.any():
+            last_lambda = int(small_lambdas[0])
+        else:
+            last_lambda = len(lambdas)
+
+        result = zeros(shape=result_shape,
+                       dtype=np.result_type(self.dtype, vector.dtype))
+        for lambd, vec1, vec2 in islice(zip(lambdas, vecs1, vecs2),
+                                        0, last_lambda):
+            result += kron(
+                asarray(lambd * self._operator1.dot(vec1).reshape(-1, 1)),
+                asarray(self._operator2.dot(vec2).reshape(-1, 1))
+            ).reshape(result_shape)
+
+        return asarray(result)
 
 
 class SelfAdjointLinearOperator(DaskLinearOperator):
