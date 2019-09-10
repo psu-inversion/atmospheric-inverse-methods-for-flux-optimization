@@ -45,7 +45,7 @@ Other utilities
 Module contents
 ---------------
 
-.. automodule:: inversion
+.. automodule:: atmos_flux_inversion
     :members:
     :undoc-members:
     :show-inheritance:

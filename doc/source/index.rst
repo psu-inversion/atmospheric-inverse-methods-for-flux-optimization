@@ -35,7 +35,7 @@ API Reference
 .. toctree::
    :maxdepth: 4
 
-   inversion
+   atmos_flux_inversion
 
 
 Indices and tables
