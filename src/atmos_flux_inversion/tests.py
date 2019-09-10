@@ -3026,5 +3026,89 @@ class TestRemapper(unittest2.TestCase):
              [43, 46, 48]])
 
 
+class TestObservationCovariance(unittest2.TestCase):
+    """Test the generation of observation covariances."""
+
+    def test_simple_product(self):
+        """Test correlations for simple combination of sites and times."""
+        sites = ["LEF", "AMT", "WBI", "SCT"]
+        times = pd.to_datetime(
+            ["2015-06-01T16:00:00",
+             "2015-06-01T17:00:00",
+             "2015-06-01T18:00:00",
+             "2015-06-01T19:00:00",
+             "2015-06-02T16:00:00",
+             "2015-06-02T17:00:00",
+             "2015-06-02T18:00:00",
+             "2015-06-02T19:00:00"]
+        )
+        n_times = len(times)
+        n_obs = len(sites) * n_times
+        series_index = pd.MultiIndex.from_product(
+            [sites, times],
+            names=["site", "time"]
+        )
+        series = pd.Series(
+            data=np.ones(n_obs, dtype=float),
+            index=series_index,
+            name="observation_variances",
+        )
+        corr_fun = (
+            atmos_flux_inversion.correlations.ExponentialCorrelation(3)
+        )
+        corr_block = corr_fun(
+            abs(times[:, np.newaxis] - times[np.newaxis, :]) /
+            atmos_flux_inversion.correlations.OBSERVATION_INTERVAL
+        )
+        self.assertAlmostEqual(corr_block[0, 3], 1. / np.e)
+
+        corr_matrix = (
+            atmos_flux_inversion.covariances.observation_covariance_matrix(
+                series, corr_fun
+            )
+        )
+        self.assertEqual(corr_matrix.shape, (n_obs, n_obs))
+
+        for i, site1 in enumerate(sites):
+            for j, site2 in enumerate(sites):
+                block = corr_matrix[
+                    i * n_times:(i + 1) * n_times,
+                    j * n_times:(j + 1) * n_times
+                ]
+                if site1 != site2:
+                    np_tst.assert_allclose(block, 0)
+                else:
+                    np_tst.assert_allclose(block, corr_block)
+
+    def test_simple_variances(self):
+        """Test that the variances are faithfully reproduced."""
+        sites = ["AMT", "WKT", "WBI", "LEF", "SCT", "BAO"]
+        times = pd.to_datetime([
+            "2015-06-01T16:00:00",
+            "2015-06-01T16:00:00",
+            "2015-06-01T18:00:00",
+            "2015-06-01T18:00:00",
+            "2015-06-02T16:00:00",
+            "2015-06-02T16:00:00",
+        ])
+        obs_index = pd.MultiIndex.from_tuples(list(zip(sites, times)),
+                                              names=["site", "time"])
+        n_obs = len(sites)
+        series = pd.Series(np.arange(n_obs, dtype=float) + 1,
+                           index=obs_index,
+                           name="observation_error_variances")
+        corr_fun = (
+            atmos_flux_inversion.correlations.ExponentialCorrelation(3)
+        )
+        corr_matrix = (
+            atmos_flux_inversion.covariances.observation_covariance_matrix(
+                series, corr_fun
+            )
+        )
+
+        self.assertEqual(corr_matrix.shape, (n_obs, n_obs))
+        np_tst.assert_allclose(corr_matrix, np.diag(series.values))
+
+
 if __name__ == "__main__":
     unittest2.main()

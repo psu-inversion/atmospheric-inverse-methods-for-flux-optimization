@@ -300,4 +300,5 @@ intersphinx_mapping = {
     'pyfftw': ("https://pyfftw.readthedocs.io/en/latest", None),
     'statsmodels': ("http://www.statsmodels.org/stable", None),
     'pylops': ("https://pylops.readthedocs.io/en/latest/", None),
+    'pandas': ("https://pandas.pydata.org/pandas-docs/stable/", None),
 }
