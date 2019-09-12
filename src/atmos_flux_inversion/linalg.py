@@ -221,6 +221,9 @@ def schmidt_decomposition(vector, dim1, dim2):
 
     big_lambdas = nonzero(lambdas)[0]
 
+    if not big_lambdas.any():
+        return lambdas[:1], vecs1.T[:1, :], vecs2[:1, :]
+
     return lambdas[big_lambdas], vecs1.T[big_lambdas, :], vecs2[big_lambdas, :]
 
 

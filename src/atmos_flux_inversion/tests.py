@@ -1676,6 +1676,8 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
         vecs1 = np.asarray(vecs1)
         vecs2 = np.asarray(vecs2)
 
+        self.assertEqual(len(lambdas), 2)
+
         # This will not recover the original decomposition
         np_tst.assert_allclose(lambdas, (sqrt2o2, sqrt2o2))
         self.assertAlmostEqual(np.prod(lambdas), .5)
@@ -1722,6 +1724,14 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
         lambdas, uvecs, vvecs = (
             atmos_flux_inversion.linalg.schmidt_decomposition(vec, 4, 5))
         self.assertNotIn(0, lambdas)
+
+    def test_zeros(self):
+        """Test that function gives sensible output on zero input."""
+        vec = np.zeros(20)
+        lambdas, uvecs, vvecs = (
+            atmos_flux_inversion.linalg.schmidt_decomposition(vec, 4, 5)
+        )
+        self.assertSequenceEqual(lambdas, [0])
 
 
 class TestUtilIsOdd(unittest2.TestCase):
