@@ -10,9 +10,9 @@ from scipy.sparse.linalg import LinearOperator
 # or false from the objective, rather than a yet-to-be-realized dask
 # array.
 
-from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
-from inversion.linalg import tolinearoperator, ProductLinearOperator
-from inversion.util import method_common
+from atmos_flux_inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
+from atmos_flux_inversion.linalg import tolinearoperator, ProductLinearOperator
+from atmos_flux_inversion.util import method_common
 
 
 @method_common
@@ -25,7 +25,7 @@ def simple(background, background_covariance,
 
     Assumes all arrays fit in memory with room to spare.
     This uses the algorithm from
-    :func:`inversion.optimal_interpolation.simple`, except
+    :func:`atmos_flux_inversion.optimal_interpolation.simple`, except
     the matrix inversion is done with an iterative solver.
 
     Assumes everything follows a multivariate normal distribution
@@ -218,7 +218,7 @@ def fold_common(background, background_covariance,
 
     Assumes all arrays fit in memory with room to spare.  Evaluates
     each sub-expression only once. Uses the algorithm from
-    :func:`inversion.optimal_interpolation.fold_common` with an
+    :func:`atmos_flux_inversion.optimal_interpolation.fold_common` with an
     iterative solver for the matrix inversion.
 
     Assumes everything follows a multivariate normal distribution

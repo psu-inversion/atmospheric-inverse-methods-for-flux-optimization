@@ -29,12 +29,12 @@ sys.path.insert(0, os.path.join(
     THIS_DIR, "..", "src"))
 sys.path.append(THIS_DIR)
 
-import inversion.correlations
-import inversion.covariances
-from inversion.linalg import asarray, kron
-from inversion.util import kronecker_product
-from inversion.covariances import CorrelationStandardDeviation
-from inversion.noise import gaussian_noise
+import atmos_flux_inversion.correlations
+import atmos_flux_inversion.covariances
+from atmos_flux_inversion.linalg import kron
+from atmos_flux_inversion.util import kronecker_product
+from atmos_flux_inversion.covariances import CorrelationStandardDeviation
+from atmos_flux_inversion.noise import gaussian_noise
 import cf_acdd
 
 TRUE_FLUXES_DIR = "/mc1s2/s4/dfw5129/data/Marthas_2010_wrfouts"
@@ -87,7 +87,9 @@ the inversion code.
 """
 CORRELATION_LENGTH = 84
 GRID_RESOLUTION = FLUX_RESOLUTION
-SPATIAL_CORRELATION_FUNCTION = inversion.correlations.ExponentialCorrelation
+SPATIAL_CORRELATION_FUNCTION = (
+    atmos_flux_inversion.correlations.ExponentialCorrelation
+)
 SP_CORR_STR = "exp"
 import argparse
 parser = argparse.ArgumentParser(description="Generate some noise")
@@ -103,13 +105,21 @@ N_REALIZATIONS = args.realizations
 SP_CORR_STR = args.corr_fun
 
 if SP_CORR_STR == "exp":
-    SPATIAL_CORRELATION_FUNCTION = inversion.correlations.ExponentialCorrelation
+    SPATIAL_CORRELATION_FUNCTION = (
+        atmos_flux_inversion.correlations.ExponentialCorrelation
+    )
 elif SP_CORR_STR == "balg":
-    SPATIAL_CORRELATION_FUNCTION = inversion.correlations.BalgovindCorrelation
+    SPATIAL_CORRELATION_FUNCTION = (
+        atmos_flux_inversion.correlations.BalgovindCorrelation
+    )
 elif SP_CORR_STR == "matn":
-    SPATIAL_CORRELATION_FUNCTION = inversion.correlations.MaternCorrelation
+    SPATIAL_CORRELATION_FUNCTION = (
+        atmos_flux_inversion.correlations.MaternCorrelation
+    )
 elif SP_CORR_STR == "gaus":
-    SPATIAL_CORRELATION_FUNCTION = inversion.correlations.GaussianCorrelation
+    SPATIAL_CORRELATION_FUNCTION = (
+        atmos_flux_inversion.correlations.GaussianCorrelation
+    )
 
 with netCDF4.Dataset(FLUX_FILES[0]) as ds:
     WRF_PROJECTION = wrf.util.getproj(**wrf.util.get_proj_params(ds))
@@ -122,6 +132,13 @@ del ds
 
 N_GRID_POINTS = NY * NX
 
+
+def flush_output_streams():
+    """Flush stdout and stderr."""
+    sys.stdout.flush()
+    sys.stderr.flush()
+
+
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have constants, getting priors")
 ############################################################
@@ -131,7 +148,7 @@ FLUX_DATASET = xarray.open_mfdataset(
     concat_dim="XTIME",
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have fluxes, normalizing")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 
 # Many of the times are off by about four milliseconds.
 # This difference is irrelevant here.
@@ -172,14 +189,14 @@ for flux_part, flux_orig in zip(TRUE_FLUXES_MATCHED.data_vars.values(),
 ############################################################
 # Define correlation constants and get covariances
 print(datetime.datetime.now(UTC).strftime("%c"), "Getting covariances")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 
 DAILY_FLUX_TIMESCALE = 21
 HOURLY_FLUX_TIMESCALE = 3
 INTERVALS_PER_DAY = HOURS_PER_DAY // FLUX_INTERVAL
 
 spatial_correlations = (
-    inversion.correlations.HomogeneousIsotropicCorrelation.
+    atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.
     # First guess at correlation length on the order of previous studies
     from_function(
         SPATIAL_CORRELATION_FUNCTION(
@@ -187,35 +204,39 @@ spatial_correlations = (
         (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
          len(TRUE_FLUXES_MATCHED.coords["dim_x"])),
         is_cyclic=False,
-))
+    )
+)
 print(datetime.datetime.now(UTC).strftime("%c"), "Have spatial correlations")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 # Look into prescribing negative correlations between day and night
 hour_correlations = (
-    inversion.correlations.HomogeneousIsotropicCorrelation.
+    atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.
     from_function(
-        inversion.correlations.ExponentialCorrelation(
+        atmos_flux_inversion.correlations.ExponentialCorrelation(
             HOURLY_FLUX_TIMESCALE / FLUX_INTERVAL),
         (INTERVALS_PER_DAY,),
         is_cyclic=True
-))
+    )
+)
 hour_correlations_matrix = hour_correlations.dot(np.eye(
     hour_correlations.shape[0]))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have hourly correlations")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 
 day_correlations = (
-    inversion.correlations.make_matrix(
-        inversion.correlations.ExponentialCorrelation(DAILY_FLUX_TIMESCALE),
+    atmos_flux_inversion.correlations.make_matrix(
+        atmos_flux_inversion.correlations.ExponentialCorrelation(
+            DAILY_FLUX_TIMESCALE
+        ),
         (len(TRUE_FLUXES_MATCHED.coords["flux_time"]) *
-        FLUX_INTERVAL // HOURS_PER_DAY,)))
+         FLUX_INTERVAL // HOURS_PER_DAY,)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have daily correlations")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 temporal_correlations = kron(day_correlations,
                              hour_correlations_matrix)
 print("Temporal:", type(temporal_correlations))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have temporal correlations")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 
 # I would like to add a fixed minimum at some point.
 # full stds would then be sqrt(fixed^2 + varying^2)
@@ -224,7 +245,7 @@ sys.stdout.flush(); sys.stderr.flush()
 # x5 for MsTMIP representing monthly fluxes, where I'm working with sub-daily
 FLUX_VARIANCE_VARYING_FRACTION = 2. * 5.
 flux_std_pattern = xarray.open_dataset(
-    "../data_files/2010_MsTMIP_flux_std.nc4", chunks=dict(Time=8*21)).get(
+    "../data_files/2010_MsTMIP_flux_std.nc4", chunks=dict(Time=8 * 21)).get(
     ["E_TRA{:d}".format(i + 1) for i in range(1)])  # .isel(emissions_zdim=0)
 
 
@@ -255,7 +276,7 @@ for flux_name, flux_vals in TRUE_FLUXES_MATCHED.data_vars.items():
     )
     print("Covariance:", type(prior_covariance))
     print(datetime.datetime.now(UTC).strftime("%c"), "Have covariances")
-    sys.stdout.flush(); sys.stderr.flush()
+    flush_output_streams()
 
     prior_var_atts = flux_vals.attrs.copy()
     prior_var_atts.update(dict(
@@ -271,7 +292,7 @@ for flux_name, flux_vals in TRUE_FLUXES_MATCHED.data_vars.items():
             (N_REALIZATIONS,) + flux_vals.shape))
     print(datetime.datetime.now(UTC).strftime("%c"),
           "Have noisy fluxes; adding to dataset")
-    sys.stdout.flush(); sys.stderr.flush()
+    flush_output_streams()
     osse_prior_dataset[flux_name + "_noisy"] = xarray.DataArray(
         # Hopefully this will let dask finish its job
         data=prior_flux_vals.persist(),
@@ -293,7 +314,7 @@ osse_prior_dataset.coords["realization"].attrs.update(dict(
 osse_prior_dataset.attrs.update(cf_acdd.global_attributes_dict())
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have all prior noise, chunking")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 
 encoding = {name: {"_FillValue": -1e38}
             for name in osse_prior_dataset.data_vars}
@@ -304,7 +325,7 @@ encoding.update({name: {"_FillValue": None}
 #          realization=N_REALIZATIONS))
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Noisy fluxes chunked, saving")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()
 osse_prior_dataset.to_netcdf(
     "../data_files/2010-07_osse_bio_priors_{interval:d}h_{res:d}km"
     "_noise_{sp_fun:s}{length:g}km_exp{day_time:d}d_exp{hour_time:d}h.nc"
@@ -314,4 +335,4 @@ osse_prior_dataset.to_netcdf(
         day_time=DAILY_FLUX_TIMESCALE, hour_time=HOURLY_FLUX_TIMESCALE),
     encoding=encoding)
 print(datetime.datetime.now(UTC).strftime("%c"), "Noisy fluxes saved, done")
-sys.stdout.flush(); sys.stderr.flush()
+flush_output_streams()

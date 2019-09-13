@@ -1,6 +1,7 @@
 """Functions implementing 3D-Var.
 
-Signatures follow the functions in :mod:`inversion.optimal_interpolation`
+Signatures follow the functions in
+ :mod:`atmos_flux_inversion.optimal_interpolation`
 
 Note
 ----
@@ -17,8 +18,8 @@ import scipy.linalg
 from numpy import asarray
 from numpy import zeros_like
 
-from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
-from inversion.util import solve, method_common
+from atmos_flux_inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
+from atmos_flux_inversion.util import solve, method_common
 
 
 @method_common
