@@ -3058,7 +3058,7 @@ class TestObservationCovariance(unittest2.TestCase):
         )
         corr_block = corr_fun(
             abs(times[:, np.newaxis] - times[np.newaxis, :]) /
-            atmos_flux_inversion.correlations.OBSERVATION_INTERVAL
+            atmos_flux_inversion.covariances.OBSERVATION_INTERVAL
         )
         self.assertAlmostEqual(corr_block[0, 3], 1. / np.e)
 
