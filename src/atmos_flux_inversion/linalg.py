@@ -214,6 +214,9 @@ def schmidt_decomposition(vector, dim1, dim2):
     min_dim = min(dim1, dim2)
 
     if min_dim > 6:
+        # svds crashes if we ask for svd output
+        # Ask for at least six singular values
+        # For very large inputs, ask for at least 1/20 of smaller dimension
         n_singular_vectors = min(max(6, int(0.05 * min_dim)), min_dim - 1)
         vecs1, lambdas, vecs2 = svds(state_matrix, n_singular_vectors)
     else:
