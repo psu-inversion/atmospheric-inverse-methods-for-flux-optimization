@@ -42,7 +42,7 @@ def kronecker_product(operator1, operator2):
 
     Delegates to ``operator1.kron()`` if possible,
     :func:`.linalg.kron` if both are :const:`ARRAY_TYPES`, or
-    :class:`~atmos_flux_inversion.correlations.SchmidtKroneckerProduct`
+    :class:`~atmos_flux_inversion.linalg.SchmidtKroneckerProduct`
     otherwise.
 
     Parameters
@@ -63,7 +63,7 @@ def kronecker_product(operator1, operator2):
              operator1.size * operator2.size < MAX_EXPLICIT_ARRAY)):
             return kron(operator1, operator2)
         return DaskKroneckerProductOperator(operator1, operator2)
-    from atmos_flux_inversion.correlations import SchmidtKroneckerProduct
+    from atmos_flux_inversion.linalg import SchmidtKroneckerProduct
     return SchmidtKroneckerProduct(operator1, operator2)
 
 

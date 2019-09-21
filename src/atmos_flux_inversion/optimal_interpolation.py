@@ -369,8 +369,10 @@ def save_sum(background, background_covariance,
         if isinstance(observation_operator, ARRAY_TYPES):
             B_HT = background_covariance.dot(observation_operator.T)
         else:
-            B_HT = ProductLinearOperator(background_covariance,
-                                         observation_operator.T)
+            B_HT = ProductLinearOperator(
+                tolinearoperator(background_covariance),
+                observation_operator.T
+            )
         decrease = B_HT.dot(solve(
             covariance_sum,
             B_HT.T))
