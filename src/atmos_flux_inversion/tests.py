@@ -12,6 +12,7 @@ import os.path
 import atexit
 import pickle
 import math
+import sys
 try:
     from functools import reduce
 except ImportError:
@@ -125,6 +126,24 @@ def getname(method):
 
     return "{group:s} ({variant:s})".format(group=group,
                                             variant=variant)
+
+
+def expectFailureIf(condition):
+    """Mark a test as XFAIL based on condition.
+
+    Wrapper to make :func:`unittest2.expectedFailure` conditional.
+
+    Parameters
+    ----------
+    condition: bool
+
+    Returns
+    -------
+    decorator: func
+    """
+    if condition:
+        return unittest2.expectedFailure
+    return lambda fun: fun
 
 
 class TestInversionSimple(unittest2.TestCase):
@@ -2752,10 +2771,13 @@ class TestWrapperMetadata(unittest2.TestCase):
         self.assertIn("date_metadata_modified", metadata)
         self.assertIn("creator_name", metadata)
 
+    @expectFailureIf(sys.platform == "cygwin")
     def test_modules_list(self):
         """Test the list of installed modules.
 
         Will fail if neither pip nor conda is installed.
+
+        May also fail if subprocess is using fork on cygwin.
         """
         metadata = atmos_flux_inversion.wrapper.global_attributes_dict()
 
