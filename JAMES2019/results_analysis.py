@@ -971,8 +971,8 @@ with open(
     print("Coverage for 90% confidence interval, prior:",
           file=out_file)
     number_in_prior_ci = (
-        np.abs(mean_error_df["prior_error"] / 
-               np.sqrt(prior_theoretical_variance)) 
+        np.abs(mean_error_df["prior_error"] /
+               np.sqrt(prior_theoretical_variance))
         < ZSTAR_90
     ).sum()
     print(number_in_prior_ci / mean_error_df.shape[0], file=out_file)
@@ -986,25 +986,48 @@ with open(
     print(number_in_posterior_ci / mean_error_df.shape[0], file=out_file)
     print("P-values are one of:", file=out_file)
     dist = scipy.stats.binom(mean_error_df.shape[0], .9)
-    print(dist.cdf([number_in_prior_ci, number_in_posterior_ci]) * 2, file=out_file)
-    print(dist.sf([number_in_prior_ci, number_in_posterior_ci]) * 2, file=out_file)
+    print(
+        dist.cdf([number_in_prior_ci, number_in_posterior_ci]) * 2,
+        file=out_file
+    )
+    print(
+        dist.sf([number_in_prior_ci, number_in_posterior_ci]) * 2,
+        file=out_file
+    )
 
     print("K-S tests for distributions:", file=out_file)
-    print("Prior:    ", scipy.stats.kstest(
+    print(
+        "Prior:    ",
+        scipy.stats.kstest(
             mean_error_df["prior_error"],
-            scipy.stats.norm(scale=np.sqrt(prior_theoretical_variance)).cdf),
-          file=out_file)
-    print("Posterior:", scipy.stats.kstest(
+            scipy.stats.norm(
+                scale=np.sqrt(prior_theoretical_variance)).cdf
+        ),
+        file=out_file
+    )
+    print(
+        "Posterior:",
+        scipy.stats.kstest(
             mean_error_df["posterior_error"],
-            scipy.stats.norm(scale=np.sqrt(posterior_theoretical_variance)).cdf),
-          file=out_file)
+            scipy.stats.norm(
+                scale=np.sqrt(posterior_theoretical_variance)).cdf
+        ),
+        file=out_file
+    )
 
-    print("\N{GREEK SMALL LETTER CHI}\N{SUPERSCRIPT TWO} test for variance", file=out_file)
+    print("\N{GREEK SMALL LETTER CHI}\N{SUPERSCRIPT TWO} test for variance",
+          file=out_file)
     degrees_freedom = ldesc.loc["count", :] - 1
-    statistic = degrees_freedom * ldesc.loc["std", :] ** 2 / np.asarray([prior_theoretical_variance, posterior_theoretical_variance])
+    statistic = (
+        degrees_freedom * ldesc.loc["std", :] ** 2 /
+        np.asarray([prior_theoretical_variance,
+                    posterior_theoretical_variance])
+    )
     print("Statistics are\n", statistic, file=out_file)
-    print("One-sided test for sample variance larger than theoretical variance:\n", 
-          scipy.stats.chi2.sf(statistic, df=degrees_freedom), file=out_file)
+    print("One-sided test for sample variance "
+          "larger than theoretical variance:\n",
+          scipy.stats.chi2.sf(statistic, df=degrees_freedom),
+          file=out_file)
 
     print("\nPearson product-moment correlations\n",
           mean_error_df.corr(),
