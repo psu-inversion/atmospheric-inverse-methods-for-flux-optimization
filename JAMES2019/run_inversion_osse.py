@@ -480,8 +480,14 @@ aligned_influences = xarray.concat(
     [here_infl.set_index(
         time_before_observation="flux_time").rename(
             dict(time_before_observation="flux_time"))
-     for here_infl in INFLUENCE_FUNCTIONS.sel_points(
-         site=site_index, observation_time=pd_obs_index)],
+     for here_infl in INFLUENCE_FUNCTIONS.sel(
+         site=xarray.DataArray(site_index, name="observation",
+                               dims=dict(observation=site_obs_pd_index)),
+         observation_time=xarray.DataArray(
+             pd_obs_index, name="observation",
+             dims=dict(observation=site_obs_pd_index)
+         )
+    )],
     "observation").set_index(
     observation=("observation_time", "site"))
 print(datetime.datetime.now(UTC).strftime("%c"),
@@ -712,7 +718,7 @@ reduced_influences = (
     .groupby_bins(
         "dim_x",
         pd.interval_range(
-            0,
+            0.,
             (aligned_influences.indexes["dim_x"][-1] +
              UNCERTAINTY_FLUX_RESOLUTION),
             freq=UNCERTAINTY_FLUX_RESOLUTION,
@@ -762,11 +768,17 @@ write_progress_message("Have prior noise")
 flush_output_streams()
 
 # TODO: use actual heights
-here_obs = WRF_OBS_SITE[TRACER_NAME].sel_points(
-    observation_time=pd_obs_index, site=site_index
+here_obs = WRF_OBS_SITE[TRACER_NAME].sel(
+    observation_time=xarray.DataArray(
+        pd_obs_index,
+        name="observation",
+        dims=dict(observation=site_obs_pd_index)),
+    site=xarray.DataArray(
+        site_index,
+        name="observation",
+        dims=dict(observation=site_obs_pd_index)),
 ).rename(dict(projection_x_coordinate="tower_x",
-              projection_y_coordinate="tower_y",
-              points="observation"))
+              projection_y_coordinate="tower_y"))
 print(here_obs)
 
 OBSERVATION_STD = 2.
