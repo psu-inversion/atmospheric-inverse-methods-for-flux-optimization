@@ -223,6 +223,7 @@ def write_progress_message(msg):
     """
     flush_output_streams()
     print(datetime.datetime.now(UTC).strftime("%c"), msg)
+    flush_output_streams()
 
 
 UTC = dateutil.tz.tzutc()
@@ -361,7 +362,6 @@ OBS_DATASET = xarray.concat([OBS_DATASET_4, OBS_DATASET_5],
                             dim="dim1")
 
 write_progress_message("Have obs, normalizing")
-flush_output_streams()
 
 wrf_times = OBS_DATASET.indexes["forecast_reference_time"].round("S")
 OBS_DATASET.coords["forecast_reference_time"] = wrf_times
@@ -511,13 +511,11 @@ aligned_prior_fluxes = aligned_prior_fluxes.transpose(
 aligned_influences = aligned_influences.transpose(
     "observation", "flux_time", "dim_y", "dim_x")
 write_progress_message("Rechunked to square")
-flush_output_streams()
 aligned_influences = aligned_influences.fillna(0)
 aligned_true_fluxes.load()
 aligned_prior_fluxes.load()
 aligned_influences.load()
 write_progress_message("Loaded data")
-flush_output_streams()
 
 posterior_var_atts = aligned_prior_fluxes.attrs.copy()
 posterior_var_atts.update(dict(
@@ -553,7 +551,6 @@ posterior_global_atts.update(dict(
 ############################################################
 # Define correlation constants and get covariances
 write_progress_message("Getting covariances")
-flush_output_streams()
 CORRELATION_LENGTH = 200
 GRID_RESOLUTION = 27
 spatial_correlations = (
@@ -581,7 +578,6 @@ spatial_obs_op_remapper, spatial_correlation_remapper = (
 REDUCED_NY, REDUCED_NX = spatial_correlation_remapper.shape[:2]
 REDUCED_N_GRID_POINTS = REDUCED_NY * REDUCED_NX
 write_progress_message("Have spatial correlations")
-flush_output_streams()
 
 HOURLY_FLUX_TIMESCALE = 3
 INTERVALS_PER_DAY = HOURS_PER_DAY // FLUX_INTERVAL
@@ -595,7 +591,6 @@ hour_correlations = (
 hour_correlations_matrix = hour_correlations.dot(np.eye(
     hour_correlations.shape[0]))
 write_progress_message("Have hourly correlations")
-flush_output_streams()
 DAILY_FLUX_TIMESCALE = 21
 DAILY_FLUX_FUN = "exp"
 day_correlations = (
@@ -606,7 +601,6 @@ day_correlations = (
         (len(aligned_prior_fluxes.indexes["flux_time"]) *
          FLUX_INTERVAL // HOURS_PER_DAY,)))
 write_progress_message("Have daily correlations")
-flush_output_streams()
 temporal_correlations = kron(day_correlations,
                              hour_correlations_matrix)
 print("Temporal:", type(temporal_correlations))
@@ -638,7 +632,6 @@ full_correlations = kronecker_product(
     spatial_correlations)
 print("Full:", type(full_correlations))
 write_progress_message("Have combined correlations")
-flush_output_streams()
 
 # I would like to add a fixed minimum at some point.
 # full stds would then be sqrt(fixed^2 + varying^2)
@@ -676,7 +669,6 @@ reduced_flux_stds = (
     FLUX_VARIANCE_VARYING_FRACTION *
     flux_std_pattern["E_TRA1"].data)
 write_progress_message("Have standard deviations")
-flush_output_streams()
 
 spatial_covariance = (
     atmos_flux_inversion.covariances.CorrelationStandardDeviation(
@@ -684,7 +676,6 @@ spatial_covariance = (
     )
 )
 write_progress_message("Have full spatial covariance")
-flush_output_streams()
 
 reduced_spatial_covariance = spatial_correlation_remapper.reshape(
     REDUCED_N_GRID_POINTS, N_GRID_POINTS
@@ -696,7 +687,6 @@ reduced_spatial_covariance = spatial_correlation_remapper.reshape(
     )
 )
 write_progress_message("Have reduced spatial covariance")
-flush_output_streams()
 
 write_progress_message("Have spatial covariances")
 print(reduced_spatial_covariance)
@@ -765,7 +755,6 @@ flush_output_streams()
 prior_fluxes = aligned_prior_fluxes.transpose(
     "flux_time", "dim_y", "dim_x", "realization")
 write_progress_message("Have prior noise")
-flush_output_streams()
 
 # TODO: use actual heights
 here_obs = WRF_OBS_SITE[TRACER_NAME].sel(
@@ -825,7 +814,6 @@ used_observations.coords["realization"] = range(N_REALIZATIONS)
 used_observations.coords["realization"].attrs.update(dict(
     standard_name="realization"))
 write_progress_message("Have observation noise")
-flush_output_streams()
 
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Got covariance parts, getting posterior")
@@ -885,7 +873,6 @@ posterior_ds.to_netcdf(
             ncorr_fun_time=TIME_CORR_FUN, ncorr_len_time=TIME_CORR_LEN),
     encoding=encoding, engine=NC_ENGINE)
 write_progress_message("Wrote posterior")
-flush_output_streams()
 
 posterior_covariance_ds = xarray.Dataset(
     dict(
@@ -1016,4 +1003,3 @@ posterior_covariance_ds.to_netcdf(
             ncorr_fun_time=TIME_CORR_FUN, ncorr_len_time=TIME_CORR_LEN),
     encoding=encoding, engine=NC_ENGINE)
 write_progress_message("Wrote posterior covariance")
-flush_output_streams()
