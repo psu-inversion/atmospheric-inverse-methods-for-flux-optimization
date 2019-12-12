@@ -746,6 +746,7 @@ flush_output_streams()
 prior_covariance = kronecker_product(
     temporal_correlations,
     spatial_covariance)
+# Yay separability!
 reduced_prior_covariance = kron(
     reduced_temporal_correlation_ds.data,
     reduced_spatial_covariance)
@@ -874,7 +875,7 @@ posterior_ds.to_netcdf(
             ncorr_len=CORR_LEN, icorr_len=CORRELATION_LENGTH, icorr_fun="exp",
             icorr_len_time=DAILY_FLUX_TIMESCALE, icorr_fun_time=DAILY_FLUX_FUN,
             ncorr_fun_time=TIME_CORR_FUN, ncorr_len_time=TIME_CORR_LEN),
-    encoding=encoding, engine=NC_ENGINE)
+    encoding=encoding, engine=NC_ENGINE, mode="w")
 write_progress_message("Wrote posterior")
 
 posterior_covariance_ds = xarray.Dataset(
@@ -1004,5 +1005,5 @@ posterior_covariance_ds.to_netcdf(
             ncorr_len=CORR_LEN, icorr_len=CORRELATION_LENGTH, icorr_fun="exp",
             icorr_len_time=DAILY_FLUX_TIMESCALE, icorr_fun_time=DAILY_FLUX_FUN,
             ncorr_fun_time=TIME_CORR_FUN, ncorr_len_time=TIME_CORR_LEN),
-    encoding=encoding, engine=NC_ENGINE)
+    encoding=encoding, engine=NC_ENGINE, mode="w")
 write_progress_message("Wrote posterior covariance")

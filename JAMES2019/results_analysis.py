@@ -340,6 +340,7 @@ POSTERIOR_DS.coords["time"] = POSTERIOR_DS.indexes["time"].round("S")
 for var in POSTERIOR_DS.data_vars.values():
     var *= 1e6
     var.attrs["units"] = "\N{MICRO SIGN}" + var.attrs["units"]
+del var
 
 NOISE_STD_DS.coords["south_north"] = (
     POSTERIOR_DS.coords["projection_y_coordinate"].data
