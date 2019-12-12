@@ -298,7 +298,7 @@ plt.xlim(0, 30)
 plt.ylim(0, 1)
 plt.ylabel("Correlation")
 plt.xlabel("Days since start")
-plt.suptitle("Correlations of each time with first")
+plt.suptitle("Temporal correlation function")
 plt.tight_layout()
 plt.subplots_adjust(top=.9)
 fig.savefig("temporal_correlation_function_exp{day_corr:d}days_exp3hours.pdf"

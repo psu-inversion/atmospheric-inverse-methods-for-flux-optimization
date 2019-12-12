@@ -54,12 +54,15 @@ def write_console_message(msg):
     print(datetime.datetime.now(), msg, flush=True)
 
 
-def long_description(df):
+def long_description(df, ci_width=0.95):
     """Print longer description of df.
 
     Parameters
     ----------
     df: pd.DataFrame
+    ci_width: float
+         Width of confidence intervals.
+         Must between 0 and 1.
 
     Returns
     -------
@@ -67,11 +70,12 @@ def long_description(df):
     """
     df_stats = df.describe()
     df_stats_loc = df_stats.loc
+    # Robust measures of scale
     df_stats_loc["IQR", :] = df_stats_loc["75%", :] - df_stats_loc["25%", :]
     df_stats_loc["mean abs. dev.", :] = df.mad()
-
     deviation_from_median = df - df_stats_loc["50%", :]
     df_stats_loc["med. abs. dev.", :] = deviation_from_median.abs().median()
+    # Higher-order moments
     df_stats_loc["Fisher skewness", :] = df.skew()
     df_stats_loc["Y-K skewness", :] = (
         (df_stats_loc["75%", :] + df_stats_loc["25%", :] -
@@ -79,6 +83,43 @@ def long_description(df):
         (df_stats_loc["75%", :] - df_stats_loc["25%", :])
     )
     df_stats_loc["Fisher kurtosis", :] = df.kurt()
+    # Confidence intervals
+    for col_name in df:
+        # I'm already dropping NAs for the rest of these.
+        mean, var, std = scipy.stats.bayes_mvs(
+            df[col_name].dropna(),
+            alpha=ci_width
+        )
+        # Record mean
+        df_stats_loc["Mean point est", col_name] = mean[0]
+        df_stats_loc[
+            "Mean {width:2d}%CI low".format(width=round(ci_width * 100)),
+            col_name
+        ] = mean[1][0]
+        df_stats_loc[
+            "Mean {width:2d}%CI high".format(width=round(ci_width * 100)),
+            col_name
+        ] = mean[1][1]
+        # Record var
+        df_stats_loc["Var. point est", col_name] = var[0]
+        df_stats_loc[
+            "Var. {width:2d}%CI low".format(width=round(ci_width * 100)),
+            col_name
+        ] = var[1][0]
+        df_stats_loc[
+            "Var. {width:2d}%CI high".format(width=round(ci_width * 100)),
+            col_name
+        ] = var[1][1]
+        # Record Std Dev
+        df_stats_loc["std point est", col_name] = std[0]
+        df_stats_loc[
+            "std {width:2d}%CI low".format(width=round(ci_width * 100)),
+            col_name
+        ] = std[1][0]
+        df_stats_loc[
+            "std {width:2d}%CI high".format(width=round(ci_width * 100)),
+            col_name
+        ] = std[1][1]
     return df_stats
 
 
@@ -362,7 +403,7 @@ FULL_INFLUENCE_DS = xarray.open_mfdataset(
 print(datetime.datetime.now(), "Files", flush=True)
 sys.stderr.flush()
 
-write_console_message("Getting observational constraint")
+write_console_message("Getting influence")
 INFLUENCE_TEMPORAL_ONLY = FULL_INFLUENCE_DS.H.sum(
     ["dim_x", "dim_y"]
 ).mean("site")
@@ -381,7 +422,7 @@ OBSERVATIONAL_CONSTRAINT.coords["flux_time"] = (
      np.array("2010-01-01T00:00:00", dtype="M8[ns]"))
 )
 OBSERVATIONAL_CONSTRAINT.load()
-write_console_message("Got observational constraint")
+write_console_message("Got influence of fluxes on observations")
 
 ############################################################
 # Plot standard deviations
@@ -413,8 +454,10 @@ write_console_message("Made figure")
 fig.autofmt_xdate()
 pseudo_obs = PSEUDO_OBS_DS
 for i, site in enumerate(set(PSEUDO_OBS_DS.site.values)):
-    site_obs = pseudo_obs.sel(site=site)
-    axes[i].plot(site_obs.observation_time.values, site_obs.values.T)
+    site_obs = pseudo_obs.sel(site=site).transpose(
+        "observation_time", "realization"
+    )
+    axes[i].plot(site_obs.observation_time.values, site_obs.values)
     axes[i].text(0.01, 0.98, site, transform=axes[i].transAxes,
                  horizontalalignment="left", verticalalignment="top")
 
@@ -871,10 +914,10 @@ ax.set_title("Spatial average increment")
 ax = axes[2]
 OBSERVATIONAL_CONSTRAINT.plot.line("-", ax=ax)
 ax.axhline(0, color="black", linewidth=.75)
-ax.set_ylabel("Observational Constraint\n"
+ax.set_ylabel("Influence Of Fluxes On Observations\n"
               "(ppm/(\N{MICRO SIGN}mol/m\N{SUPERSCRIPT TWO}/s))")
 ax.set_xlabel("OSSE Flux Time")
-ax.set_title("Observational Constraint")
+ax.set_title("Influence Of Fluxes On Observations")
 ax.set_ylim(0, 5e7)
 
 for ax in axes:
@@ -964,7 +1007,8 @@ with open(
         inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
         inv_time_len=INV_TIME_LEN), "w") as out_file:
 
-    print("Theoretical standard deviations", file=out_file)
+    print("Theoretical/analytic/deterministic standard deviations",
+          file=out_file)
     print(np.sqrt([prior_theoretical_variance,
                    posterior_theoretical_variance]),
           file=out_file)
