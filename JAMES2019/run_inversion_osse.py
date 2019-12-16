@@ -60,7 +60,7 @@ Must divide twenty-four.
 """
 FLUX_RESOLUTION = 27
 """Resolution of fluxes and influence functions in kilometers."""
-UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR = 9
+UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR = 12
 """How much coarser uncertainty is than mean estimate in the x direction.
 
 If we compute the uncertainty at full resolution, the resulting file
@@ -73,7 +73,7 @@ report uncertainties within current computing constraints.
 UNCERTAINTY_FLUX_RESOLUTION = (UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR *
                                FLUX_RESOLUTION * 1e3)
 """Resolution of posterior uncertainties in meters."""
-UNCERTAINTY_TEMPORAL_RESOLUTION = "1D"
+UNCERTAINTY_TEMPORAL_RESOLUTION = "2D"
 """The resolution at which the uncertainty is calculated and saved.
 
 Higher resolution means the uncertainties will be more accurate.
