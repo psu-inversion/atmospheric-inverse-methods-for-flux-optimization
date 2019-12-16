@@ -1,3 +1,8 @@
+"""Plot the temporal correlations given configuration.
+
+Produces plots of temporal correlations given configuration from
+run_inversion_osse.py
+"""
 from __future__ import print_function, division, unicode_literals
 
 import itertools

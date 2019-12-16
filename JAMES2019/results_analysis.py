@@ -3,7 +3,7 @@
 """Plot results from inversion.
 
 Only a single run.  Currently set up for plots from
-month_inversion_magic_dask
+run_inversion_osse
 """
 from __future__ import print_function, division
 import datetime
@@ -225,9 +225,12 @@ sys.stdout.flush()
 
 PRIOR_CUBES = iris.load(PRIOR_PATH)
 PRIOR_DS = xarray.open_dataset(
-    PRIOR_PATH, chunks=dict(realization=1, flux_time=8*7)).set_coords(
-        "lambert_conformal_conic")  # .rename(
-    # dict(south_north="dim_y", west_east="dim_x"))
+    PRIOR_PATH, chunks=dict(realization=1,
+                            flux_time=8 * 7)
+).set_coords(
+    "lambert_conformal_conic"
+)  # .rename(
+#     dict(south_north="dim_y", west_east="dim_x"))
 
 PRIOR_CUBES.sort(key=lambda cube: cube.name())
 PRIOR_CUBES.sort(key=lambda cube: len(cube.name()))
@@ -327,7 +330,7 @@ COVARIANCE_DS = xarray.open_dataset(
                 reduced_dim_x_adjoint=3),
 )
 SMALL_COVARIANCE_DS = COVARIANCE_DS.sel(
-    reduced_dim_x_adjoint=slice(*LPDM_BOUNDS[:,0]),
+    reduced_dim_x_adjoint=slice(*LPDM_BOUNDS[:, 0]),
     reduced_dim_y_adjoint=slice(*LPDM_BOUNDS[:, 1]),
     reduced_dim_x=slice(*LPDM_BOUNDS[:, 0]),
     reduced_dim_y=slice(*LPDM_BOUNDS[:, 1]),
@@ -365,9 +368,9 @@ INFLUENCE_TEMPORAL_ONLY = FULL_INFLUENCE_DS.H.sum(
 ).mean("site")
 ALIGNED_TEMPORAL_INFLUENCES = xarray.concat(
     [here_infl.set_index(
-         time_before_observation="flux_time"
-     ).rename(
-         dict(time_before_observation="flux_time"))
+        time_before_observation="flux_time"
+    ).rename(
+        dict(time_before_observation="flux_time"))
      for here_infl in INFLUENCE_TEMPORAL_ONLY],
     "observation_time"
 )
@@ -927,7 +930,8 @@ error_range = da.asarray(
 fig, ax = plt.subplots(1, 1)
 mean_error_df.plot.hist(ax=ax, alpha=.5, xlim=(-1.8, 1.8))
 ax.set_ylabel("Count")
-ax.set_xlabel("Error in mean estimate (\N{MICRO SIGN}mol/m\N{SUPERSCRIPT TWO}/s)")
+ax.set_xlabel("Error in mean estimate "
+              "(\N{MICRO SIGN}mol/m\N{SUPERSCRIPT TWO}/s)")
 ax.legend(["Prior means", "Posterior means"])
 mean_error_df["prior_error"].plot.box(
     ax=ax, vert=False, positions=(31,), color="blue", widths=1.5)
@@ -961,7 +965,8 @@ with open(
         inv_time_len=INV_TIME_LEN), "w") as out_file:
 
     print("Theoretical standard deviations", file=out_file)
-    print(np.sqrt([prior_theoretical_variance, posterior_theoretical_variance]),
+    print(np.sqrt([prior_theoretical_variance,
+                   posterior_theoretical_variance]),
           file=out_file)
 
     print("Description of errors", file=out_file)
@@ -1052,10 +1057,10 @@ posterior_mean_flux_density = (
 prior_flux_densities = (
     np.exp(
         -0.5 *
-         (sample_fluxes[:, np.newaxis] -
-          mean_error_df["prior_error"].values[np.newaxis, :]) ** 2 /
-         prior_theoretical_variance
-     ) /
+        (sample_fluxes[:, np.newaxis] -
+         mean_error_df["prior_error"].values[np.newaxis, :]) ** 2 /
+        prior_theoretical_variance
+    ) /
     np.sqrt(2 * np.pi * prior_theoretical_variance)
 )
 prior_flux_density_estimate = prior_flux_densities.mean(axis=1)
@@ -1121,7 +1126,8 @@ ax.boxplot(mean_error_df["prior_error"], vert=False, positions=(1.64,),
 color_orange = dict(color="tab:orange", marker=None)
 ax.boxplot(mean_error_df["posterior_error"], vert=False, positions=(1.88,),
            widths=.19, manage_xticks=False, showmeans=True,
-           boxprops=color_orange, whiskerprops=color_orange, capprops=color_orange,
+           boxprops=color_orange, whiskerprops=color_orange,
+           capprops=color_orange,
            flierprops=dict(color="tab:orange", marker="o"),
            meanprops=dict(alpha=.7), medianprops=color_orange)
 
@@ -1155,7 +1161,8 @@ small_mean_error_df.plot.kde(
 )
 
 sns.rugplot(small_mean_error_df["prior_error"], axis=ax, color="b")
-sns.rugplot(small_mean_error_df["posterior_error"], axis=ax, color="tab:orange")
+sns.rugplot(small_mean_error_df["posterior_error"], axis=ax,
+            color="tab:orange")
 
 sample_fluxes = np.linspace(-20, 20, N_FLUXES)
 prior_flux_density = (
@@ -1169,7 +1176,8 @@ posterior_flux_density = (
 )
 ax.plot(sample_fluxes, posterior_flux_density, "m--")
 
-ax.legend(["Prior Means", "Posterior Means", "PDF for Prior Means", "PDF for Posterior Means"])
+ax.legend(["Prior Means", "Posterior Means", "PDF for Prior Means",
+           "PDF for Posterior Means"])
 ax.set_ylabel("Density")
 
 fig.savefig(
@@ -1186,7 +1194,8 @@ plt.close(fig)
 fig, ax = plt.subplots(1, 1)
 small_mean_error_df.plot.hist(ax=ax, alpha=.5, xlim=(-30, 30))
 ax.set_ylabel("Count")
-ax.set_xlabel("Error in mean estimate (\N{MICRO SIGN}mol/m\N{SUPERSCRIPT TWO}/s)")
+ax.set_xlabel("Error in mean estimate "
+              "(\N{MICRO SIGN}mol/m\N{SUPERSCRIPT TWO}/s)")
 ax.legend(["Prior means", "Posterior means"])
 fig.savefig(
     "{year:04d}-{month:02d}_noise_{noise_fun:s}{noise_len:03d}km_"
@@ -1300,9 +1309,9 @@ plt.close(fig)
 fig, ax = plt.subplots(1, 1, figsize=(4, 3))
 mean_error_df.plot("prior_error", "posterior_error", style='.',
                    ax=ax, legend=False)
-ax.set_xlabel("Prior error (\N{MICRO SIGN}mol/m$^2$/s)");
-ax.set_ylabel("Posterior error (\N{MICRO SIGN}mol/m$^2$/s)");
-ax.set_xlim(-2, 2);
+ax.set_xlabel("Prior error (\N{MICRO SIGN}mol/m$^2$/s)")
+ax.set_ylabel("Posterior error (\N{MICRO SIGN}mol/m$^2$/s)")
+ax.set_xlim(-2, 2)
 ax.set_ylim(-1, 1)
 
 fig.tight_layout()
@@ -1312,8 +1321,9 @@ fig.savefig(
     "{inv_time_fun:s}{inv_time_len:02d}d_flux_error_scatter.pdf".format(
         year=YEAR, month=MONTH, noise_fun=NOISE_FUNCTION,
         noise_len=NOISE_LENGTH, noise_time_fun=NOISE_TIME_FUN,
-        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,inv_len=INV_LENGTH,
-        inv_time_fun=INV_TIME_FUN, inv_time_len=INV_TIME_LEN))
+        noise_time_len=NOISE_TIME_LEN, inv_fun=INV_FUNCTION,
+        inv_len=INV_LENGTH, inv_time_fun=INV_TIME_FUN,
+        inv_time_len=INV_TIME_LEN))
 plt.close(fig)
 
 write_console_message("Done all figures")
