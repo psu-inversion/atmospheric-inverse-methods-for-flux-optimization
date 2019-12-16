@@ -1,7 +1,7 @@
 # Base requirements for package
 six
-numpy >=1.13 ; python_version >=3.5
-numpy >=1.13,<1.17 ; python_version <=3.0
+numpy >=1.13 ; python_version >= '3.5'
+numpy >=1.13,<1.17 ; python_version == '2.7.*'
 scipy
 pyfftw
 
