@@ -553,7 +553,7 @@ posterior_global_atts.update(dict(
 # Define correlation constants and get covariances
 # Constants for inversion
 write_progress_message("Getting covariances")
-CORRELATION_LENGTH = 1000
+CORRELATION_LENGTH = 200
 GRID_RESOLUTION = 27
 spatial_correlations = (
     atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.
@@ -593,7 +593,7 @@ hour_correlations = (
 hour_correlations_matrix = hour_correlations.dot(np.eye(
     hour_correlations.shape[0]))
 write_progress_message("Have hourly correlations")
-DAILY_FLUX_TIMESCALE = 7
+DAILY_FLUX_TIMESCALE = 21
 DAILY_FLUX_FUN = "exp"
 day_correlations = (
     atmos_flux_inversion.correlations.make_matrix(
@@ -642,7 +642,7 @@ write_progress_message("Have combined correlations")
 # x5 since MsTMIP spread only represents monthly values and this uses sub-daily
 # x10 matches model-model for Raczka for 200km/21d
 # x3 matches model-model for 1000km/7d
-FLUX_VARIANCE_VARYING_FRACTION = 4.
+FLUX_VARIANCE_VARYING_FRACTION = 10.
 flux_std_pattern = xarray.open_dataset(
     "../data_files/2010_MsTMIP_flux_std.nc4",
     engine=NC_ENGINE
