@@ -915,7 +915,7 @@ ax.set_title("Spatial average increment")
 ax = axes[2]
 OBSERVATIONAL_CONSTRAINT.plot.line("-", ax=ax)
 ax.axhline(0, color="black", linewidth=.75)
-ax.set_ylabel("Influence Of Fluxes On Observations\n"
+ax.set_ylabel("Influence\n"
               "(ppm/(\N{MICRO SIGN}mol/m\N{SUPERSCRIPT TWO}/s))")
 ax.set_xlabel("OSSE Flux Time")
 ax.set_title("Influence Of Fluxes On Observations")
@@ -950,6 +950,10 @@ write_console_message("Done prior, starting posterior")
 posterior_theoretical_variance = (
     COVARIANCE_DS["reduced_posterior_covariance"].mean() * 1e12
 ).values
+write_console_message("Done posterior w/ agg, starting w/o")
+posterior_theoretical_variance_no_agg = (
+    COVARIANCE_DS["reduced_posterior_covariance_no_aggregation"].mean() * 1e12
+).values
 write_console_message("Done calculating large variances, starting small")
 prior_small_theoretical_variance = (
     SMALL_COVARIANCE_DS["reduced_prior_covariance"].mean() * 1e12
@@ -957,6 +961,12 @@ prior_small_theoretical_variance = (
 write_console_message("Done prior, starting posterior")
 posterior_small_theoretical_variance = (
     SMALL_COVARIANCE_DS["reduced_posterior_covariance"].mean() * 1e12
+).values
+write_console_message("Done posterior w/ agg, starting w/o")
+posterior_small_theoretical_variance_no_agg = (
+    SMALL_COVARIANCE_DS[
+        "reduced_posterior_covariance_no_aggregation"
+    ].mean() * 1e12
 ).values
 write_console_message("Done calculating variances")
 
@@ -1011,7 +1021,8 @@ with open(
     print("Theoretical/analytic/deterministic standard deviations",
           file=out_file)
     print(np.sqrt([prior_theoretical_variance,
-                   posterior_theoretical_variance]),
+                   posterior_theoretical_variance,
+                   posterior_theoretical_variance_no_agg]),
           file=out_file)
 
     print("Description of errors", file=out_file)
@@ -1034,6 +1045,15 @@ with open(
         < ZSTAR_90
     ).sum()
     print(number_in_posterior_ci / mean_error_df.shape[0], file=out_file)
+    print("Coverage for 90% confidence interval, posterior (no agg.):",
+          file=out_file)
+    number_in_posterior_ci_no_agg = (
+        np.abs(mean_error_df["posterior_error"] /
+               np.sqrt(posterior_theoretical_variance_no_agg))
+        < ZSTAR_90
+    ).sum()
+    print(number_in_posterior_ci_no_agg / mean_error_df.shape[0],
+          file=out_file)
     print("P-values are one of:", file=out_file)
     dist = scipy.stats.binom(mean_error_df.shape[0], .9)
     print(
@@ -1042,6 +1062,16 @@ with open(
     )
     print(
         dist.sf([number_in_prior_ci, number_in_posterior_ci]) * 2,
+        file=out_file
+    )
+    print("P values without trying to account for aggregation error",
+          file=out_file)
+    print(
+        dist.cdf([number_in_prior_ci, number_in_posterior_ci_no_agg]) * 2,
+        file=out_file
+    )
+    print(
+        dist.sf([number_in_prior_ci, number_in_posterior_ci_no_agg]) * 2,
         file=out_file
     )
 
@@ -1064,14 +1094,29 @@ with open(
         ),
         file=out_file
     )
+    print(
+        "Posterior (no agg.):",
+        scipy.stats.kstest(
+            mean_error_df["posterior_error"],
+            scipy.stats.norm(
+                scale=np.sqrt(posterior_theoretical_variance_no_agg)).cdf
+        ),
+        file=out_file
+    )
 
     print("\N{GREEK SMALL LETTER CHI}\N{SUPERSCRIPT TWO} test for variance",
           file=out_file)
     degrees_freedom = ldesc.loc["count", :] - 1
+    degrees_freedom = np.array([degrees_freedom[0],
+                                degrees_freedom[1],
+                                degrees_freedom[1]])
+    std = ldesc.loc["std", :]
+    std = np.array([std[0], std[1], std[1]])
     statistic = (
-        degrees_freedom * ldesc.loc["std", :] ** 2 /
+        degrees_freedom * std ** 2 /
         np.asarray([prior_theoretical_variance,
-                    posterior_theoretical_variance])
+                    posterior_theoretical_variance,
+                    posterior_theoretical_variance_no_agg])
     )
     print("Statistics are\n", statistic, file=out_file)
     print("One-sided test for sample variance "

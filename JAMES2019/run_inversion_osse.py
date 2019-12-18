@@ -8,6 +8,7 @@ from __future__ import print_function, division, unicode_literals
 
 import itertools
 import datetime
+import textwrap
 import os.path
 import glob
 import sys
@@ -641,7 +642,7 @@ write_progress_message("Have combined correlations")
 # x5 since MsTMIP spread only represents monthly values and this uses sub-daily
 # x10 matches model-model for Raczka for 200km/21d
 # x3 matches model-model for 1000km/7d
-FLUX_VARIANCE_VARYING_FRACTION = 3.
+FLUX_VARIANCE_VARYING_FRACTION = 4.
 flux_std_pattern = xarray.open_dataset(
     "../data_files/2010_MsTMIP_flux_std.nc4",
     engine=NC_ENGINE
@@ -878,6 +879,28 @@ posterior_ds.to_netcdf(
     encoding=encoding, engine=NC_ENGINE, mode="w")
 write_progress_message("Wrote posterior")
 
+
+write_progress_message(
+    "Finding posterior covariance without corrections for"
+    "aggregation error"
+)
+
+infl_fun_red = reduced_influences.stack(
+    fluxes=("reduced_flux_time", "reduced_dim_y",
+            "reduced_dim_x")
+).values
+B_HT_red = reduced_prior_covariance.dot(infl_fun_red.T)
+red_post_cov_no_agg = reduced_prior_covariance - B_HT_red.dot(
+    atmos_flux_inversion.linalg.solve(
+        infl_fun_red.dot(B_HT_red) + observation_covariance,
+        B_HT_red.T
+    )
+)
+write_progress_message(
+    "Found reduced posterior covariance without "
+    "aggregation error approximations"
+)
+
 posterior_covariance_ds = xarray.Dataset(
     dict(
         reduced_posterior_covariance=(
@@ -900,8 +923,48 @@ posterior_covariance_ds = xarray.Dataset(
                 standard_name=("surface_upward_mole_flux_of_carbon_dioxide "
                                "standard_error"),
                 standard_error_multiplier=1.,
-                long_name="reduced_covariance_matrix_for_posterior_fluxes",
+                long_name=(
+                    "reduced_covariance_matrix_for_posterior_fluxes_full_HBHT"
+                ),
                 units=(FLUX_UNITS ** 2).format(),
+                description=textwrap.dedent("""\
+                Reduced-resolution approximation to the posterior
+                covariance matrix, with no attempt to account for the
+                increased aggregation error due to the increased
+                resolution.
+                """),
+            ),
+        ),
+        reduced_posterior_covariance_no_aggregation=(
+            ("reduced_flux_time_adjoint",
+             "reduced_dim_y_adjoint",
+             "reduced_dim_x_adjoint",
+             "reduced_flux_time",
+             "reduced_dim_y",
+             "reduced_dim_x",
+             ),
+            red_post_cov_no_agg.reshape(
+                reduced_temporal_correlation_ds.shape[0],
+                reduced_influences.shape[2],
+                reduced_influences.shape[3],
+                reduced_temporal_correlation_ds.shape[1],
+                reduced_influences.shape[2],
+                reduced_influences.shape[3]
+            ),
+            dict(
+                standard_name=("surface_upward_mole_flux_of_carbon_dioxide "
+                               "standard_error"),
+                standard_error_multiplier=1.,
+                long_name=(
+                    "reduced_covariance_matrix_for_posterior_fluxes_red_HBHT"
+                ),
+                units=(FLUX_UNITS ** 2).format(),
+                description=textwrap.dedent("""\
+                Reduced-resolution approximation to the posterior
+                covariance matrix, with no attempt to account for the
+                increased aggregation error due to the increased
+                resolution.
+                """),
             ),
         ),
         reduced_prior_covariance=(
