@@ -782,7 +782,7 @@ here_obs = WRF_OBS_SITE[TRACER_NAME].sel(
 print(here_obs)
 
 OBSERVATION_STD = 2.
-"""Standard deviation of observations
+"""Standard deviation of observation transport error
 
 This assumes similar deviations can be expected at each site.
 
@@ -804,6 +804,9 @@ observation_covariance[
     site_index[:, np.newaxis] != site_index[np.newaxis, :]] = 0
 observation_covariance *= OBSERVATION_STD ** 2
 observation_covariance = asarray(observation_covariance)
+obs_diag_index = np.arange(observation_covariance.shape[0])
+# Add representativeness and instrument errors
+observation_covariance[obs_diag_index, obs_diag_index] += 0.4 ** 2 + 0.1 ** 2
 
 used_observation_vals = (
     here_obs.data[:, np.newaxis] +
