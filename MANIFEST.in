@@ -2,3 +2,4 @@ recursive-include doc *.py *.rst
 recursive-include examples *.py
 include tox.ini setup.cfg pyproject.toml LICENSE.txt
 include PSU*Agreement.docx
+include CITATION.cff .zenodo.json

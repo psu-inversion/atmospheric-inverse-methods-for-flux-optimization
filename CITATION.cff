@@ -36,11 +36,7 @@ doi: 10.5281/zenodo.3606590
 # FIXME splitting of full names is error prone, please check if given/family name are correct
 authors:
 - given-names: DWesl
-  family-names: ''
   affiliation: "psu-inversion"
-  orcid: ""
-version: 1.0.0rc2
-date-released: 2020-01-13
 repository-code: https://github.com/psu-inversion/atmospheric-inverse-methods-for-flux-optimization
 license: BSD-3-Clause
 keywords:
