@@ -379,7 +379,7 @@ OBS_DATASET = (
 del OBS_DATASET.coords["name_of_observation_site"]
 print(OBS_DATASET.dims, OBS_DATASET.coords)
 # Assign a few more coords and pull out only the fluxes we need.
-FLUX_DATASET = FLUX_DATASET.sel(flux_time=FLUX_TIMES_INDEX)
+FLUX_DATASET = FLUX_DATASET.sel(flux_time=FLUX_TIMES_INDEX.tz_convert(None))
 N_REALIZATIONS = len(FLUX_DATASET.indexes["realization"])
 
 WRF_DX = FLUX_DATASET.attrs["DX"]
@@ -999,7 +999,7 @@ posterior_covariance_ds = xarray.Dataset(
         reduced_flux_time_adjoint=(
             reduced_temporal_correlation_ds.coords["flux_time_adjoint"].values
         ),
-        wrf_proj=reduced_influences.coords["wrf_proj"]
+        wrf_proj=((), -1, WRF_PROJECTION.cf()),
     ),
     posterior_global_atts
 )
