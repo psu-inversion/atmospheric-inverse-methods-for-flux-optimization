@@ -61,7 +61,7 @@ Must divide twenty-four.
 """
 FLUX_RESOLUTION = 27
 """Resolution of fluxes and influence functions in kilometers."""
-UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR = 4
+UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR = 8
 """How much coarser uncertainty is than mean estimate in the x direction.
 
 If we compute the uncertainty at full resolution, the resulting file
@@ -1063,10 +1063,13 @@ posterior_covariance_ds.to_netcdf(
     ("2010-07_monthly_inversion_{flux_interval:02d}h_027km_"
      "noise{ncorr_fun:s}{ncorr_len:d}km{ncorr_fun_time:s}{ncorr_len_time:d}d_"
      "icov{icorr_fun:s}{icorr_len:d}km{icorr_fun_time:s}{icorr_len_time:d}d_"
-     "covariance_output.nc4")
+     "{cov_res:d}km_{cov_tres:s}_covariance_output.nc4")
     .format(flux_interval=FLUX_INTERVAL, ncorr_fun=CORR_FUN,
             ncorr_len=CORR_LEN, icorr_len=CORRELATION_LENGTH, icorr_fun="exp",
             icorr_len_time=DAILY_FLUX_TIMESCALE, icorr_fun_time=DAILY_FLUX_FUN,
-            ncorr_fun_time=TIME_CORR_FUN, ncorr_len_time=TIME_CORR_LEN),
+            ncorr_fun_time=TIME_CORR_FUN, ncorr_len_time=TIME_CORR_LEN,
+            cov_res=int(UNCERTAINTY_FLUX_RESOLUTION // 1e3),
+            cov_tres=UNCERTAINTY_TEMPORAL_RESOLUTION),
     encoding=encoding, engine=NC_ENGINE, mode="w")
 write_progress_message("Wrote posterior covariance")
+# UNCERTAINTY_FLUX_RESOLUTION UNCERTAINTY_TEMPORAL_RESOLUTION
