@@ -1412,12 +1412,23 @@ with open(
         "iden_frat_osse_deterministic_domain_avg_std_vs_res.csv"
     )
     print("Description of errors", file=out_file)
-    for n_realizations in (5, 10, 20, 40, 80):
+    SUBSET_SIZES = (5, 10, 20, 40, 80)
+    std_cis = []
+    for n_realizations in SUBSET_SIZES:
         print(
             "Number of realizations considered:", n_realizations, file=out_file
         )
         ldesc = long_description(mean_error_df.iloc[:n_realizations, :])
         print(ldesc, file=out_file)
+        std_cis.append(
+            ldesc.loc[["std point est", "std 95%CI low", "std 95%CI high"], :]
+        )
+    std_cis = pd.concat(std_cis, keys=SUBSET_SIZES, names=["N", "CI part"])
+    print("Standard deviation confidence intervals:\n",
+          std_cis, file=out_file)
+    std_cis.to_csv(
+        "iden_frat_osse_monte_carlo_domain_avg_std_vs_ensemble_size.csv"
+    )
     print("Coverage for 90% confidence interval, identical prior:",
           file=out_file)
     number_in_prior_ci = (
