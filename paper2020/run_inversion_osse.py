@@ -312,6 +312,7 @@ FLUX_TIMES_INDEX = pd.date_range(
     tz="UTC", closed="right",
     name="flux_times")
 N_FLUX_TIMES = len(FLUX_TIMES_INDEX)
+assert N_FLUX_TIMES % 4 == 0
 
 ############################################################
 # Set some constants based on the WRF file
@@ -881,7 +882,7 @@ write_progress_message("Wrote posterior")
 
 
 write_progress_message(
-    "Finding posterior covariance without corrections for"
+    "Finding posterior covariance without corrections for "
     "aggregation error"
 )
 
