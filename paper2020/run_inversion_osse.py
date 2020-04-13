@@ -61,7 +61,7 @@ Must divide twenty-four.
 """
 FLUX_RESOLUTION = 27
 """Resolution of fluxes and influence functions in kilometers."""
-UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR = 4
+UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR = 8
 """How much coarser uncertainty is than mean estimate in the x direction.
 
 If we compute the uncertainty at full resolution, the resulting file
@@ -74,7 +74,7 @@ report uncertainties within current computing constraints.
 UNCERTAINTY_FLUX_RESOLUTION = (UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR *
                                FLUX_RESOLUTION * 1e3)
 """Resolution of posterior uncertainties in meters."""
-UNCERTAINTY_TEMPORAL_RESOLUTION = "7D"
+UNCERTAINTY_TEMPORAL_RESOLUTION = "2D"
 """The resolution at which the uncertainty is calculated and saved.
 
 Higher resolution means the uncertainties will be more accurate.
@@ -554,7 +554,7 @@ posterior_global_atts.update(dict(
 # Define correlation constants and get covariances
 # Constants for inversion
 write_progress_message("Getting covariances")
-CORRELATION_LENGTH = 200
+CORRELATION_LENGTH = 1000
 GRID_RESOLUTION = 27
 spatial_correlations = (
     atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.
@@ -594,7 +594,7 @@ hour_correlations = (
 hour_correlations_matrix = hour_correlations.dot(np.eye(
     hour_correlations.shape[0]))
 write_progress_message("Have hourly correlations")
-DAILY_FLUX_TIMESCALE = 21
+DAILY_FLUX_TIMESCALE = 7
 DAILY_FLUX_FUN = "exp"
 day_correlations = (
     atmos_flux_inversion.correlations.make_matrix(
@@ -642,8 +642,8 @@ write_progress_message("Have combined correlations")
 # x2 since MsTMIP spread does not represent full uncertainty
 # x5 since MsTMIP spread only represents monthly values and this uses sub-daily
 # x10 matches model-model for Raczka for 200km/21d
-# x3 matches model-model for 1000km/7d
-FLUX_VARIANCE_VARYING_FRACTION = 10.
+# x4 matches model-model for 1000km/7d
+FLUX_VARIANCE_VARYING_FRACTION = 3.
 flux_std_pattern = xarray.open_dataset(
     "../data_files/2010_MsTMIP_flux_std.nc4",
     engine=NC_ENGINE
