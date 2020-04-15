@@ -557,13 +557,13 @@ write_progress_message("Getting covariances")
 CORRELATION_LENGTH = 1000
 GRID_RESOLUTION = 27
 spatial_correlations = (
-    atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.
-    from_function(
+    atmos_flux_inversion.correlations.make_matrix(
         atmos_flux_inversion.correlations.ExponentialCorrelation(
             CORRELATION_LENGTH / GRID_RESOLUTION),
         (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
          len(TRUE_FLUXES_MATCHED.coords["dim_x"])),
-        is_cyclic=False))
+    )
+)
 # spatial_correlation_remapper = np.full(
 #     # Grid points at full resolution, grid points at reduced resolution
 #     (spatial_correlations.shape[0], 1),
@@ -872,7 +872,7 @@ posterior_ds.to_netcdf(
     ("2010-07_monthly_inversion_{flux_interval:02d}h_027km_"
      "noise{ncorr_fun:s}{ncorr_len:d}km{ncorr_fun_time:s}{ncorr_len_time:d}d_"
      "icov{icorr_fun:s}{icorr_len:d}km{icorr_fun_time:s}{icorr_len_time:d}d_"
-     "output.nc4")
+     "output_dense_spatial_corr.nc4")
     .format(flux_interval=FLUX_INTERVAL, ncorr_fun=CORR_FUN,
             ncorr_len=CORR_LEN, icorr_len=CORRELATION_LENGTH, icorr_fun="exp",
             icorr_len_time=DAILY_FLUX_TIMESCALE, icorr_fun_time=DAILY_FLUX_FUN,
@@ -1064,7 +1064,7 @@ posterior_covariance_ds.to_netcdf(
     ("2010-07_monthly_inversion_{flux_interval:02d}h_027km_"
      "noise{ncorr_fun:s}{ncorr_len:d}km{ncorr_fun_time:s}{ncorr_len_time:d}d_"
      "icov{icorr_fun:s}{icorr_len:d}km{icorr_fun_time:s}{icorr_len_time:d}d_"
-     "{cov_res:d}km_{cov_tres:s}_covariance_output.nc4")
+     "{cov_res:d}km_{cov_tres:s}_covariance_output_dense_spatial_corr.nc4")
     .format(flux_interval=FLUX_INTERVAL, ncorr_fun=CORR_FUN,
             ncorr_len=CORR_LEN, icorr_len=CORRELATION_LENGTH, icorr_fun="exp",
             icorr_len_time=DAILY_FLUX_TIMESCALE, icorr_fun_time=DAILY_FLUX_FUN,
