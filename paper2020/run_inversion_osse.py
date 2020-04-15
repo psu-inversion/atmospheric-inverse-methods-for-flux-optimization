@@ -293,7 +293,7 @@ FLUX_TIMES = (INFLUENCE_DATASET.coords["flux_time"] +
                        dtype='m8[ns]'))
 INFLUENCE_DATASET.coords["flux_time"] = FLUX_TIMES
 
-INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
+INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H.astype(np.float32)
 # Use site names as index/dim coord for site dim
 INFLUENCE_FUNCTIONS.coords["site"] = np.char.decode(
     INFLUENCE_FUNCTIONS["site_names"].values, "ascii")
@@ -514,9 +514,9 @@ aligned_influences = aligned_influences.transpose(
     "observation", "flux_time", "dim_y", "dim_x")
 write_progress_message("Rechunked to square")
 aligned_influences = aligned_influences.fillna(0)
-aligned_true_fluxes.load()
-aligned_prior_fluxes.load()
-aligned_influences.load()
+aligned_true_fluxes.astype(np.float32).load()
+aligned_prior_fluxes.astype(np.float32).load()
+aligned_influences.astype(np.float32).load()
 write_progress_message("Loaded data")
 
 posterior_var_atts = aligned_prior_fluxes.attrs.copy()
@@ -604,8 +604,10 @@ day_correlations = (
         (len(aligned_prior_fluxes.indexes["flux_time"]) *
          FLUX_INTERVAL // HOURS_PER_DAY,)))
 write_progress_message("Have daily correlations")
-temporal_correlations = kron(day_correlations,
-                             hour_correlations_matrix)
+temporal_correlations = kron(
+    day_correlations,
+    hour_correlations_matrix
+).astype(np.float32)
 print("Temporal:", type(temporal_correlations))
 temporal_correlation_ds = xarray.DataArray(
     temporal_correlations,
@@ -672,7 +674,8 @@ for flux_part in flux_std_pattern.data_vars.values():
 #     ).data)
 reduced_flux_stds = (
     FLUX_VARIANCE_VARYING_FRACTION *
-    flux_std_pattern["E_TRA1"].data)
+    flux_std_pattern["E_TRA1"].data.astype(np.float32)
+)
 write_progress_message("Have standard deviations")
 
 spatial_covariance = (
@@ -740,7 +743,7 @@ reduced_influences = (
     .resample(flux_time=UNCERTAINTY_TEMPORAL_RESOLUTION).sum("flux_time")
 ).rename(dim_x_bins="reduced_dim_x", dim_y_bins="reduced_dim_y",
          flux_time="reduced_flux_time")
-reduced_influences.load()
+reduced_influences.astype(np.float32).load()
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have influence for monthly average plots")
 flush_output_streams()
@@ -773,7 +776,7 @@ here_obs = WRF_OBS_SITE[TRACER_NAME].sel(
         name="observation",
         dims=dict(observation=site_obs_pd_index)),
 ).rename(dict(projection_x_coordinate="tower_x",
-              projection_y_coordinate="tower_y"))
+              projection_y_coordinate="tower_y")).astype(np.float32)
 print(here_obs)
 
 OBSERVATION_STD = 2.
@@ -798,7 +801,7 @@ observation_covariance = OBS_CORR_FUN(
 observation_covariance[
     site_index[:, np.newaxis] != site_index[np.newaxis, :]] = 0
 observation_covariance *= OBSERVATION_STD ** 2
-observation_covariance = asarray(observation_covariance)
+observation_covariance = asarray(observation_covariance).astype(np.float32)
 obs_diag_index = np.arange(observation_covariance.shape[0])
 # Add representativeness and instrument errors
 observation_covariance[obs_diag_index, obs_diag_index] += 0.4 ** 2 + 0.1 ** 2
@@ -806,7 +809,7 @@ observation_covariance[obs_diag_index, obs_diag_index] += 0.4 ** 2 + 0.1 ** 2
 used_observation_vals = (
     here_obs.data[:, np.newaxis] +
     gaussian_noise(observation_covariance, N_REALIZATIONS).T.reshape(
-        here_obs.shape + (N_REALIZATIONS,))).persist()
+        here_obs.shape + (N_REALIZATIONS,))).astype(np.float32).persist()
 used_observations = xarray.DataArray(
     used_observation_vals,
     here_obs.coords,
@@ -828,19 +831,20 @@ posterior, reduced_posterior_covariances = (
     atmos_flux_inversion.optimal_interpolation.save_sum(
         aligned_prior_fluxes.values.reshape(
             N_GRID_POINTS * len(aligned_prior_fluxes.indexes["flux_time"]),
-            N_REALIZATIONS),
+            N_REALIZATIONS).astype(np.float32),
         prior_covariance,
-        used_observations.values,
-        observation_covariance,
+        used_observations.values.astype(np.float32),
+        observation_covariance.astype(np.float32),
         aligned_influences.stack(
             fluxes=("flux_time", "dim_y", "dim_x")
-        ).values,
+        ).values.astype(np.float32),
         # .reshape(aligned_influences.shape[0],
         #          np.prod(aligned_influences.shape[-3:]))),
         reduced_prior_covariance,
         reduced_influences.stack(
             fluxes=("reduced_flux_time", "reduced_dim_y",
-                    "reduced_dim_x")).values
+                    "reduced_dim_x")
+        ).values.astype(np.float32)
     )
 )
 print(datetime.datetime.now(UTC).strftime("%c"),
