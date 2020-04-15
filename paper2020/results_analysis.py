@@ -513,6 +513,38 @@ HIGHER_RES_IDEN_COVARIANCE_DS = xarray.open_dataset(
 )
 
 ############################################################
+# Now the experiments with temporal resolution
+HIGHEST_TEMP_RES_FRAT_COVARIANCE_DS = xarray.open_dataset(
+    "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
+    "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d_"
+    "icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d_"
+    "162km_2D_covariance_output.nc4".format(
+        year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
+        noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
+        noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
+        invfun=INV_FUNCTION, invlen=INV_LENGTH,
+        inv_time_fun=INV_TIME_FUN, inv_time_len=INV_TIME_LEN
+    ),
+    chunks=dict(reduced_flux_time_adjoint=3, reduced_dim_y_adjoint=3,
+                reduced_dim_x_adjoint=3),
+)
+
+# HIGHEST_TEMP_RES_IDEN_COVARIANCE_DS = xarray.open_dataset(
+#     "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
+#     "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d_"
+#     "icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d_"
+#     "162km_2D_covariance_output.nc4".format(
+#         year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
+#         noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
+#         noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
+#         invfun=NOISE_FUNCTION, invlen=NOISE_LENGTH,
+#         inv_time_fun=NOISE_TIME_FUN, inv_time_len=NOISE_TIME_LEN
+#     ),
+#     chunks=dict(reduced_flux_time_adjoint=3, reduced_dim_y_adjoint=3,
+#                 reduced_dim_x_adjoint=3),
+# )
+
+############################################################
 # Read in the influence functions
 INFLUENCE_PATHS = ["/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
                    "ACT-America_trial5/2010/01/GROUP1",
@@ -1266,6 +1298,25 @@ higher_res_frat_posterior_theoretical_variance_no_agg = (
         "reduced_posterior_covariance_no_aggregation"
     ].values
 )
+# Temporal variance section
+HIGHEST_TEMP_RES_REDUCED_FRAT_COVARIANCE_DS = (
+    HIGHEST_TEMP_RES_FRAT_COVARIANCE_DS.mean() * 1e12
+).persist()
+highest_temp_res_frat_prior_theoretical_variance = (
+    HIGHEST_TEMP_RES_REDUCED_FRAT_COVARIANCE_DS[
+        "reduced_prior_covariance"
+    ].values
+)
+highest_temp_res_frat_posterior_theoretical_variance = (
+    HIGHEST_TEMP_RES_REDUCED_FRAT_COVARIANCE_DS[
+        "reduced_posterior_covariance"
+    ].values
+)
+highest_temp_res_frat_posterior_theoretical_variance_no_agg = (
+    HIGHEST_TEMP_RES_REDUCED_FRAT_COVARIANCE_DS[
+        "reduced_posterior_covariance_no_aggregation"
+    ].values
+)
 write_console_message("Done calculating variances")
 
 ############################################################
@@ -1361,12 +1412,16 @@ with open(
                    higher_res_iden_posterior_theoretical_variance,
                    higher_res_iden_posterior_theoretical_variance_no_agg]),
           file=out_file)
-    print("Higher-resolution Theoretical/analytic/deterministic "
+    print("Highest-temporal-resolution Theoretical/analytic/deterministic "
           "standard deviations: Fraternal-twin OSSE", file=out_file)
-    print(np.sqrt([higher_res_frat_prior_theoretical_variance,
-                   higher_res_frat_posterior_theoretical_variance,
-                   higher_res_frat_posterior_theoretical_variance_no_agg]),
-          file=out_file)
+    print(
+        np.sqrt([
+            highest_temp_res_frat_prior_theoretical_variance,
+            highest_temp_res_frat_posterior_theoretical_variance,
+            highest_temp_res_frat_posterior_theoretical_variance_no_agg,
+        ]),
+        file=out_file
+    )
     theoretical_errors = pd.DataFrame(
         np.sqrt([
             [iden_prior_theoretical_variance,
