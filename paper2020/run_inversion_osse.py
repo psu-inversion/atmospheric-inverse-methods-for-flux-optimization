@@ -61,7 +61,7 @@ Must divide twenty-four.
 """
 FLUX_RESOLUTION = 27
 """Resolution of fluxes and influence functions in kilometers."""
-UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR = 8
+UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR = 16
 """How much coarser uncertainty is than mean estimate in the x direction.
 
 If we compute the uncertainty at full resolution, the resulting file
@@ -74,7 +74,7 @@ report uncertainties within current computing constraints.
 UNCERTAINTY_FLUX_RESOLUTION = (UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR *
                                FLUX_RESOLUTION * 1e3)
 """Resolution of posterior uncertainties in meters."""
-UNCERTAINTY_TEMPORAL_RESOLUTION = "2D"
+UNCERTAINTY_TEMPORAL_RESOLUTION = "7D"
 """The resolution at which the uncertainty is calculated and saved.
 
 Higher resolution means the uncertainties will be more accurate.
@@ -643,7 +643,7 @@ write_progress_message("Have combined correlations")
 # x5 since MsTMIP spread only represents monthly values and this uses sub-daily
 # x10 matches model-model for Raczka for 200km/21d
 # x4 matches model-model for 1000km/7d
-FLUX_VARIANCE_VARYING_FRACTION = 3.
+FLUX_VARIANCE_VARYING_FRACTION = 4.
 flux_std_pattern = xarray.open_dataset(
     "../data_files/2010_MsTMIP_flux_std.nc4",
     engine=NC_ENGINE

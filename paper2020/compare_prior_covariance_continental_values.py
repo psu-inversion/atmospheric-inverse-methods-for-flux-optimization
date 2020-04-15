@@ -54,10 +54,10 @@ HOURS_PER_DAY = 24
 DAYS_PER_WEEK = 7
 DAYS_PER_MONTH = 30
 
-DAILY_FLUX_TIMESCALE = 21
+DAILY_FLUX_TIMESCALE = 7
 DAILY_FLUX_FUN = "exp"
 HOURLY_FLUX_TIMESCALE = 3
-CORRELATION_LENGTH = 200
+CORRELATION_LENGTH = 1000
 GRID_RESOLUTION = 27
 # I would like to add a fixed minimum at some point.
 # full stds would then be sqrt(fixed^2 + varying^2)
@@ -65,8 +65,8 @@ GRID_RESOLUTION = 27
 # x2 since MsTMIP spread does not represent full uncertainty
 # x5 since MsTMIP spread only represents monthly values and this uses sub-daily
 # x10 matches model-model for Raczka for 200km/21d (0.68)
-# x3.5 matches model-model for 1000km/7d (0.65)
-FLUX_VARIANCE_VARYING_FRACTION = 10.
+# x4 matches model-model for 1000km/7d (0.65)
+FLUX_VARIANCE_VARYING_FRACTION = 4.
 NC_ENGINE = "netcdf4"
 FLUX_UNITS = "umol/m2/s"
 FLUX_WINDOW = HOURS_PER_DAY * DAYS_PER_WEEK * 2
