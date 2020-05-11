@@ -1210,7 +1210,8 @@ class TestCorrelations(unittest2.TestCase):
     def test_sparse(self):
         """Test HomogeneousIsotropicCorrelations work on sparse.COO."""
         array = 2. ** -np.arange(6)
-        op = (inversion.correlations.HomogeneousIsotropicCorrelation.
+        op = (atmos_flux_inversion.correlations.
+              HomogeneousIsotropicCorrelation.
               from_array(array, False))
         mat = scipy.linalg.toeplitz(array)
 
@@ -1387,7 +1388,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         sigmax = np.array(((0, 1), (1, 0)))
         sigmaz = np.array(((1, 0), (0, -1)))
 
-        operator = inversion.linalg.DaskKroneckerProductOperator(
+        operator = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
             sigmax, sigmaz)
         matrix = scipy.linalg.kron(sigmax, sigmaz)
         epr_state = np.array((0, .7071, -.7071, 0))
@@ -1498,7 +1499,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         matrix1 = scipy.linalg.toeplitz(3. ** -np.arange(4))
         matrix2 = scipy.linalg.toeplitz(5. ** -np.arange(5))
 
-        product = inversion.linalg.DaskKroneckerProductOperator(
+        product = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
             matrix1, matrix2)
         tester = sparse.eye(product.shape[0])
         dense_product = scipy.linalg.kron(matrix1, matrix2)
@@ -1566,7 +1567,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         operator1 = sparse.COO(matrix1)
         operator2 = sparse.eye(15)
 
-        kron_op = inversion.linalg.DaskKroneckerProductOperator(
+        kron_op = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
             operator1, operator2)
         kron_mat = scipy.linalg.kron(matrix1, operator2.todense())
 
@@ -1586,7 +1587,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         matrix1 = scipy.linalg.toeplitz(row)
         operator1 = sparse.COO(row)
         operator2 = sparse.eye(15)
-        kron_op = inversion.linalg.DaskKroneckerProductOperator(
+        kron_op = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
             operator1, operator2)
         kron_mat = scipy.linalg.kron(matrix1, operator2.todense())
         np_tst.assert_allclose(
@@ -2025,7 +2026,9 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
         mat2 = scipy.linalg.toeplitz(2.**-np.arange(10))
 
         scipy_kron = scipy.linalg.kron(mat1, mat2)
-        linop_kron = inversion.linalg.DaskKroneckerProductOperator(mat1, mat2)
+        linop_kron = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
+            mat1, mat2
+        )
 
         test_arry = sparse.eye(50, 20)
 
