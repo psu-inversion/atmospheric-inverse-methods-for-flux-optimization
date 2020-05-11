@@ -7,7 +7,7 @@ Mostly for use in testing.
 import numpy as np
 from numpy.random import standard_normal as _standard_normal
 
-from inversion.linalg import matrix_sqrt
+from atmos_flux_inversion.linalg import matrix_sqrt
 
 
 def gaussian_noise(cov, size=None):

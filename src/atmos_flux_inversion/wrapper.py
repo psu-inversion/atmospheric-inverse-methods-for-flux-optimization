@@ -24,10 +24,10 @@ import dateutil.tz
 import pandas as pd
 import xarray
 
-import inversion.optimal_interpolation
-import inversion.correlations as inv_corr
-import inversion.covariances
-import inversion.util
+import atmos_flux_inversion.optimal_interpolation
+import atmos_flux_inversion.correlations as inv_corr
+import atmos_flux_inversion.covariances
+import atmos_flux_inversion.util
 
 HOURS_PER_DAY = 24
 OBSERVATION_TEMPORAL_CORRELATION_FUNCTION = (  # noqa: C0103
@@ -46,7 +46,9 @@ def invert_uniform(prior_fluxes, observations,
                    prior_correlation_time_days, prior_correlation_time_hours,
                    prior_flux_stds,
                    observation_correlation_time,
-                   method=inversion.optimal_interpolation.fold_common,
+                   method=(
+                       atmos_flux_inversion.optimal_interpolation.fold_common
+                   ),
                    output_uncertainty_frequency="MS"):
     """Perform an inversion.
 
@@ -79,7 +81,7 @@ def invert_uniform(prior_fluxes, observations,
         single site.
     method: function
         The method to use.  Must match the signature of
-        :func:`inversion.optimal_interpolation.simple`
+        :func:`atmos_flux_inversion.optimal_interpolation.simple`
     output_uncertainty_frequency: str
         One of the frequencies from
         `<http://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases>`_
@@ -159,26 +161,31 @@ def invert_uniform(prior_fluxes, observations,
     flux_interval = abs(flux_time_index[1] - flux_time_index[0])
 
     spatial_correlations = (
-        inversion.correlations.HomogeneousIsotropicCorrelation.from_function(
+        atmos_flux_inversion.correlations.
+        HomogeneousIsotropicCorrelation.from_function(
             prior_correlation_structure(prior_correlation_length / dx),
             prior_fluxes.shape[1:]))
     sqrt_spatial_variances = prior_flux_stds.transpose(
         y_index_name, x_index_name)
-    spatial_covariances = inversion.covariances.CorrelationStandardDeviation(
-        spatial_correlations, sqrt_spatial_variances.data)
+    spatial_covariances = (
+        atmos_flux_inversion.covariances.CorrelationStandardDeviation(
+            spatial_correlations, sqrt_spatial_variances.data
+        )
+    )
 
     hour_correlations = (
-        inversion.correlations.HomogeneousIsotropicCorrelation.from_function(
-            inversion.correlations.ExponentialCorrelation(
+        atmos_flux_inversion.correlations.
+        HomogeneousIsotropicCorrelation.from_function(
+            atmos_flux_inversion.correlations.ExponentialCorrelation(
                 pd.Timedelta(hours=prior_correlation_time_hours) /
                 flux_interval),
             pd.Timedelta(hours=HOURS_PER_DAY) // flux_interval))
     day_correlations = (
-        inversion.correlations.make_matrix(
-            inversion.correlations.ExponentialCorrelation(
+        atmos_flux_inversion.correlations.make_matrix(
+            atmos_flux_inversion.correlations.ExponentialCorrelation(
                 prior_correlation_time_days),
             prior_fluxes.shape[0]))
-    temporal_covariances = inversion.util.kron(
+    temporal_covariances = atmos_flux_inversion.util.kron(
         day_correlations.dot(np.eye(*day_correlations.shape)),
         hour_correlations.dot(np.eye(*hour_correlations.shape))
     )
@@ -202,11 +209,11 @@ def invert_uniform(prior_fluxes, observations,
     }).sum(flux_time_index_name)
 
     prior_covariances = (
-        inversion.util.kronecker_product(temporal_covariances,
-                                         spatial_covariances)
+        atmos_flux_inversion.util.kronecker_product(temporal_covariances,
+                                                    spatial_covariances)
     )
     reduced_prior_covariances = (
-        inversion.util.kron(
+        atmos_flux_inversion.util.kron(
             reduced_temp_cov_ds.data,
             spatial_covariances.dot(np.eye(*spatial_covariances.shape))
         )
@@ -253,8 +260,10 @@ def invert_uniform(prior_fluxes, observations,
     posterior_var_atts = prior_fluxes.attrs.copy()
     posterior_var_atts.update(dict(
         long_name="posterior_fluxes",
-        description="posterior mean fluxes obtained using inversion package",
-        origin="inversion package",
+        description=(
+            "posterior mean fluxes obtained using atmos_flux_inversion package"
+        ),
+        origin="atmos_flux_inversion package",
         units=prior_fluxes.attrs["units"],
     ))
     increment_var_atts = prior_fluxes.attrs.copy()
@@ -269,8 +278,8 @@ def invert_uniform(prior_fluxes, observations,
         long_name="inversion_posterior_covariance",
         units="({units:s})^2".format(units=prior_fluxes.attrs["units"]),
         description=("Posterior flux covariance"
-                     "obtained using inversion package"),
-        origin="inversion package",
+                     "obtained using atmos_flux_inversion package"),
+        origin="atmos_flux_inversion package",
     ))
     posterior_global_atts = global_attributes_dict()
     posterior_global_atts.update(dict(
@@ -380,7 +389,7 @@ def get_installed_modules():
             pip_args,
             universal_newlines=True)
         package_info = [line.split("==") for line in output.split("\n")
-                        if line]
+                        if line and not line.startswith("-")]
 
         _PACKAGE_INFO = package_info
         return package_info

@@ -3,8 +3,9 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Inversion's documentation!
-======================================
+=================================================
+Atmospheric Inverse Methods for Flux Optimization
+=================================================
 
 This package contains functions and classes developed for the
 application of inverse methods to the optimization of carbon dioxide
@@ -34,7 +35,7 @@ API Reference
 .. toctree::
    :maxdepth: 4
 
-   inversion
+   atmos_flux_inversion
 
 
 Indices and tables

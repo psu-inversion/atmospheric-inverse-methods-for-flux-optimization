@@ -1,5 +1,5 @@
-inversion package
-=================
+atmos_flux_inversion package
+============================
 
 Submodules
 ----------
@@ -9,8 +9,8 @@ Classes for defining covariances
 
 .. toctree::
 
-   inversion.correlations
-   inversion.covariances
+   atmos_flux_inversion.correlations
+   atmos_flux_inversion.covariances
 
 The classes provided by :mod:`pylops` may also be useful.
 
@@ -24,28 +24,28 @@ Gauss-Jordan solver.  Variational methods use a different but
 equivalent formulation of the problem.
 
 .. toctree::
-   inversion.optimal_interpolation
-   inversion.variational
-   inversion.psas
+   atmos_flux_inversion.optimal_interpolation
+   atmos_flux_inversion.variational
+   atmos_flux_inversion.psas
 
 High-level wrappers
 ~~~~~~~~~~~~~~~~~~~
 
 .. toctree::
-   inversion.wrapper
+   atmos_flux_inversion.wrapper
 
 Other utilities
 ~~~~~~~~~~~~~~~
 
 .. toctree::
-   inversion.linalg
-   inversion.noise
-   inversion.util
+   atmos_flux_inversion.linalg
+   atmos_flux_inversion.noise
+   atmos_flux_inversion.util
 
 Module contents
 ---------------
 
-.. automodule:: inversion
+.. automodule:: atmos_flux_inversion
     :members:
     :undoc-members:
     :show-inheritance:

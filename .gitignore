@@ -9,7 +9,7 @@ build/
 
 # Test artifacts
 .tox/
-.coverage
+.coverage*
 *_flymake.py
 .mypy_cache
 
@@ -45,6 +45,7 @@ dask-worker-space
 *.patch
 *.pbs
 *.tmp
+nohup.out
 
 # Graphics are for visualization, not part of code
 *.png

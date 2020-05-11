@@ -1,0 +1,17 @@
+{
+    "description": "Python package containing functions for the application of\ninverse methods to the optimization of surface fluxes to be\nconsistent with atmospheric observations.\n\nMy use-case is primarily continental-scale biological carbon\ndioxide flux optimization using atmospheric carbon dioxide mole\nfraction observations. A paper with more details is in\npreparation.\n\nSimilar work is being done, using similar methods with a different\napproach, by the NOAA/GMD CarbonTracker-Lagrange Inversion\ncode. This code is designed to be run from within Python, where\ntheirs is designed as a series of scripts to be run from the\ncommand line. I feel the flexibility from the data structures I\nchose to use, specifically inheriting from classes based on\nscipy's LinearOperators allows greater flexibility in what this\ncode can do.\n\nOther software packages in Python that tackle similar problems\ninclude Data Assimilation with Python: a Package for Experimental\nResearch (DAPPER) and Python Observing System Simulation\nExperiments (PyOSSE), both of which have more focus on\nidentical-twin OSSEs and Ensemble Kalman Filters. These packages\ndo not use standard Python packaging frameworks to specify\ndependencies, and my reasons for prefering my package to the\nCT-Lagrange inversion code also apply here.\n",
+    "keywords": [
+        "carbon dioxide",
+        "atmospheric trace gas flux inversion"
+    ],
+    "license": "BSD-3-Clause",
+    "title": "Atmospheric Inverse Methods for Flux Optimization",
+    "upload_type": "software",
+    "creators": [
+        {
+            "affiliation": "psu-inversion",
+            "name": "DWesl"
+        }
+    ],
+    "access_right": "open",
+}

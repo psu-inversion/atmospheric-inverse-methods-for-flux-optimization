@@ -1,3 +1,8 @@
+"""Plot the temporal correlations given configuration.
+
+Produces plots of temporal correlations given configuration from
+run_inversion_osse.py
+"""
 from __future__ import print_function, division, unicode_literals
 
 import itertools
@@ -22,11 +27,11 @@ sys.path.insert(0, os.path.join(
     THIS_DIR, "..", "src"))
 sys.path.append(THIS_DIR)
 
-import inversion.optimal_interpolation
-import inversion.variational
-import inversion.correlations
-import inversion.covariances
-from inversion.util import kronecker_product, kron
+import atmos_flux_inversion.optimal_interpolation
+import atmos_flux_inversion.variational
+import atmos_flux_inversion.correlations
+import atmos_flux_inversion.covariances
+from atmos_flux_inversion.util import kron
 import cf_acdd
 
 INFLUENCE_PATHS = ["/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
@@ -222,10 +227,10 @@ flush_output_streams()
 CORRELATION_LENGTH = 200
 GRID_RESOLUTION = 27
 # spatial_correlations = (
-#     inversion.correlations.HomogeneousIsotropicCorrelation.
+#     atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.
 #     # First guess at correlation length on the order of previous studies
 #     from_function(
-#         inversion.correlations.ExponentialCorrelation(
+#         atmos_flux_inversion.correlations.ExponentialCorrelation(
 #             CORRELATION_LENGTH / GRID_RESOLUTION),
 #         (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
 #          len(TRUE_FLUXES_MATCHED.coords["dim_x"]))))
@@ -234,9 +239,9 @@ flush_output_streams()
 HOURLY_FLUX_TIMESCALE = 3
 INTERVALS_PER_DAY = HOURS_PER_DAY // FLUX_INTERVAL
 hour_correlations = (
-    inversion.correlations.HomogeneousIsotropicCorrelation.
+    atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.
     from_function(
-        inversion.correlations.ExponentialCorrelation(
+        atmos_flux_inversion.correlations.ExponentialCorrelation(
             HOURLY_FLUX_TIMESCALE / FLUX_INTERVAL),
         (INTERVALS_PER_DAY,)))
 hour_correlations_matrix = hour_correlations.dot(np.eye(
@@ -246,8 +251,10 @@ flush_output_streams()
 DAILY_FLUX_TIMESCALE = 21
 DAILY_FLUX_FUN = "exp"
 day_correlations = (
-    inversion.correlations.make_matrix(
-        inversion.correlations.ExponentialCorrelation(DAILY_FLUX_TIMESCALE),
+    atmos_flux_inversion.correlations.make_matrix(
+        atmos_flux_inversion.correlations.ExponentialCorrelation(
+            DAILY_FLUX_TIMESCALE
+        ),
         (40 * 4 *
          FLUX_INTERVAL // HOURS_PER_DAY,)))
 print(datetime.datetime.now(UTC).strftime("%c"), "Have daily correlations")
@@ -285,20 +292,22 @@ plt.ylabel("Days since start")
 plt.savefig("temporal_correlation_matrix_exp{day_corr:d}day_exp3hour.png"
             .format(day_corr=DAILY_FLUX_TIMESCALE))
 
-fig = plt.figure(figsize=(4, 3))
+fig = plt.figure(figsize=(5, 2.5))
 plt.plot(array.coords["time_in_days2"], array.isel(time1=0))
 plt.xlim(0, 30)
 plt.ylim(0, 1)
 plt.ylabel("Correlation")
-plt.xlabel("Days since start")
-plt.suptitle("Correlations of each time with first")
+plt.xlabel("Time difference in days")
+plt.suptitle("Temporal correlation function")
 plt.tight_layout()
-plt.subplots_adjust(top=.95)
+plt.subplots_adjust(top=.9)
 fig.savefig("temporal_correlation_function_exp{day_corr:d}days_exp3hours.pdf"
             .format(day_corr=DAILY_FLUX_TIMESCALE))
 
-array.to_netcdf("temporal_correlation_matrix_exp{day_corr:d}days_exp03hours.nc4"
-                .format(day_corr=DAILY_FLUX_TIMESCALE),
-                engine="h5netcdf",
-                encoding=dict(time_in_days1={"_FillValue": None},
-                              time_in_days2={"_FillValue": None}))
+array.to_netcdf(
+    "temporal_correlation_matrix_exp{day_corr:d}days_exp03hours.nc4"
+    .format(day_corr=DAILY_FLUX_TIMESCALE),
+    engine="h5netcdf",
+    encoding=dict(time_in_days1={"_FillValue": None},
+                  time_in_days2={"_FillValue": None})
+)

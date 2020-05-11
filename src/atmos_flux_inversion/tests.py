@@ -1,4 +1,4 @@
-"""Tests for the inversion package.
+"""Tests for the atmos_flux_inversion package.
 
 Includes tests using random data, analytic solutions, and checks that
 different methods agree for simple problems.
@@ -12,6 +12,7 @@ import os.path
 import atexit
 import pickle
 import math
+import sys
 try:
     from functools import reduce
 except ImportError:
@@ -40,17 +41,17 @@ try:
 except ImportError:
     HAVE_SPARSE = False
 
-import inversion.optimal_interpolation
-import inversion.correlations
-import inversion.covariances
-import inversion.variational
-import inversion.remapper
-import inversion.wrapper
-import inversion.linalg
-import inversion.noise
-import inversion.psas
-import inversion.util
-from inversion.linalg import tolinearoperator
+import atmos_flux_inversion.optimal_interpolation
+import atmos_flux_inversion.correlations
+import atmos_flux_inversion.covariances
+import atmos_flux_inversion.variational
+import atmos_flux_inversion.remapper
+import atmos_flux_inversion.wrapper
+import atmos_flux_inversion.linalg
+import atmos_flux_inversion.noise
+import atmos_flux_inversion.psas
+import atmos_flux_inversion.util
+from atmos_flux_inversion.linalg import tolinearoperator
 
 
 if os.path.exists(".pyfftw.pickle"):
@@ -79,15 +80,15 @@ if os.path.exists(".pyfftw.pickle"):
 # those to the `if "var" in name or "psas" in name` and
 # `if "psas" in name` tests as applicable.
 ALL_METHODS = (
-    inversion.optimal_interpolation.simple,
-    inversion.optimal_interpolation.fold_common,
-    inversion.optimal_interpolation.save_sum,
-    inversion.optimal_interpolation.scipy_chol,
-    inversion.variational.simple,
-    inversion.variational.incremental,
-    inversion.variational.incr_chol,
-    inversion.psas.simple,
-    inversion.psas.fold_common,
+    atmos_flux_inversion.optimal_interpolation.simple,
+    atmos_flux_inversion.optimal_interpolation.fold_common,
+    atmos_flux_inversion.optimal_interpolation.save_sum,
+    atmos_flux_inversion.optimal_interpolation.scipy_chol,
+    atmos_flux_inversion.variational.simple,
+    atmos_flux_inversion.variational.incremental,
+    atmos_flux_inversion.variational.incr_chol,
+    atmos_flux_inversion.psas.simple,
+    atmos_flux_inversion.psas.fold_common,
 )
 ITERATIVE_METHOD_START = 4
 """Where the iterative methods start in the above list.
@@ -130,6 +131,24 @@ def getname(method):
 
     return "{group:s} ({variant:s})".format(group=group,
                                             variant=variant)
+
+
+def expectFailureIf(condition):
+    """Mark a test as XFAIL based on condition.
+
+    Wrapper to make :func:`unittest2.expectedFailure` conditional.
+
+    Parameters
+    ----------
+    condition: bool
+
+    Returns
+    -------
+    decorator: func
+    """
+    if condition:
+        return unittest2.expectedFailure
+    return lambda fun: fun
 
 
 class TestInversionSimple(unittest2.TestCase):
@@ -389,7 +408,8 @@ class TestInversionSimple(unittest2.TestCase):
             name = getname(method)
 
             with self.subTest(method=name):
-                with self.assertRaises(inversion.ConvergenceError) as cxt_mgr:
+                with self.assertRaises(
+                        atmos_flux_inversion.ConvergenceError) as cxt_mgr:
                     method(bg_vals, bg_cov, obs_vals, obs_cov, obs_op)
 
                 conv_err = cxt_mgr.exception
@@ -407,7 +427,7 @@ class TestGaussianNoise(unittest2.TestCase):
         """Test generation with identity as covariance."""
         sample_shape = 3
         cov = np.eye(sample_shape)
-        noise = inversion.noise.gaussian_noise(cov, int(1e6))
+        noise = atmos_flux_inversion.noise.gaussian_noise(cov, int(1e6))
 
         np_tst.assert_allclose(noise.mean(axis=0),
                                np.zeros((sample_shape,)),
@@ -422,28 +442,29 @@ class TestGaussianNoise(unittest2.TestCase):
 
         for shape in ((), (6,), (2, 3)):
             with self.subTest(shape=shape):
-                res = inversion.noise.gaussian_noise(
+                res = atmos_flux_inversion.noise.gaussian_noise(
                     sample_cov, shape)
 
                 self.assertEqual(res.shape, shape + sample_shape)
 
         with self.subTest(shape=5):
-            res = inversion.noise.gaussian_noise(
+            res = atmos_flux_inversion.noise.gaussian_noise(
                 sample_cov, 5)
 
             self.assertEqual(res.shape, (5,) + sample_shape)
 
         with self.subTest(shape=None):
-            res = inversion.noise.gaussian_noise(
+            res = atmos_flux_inversion.noise.gaussian_noise(
                 sample_cov, None)
             self.assertEqual(res.shape, sample_shape)
 
     def test_operator(self):
         """Test that the code works with operator covariances."""
         diagonal = (1, .5, .3, .2, .1)
-        sample_cov = inversion.covariances.DiagonalOperator(diagonal)
+        sample_cov = atmos_flux_inversion.covariances.DiagonalOperator(
+            diagonal)
         sample_shape = (len(diagonal),)
-        noise = inversion.noise.gaussian_noise(sample_cov, int(1e6))
+        noise = atmos_flux_inversion.noise.gaussian_noise(sample_cov, int(1e6))
 
         np_tst.assert_allclose(noise.mean(axis=0),
                                np.zeros(sample_shape),
@@ -455,11 +476,11 @@ class TestGaussianNoise(unittest2.TestCase):
         """Test that large kronecker operators don't break the handling."""
         op1 = scipy.linalg.toeplitz(.6 ** np.arange(15))
         diag = (1, .9, .8, .7, .6, .5, .4, .3, .2, .1)
-        op2 = inversion.covariances.DiagonalOperator(diag)
+        op2 = atmos_flux_inversion.covariances.DiagonalOperator(diag)
 
-        combined = inversion.util.kronecker_product(op1, op2)
+        combined = atmos_flux_inversion.util.kronecker_product(op1, op2)
 
-        noise = inversion.noise.gaussian_noise(combined, int(1e5))
+        noise = atmos_flux_inversion.noise.gaussian_noise(combined, int(1e5))
 
         np_tst.assert_allclose(noise.mean(axis=0),
                                np.zeros(combined.shape[0]),
@@ -472,7 +493,7 @@ class TestGaussianNoise(unittest2.TestCase):
         """Test that the code works with off-diagonal elements."""
         sample_cov = scipy.linalg.toeplitz((1, .5, .25, .125))
         sample_shape = (4,)
-        noise = inversion.noise.gaussian_noise(sample_cov, int(1e6))
+        noise = atmos_flux_inversion.noise.gaussian_noise(sample_cov, int(1e6))
 
         np_tst.assert_allclose(noise.mean(axis=0),
                                np.zeros(sample_shape),
@@ -484,7 +505,7 @@ class TestGaussianNoise(unittest2.TestCase):
         """Test that the code handles slowly-decaying covariances."""
         sample_cov = scipy.linalg.toeplitz(.8 ** np.arange(10))
         sample_shape = (10,)
-        noise = inversion.noise.gaussian_noise(sample_cov, int(1e6))
+        noise = atmos_flux_inversion.noise.gaussian_noise(sample_cov, int(1e6))
 
         np_tst.assert_allclose(noise.mean(axis=0),
                                np.zeros(sample_shape),
@@ -494,9 +515,11 @@ class TestGaussianNoise(unittest2.TestCase):
 
     def test_fails(self):
         """Test that construction fails on invalid input."""
-        self.assertRaises(ValueError, inversion.noise.gaussian_noise,
+        self.assertRaises(ValueError,
+                          atmos_flux_inversion.noise.gaussian_noise,
                           np.ones(10))
-        self.assertRaises(ValueError, inversion.noise.gaussian_noise,
+        self.assertRaises(ValueError,
+                          atmos_flux_inversion.noise.gaussian_noise,
                           np.eye(3, 2))
 
 
@@ -509,7 +532,7 @@ class TestCorrelations(unittest2.TestCase):
         Should be zero.
         """
         for corr_class in (
-                inversion.correlations.DistanceCorrelationFunction
+                atmos_flux_inversion.correlations.DistanceCorrelationFunction
                 .__subclasses__()):
             with self.subTest(corr_class=corr_class.__name__):
                 corr_fun = corr_class(1e-8)
@@ -523,7 +546,7 @@ class TestCorrelations(unittest2.TestCase):
         Should be one.
         """
         for corr_class in (
-                inversion.correlations.DistanceCorrelationFunction
+                atmos_flux_inversion.correlations.DistanceCorrelationFunction
                 .__subclasses__()):
             with self.subTest(corr_class=corr_class.__name__):
                 corr_fun = corr_class(1e8)
@@ -539,7 +562,7 @@ class TestCorrelations(unittest2.TestCase):
         """
         test_size = (int(15), int(20))
         for corr_class in (
-                inversion.correlations.DistanceCorrelationFunction
+                atmos_flux_inversion.correlations.DistanceCorrelationFunction
                 .__subclasses__()):
             with self.subTest(corr_class=getname(corr_class)):
                 corr_fun = corr_class(2.)
@@ -573,14 +596,14 @@ class TestCorrelations(unittest2.TestCase):
 
         # TODO: speed up
         for corr_class in (
-                inversion.correlations.DistanceCorrelationFunction.
+                atmos_flux_inversion.correlations.DistanceCorrelationFunction.
                 __subclasses__()):
             for dist in (1, 5, 10, 15):
                 with self.subTest(corr_class=getname(corr_class),
                                   dist=dist):
                     corr_fun = corr_class(dist)
 
-                    corr_mat = inversion.correlations.make_matrix(
+                    corr_mat = atmos_flux_inversion.correlations.make_matrix(
                         corr_fun, (test_ny, test_nx))
 
                     # Make sure diagonal elements are ones
@@ -608,7 +631,7 @@ class TestCorrelations(unittest2.TestCase):
         """
         test_size = (200,)
         for corr_class in (
-                inversion.correlations.DistanceCorrelationFunction
+                atmos_flux_inversion.correlations.DistanceCorrelationFunction
                 .__subclasses__()):
             with self.subTest(corr_class=getname(corr_class)):
                 # This fails with a correlation length of 5
@@ -634,15 +657,17 @@ class TestCorrelations(unittest2.TestCase):
         test_nt = 200
 
         for corr_class in (
-                inversion.correlations.DistanceCorrelationFunction.
+                atmos_flux_inversion.correlations.DistanceCorrelationFunction.
                 __subclasses__()):
             for dist in (1, 5, 10, 30):
                 with self.subTest(corr_class=getname(corr_class),
                                   dist=dist):
                     corr_fun = corr_class(dist)
 
-                    corr_mat = inversion.correlations.make_matrix(corr_fun,
-                                                                  test_nt)
+                    corr_mat = atmos_flux_inversion.correlations.make_matrix(
+                        corr_fun,
+                        test_nt
+                    )
 
                     # Make sure diagonal elements are ones
                     np_tst.assert_allclose(np.diag(corr_mat), 1)
@@ -671,7 +696,7 @@ class TestCorrelations(unittest2.TestCase):
         Checks for symmetry and ones on the diagonal.
         """
         for corr_class in (
-                inversion.correlations.DistanceCorrelationFunction.
+                atmos_flux_inversion.correlations.DistanceCorrelationFunction.
                 __subclasses__()):
             for test_shape in ((300,), (20, 30)):
                 test_size = int(np.prod(test_shape, dtype=int))
@@ -680,7 +705,7 @@ class TestCorrelations(unittest2.TestCase):
                         corr_fun = corr_class(dist)
 
                         corr_op = (
-                            inversion.correlations.
+                            atmos_flux_inversion.correlations.
                             HomogeneousIsotropicCorrelation.
                             from_function(corr_fun, test_shape, is_cyclic))
                         # This is the fastest way to get column-major
@@ -710,7 +735,7 @@ class TestCorrelations(unittest2.TestCase):
                     np.eye(100, test_nt)[-1])
 
         for corr_class in (
-                inversion.correlations.DistanceCorrelationFunction.
+                atmos_flux_inversion.correlations.DistanceCorrelationFunction.
                 __subclasses__()):
             for dist in (1, 3, 10):
                 # Magic numbers
@@ -718,10 +743,11 @@ class TestCorrelations(unittest2.TestCase):
                 noncorr_dist = 20 + 8 * dist
                 corr_fun = corr_class(dist)
 
-                corr_mat = inversion.correlations.make_matrix(
+                corr_mat = atmos_flux_inversion.correlations.make_matrix(
                     corr_fun, test_nt)
                 corr_op = (
-                    inversion.correlations.HomogeneousIsotropicCorrelation.
+                    atmos_flux_inversion.correlations.
+                    HomogeneousIsotropicCorrelation.
                     from_function(corr_fun, test_nt))
 
                 for i, test_vec in enumerate(test_lst):
@@ -737,7 +763,7 @@ class TestCorrelations(unittest2.TestCase):
                     with self.subTest(corr_class=getname(corr_class),
                                       dist=dist, test_num=i,
                                       inverse="yes"):
-                        if ((corr_class is inversion.correlations.
+                        if ((corr_class is atmos_flux_inversion.correlations.
                              GaussianCorrelation and
                              dist >= 3)):
                             # Gaussian(3) has FFT less
@@ -745,7 +771,7 @@ class TestCorrelations(unittest2.TestCase):
                             raise unittest2.SkipTest(
                                 "Gaussian({0:d}) correlations ill-conditioned".
                                 format(dist))
-                        elif ((corr_class is inversion.correlations.
+                        elif ((corr_class is atmos_flux_inversion.correlations.
                                BalgovindCorrelation and
                                dist == 10)):
                             # This one distance is problematic
@@ -773,17 +799,18 @@ class TestCorrelations(unittest2.TestCase):
                     np.eye(100, test_nt)[-1])
 
         for corr_class in (
-                inversion.correlations.DistanceCorrelationFunction.
+                atmos_flux_inversion.correlations.DistanceCorrelationFunction.
                 __subclasses__()):
             for dist in (1, 3, 10):
                 # Magic numbers
                 # May need to increase for larger test_nt
                 corr_fun = corr_class(dist)
 
-                corr_mat = inversion.correlations.make_matrix(
+                corr_mat = atmos_flux_inversion.correlations.make_matrix(
                     corr_fun, test_nt)
                 corr_op = (
-                    inversion.correlations.HomogeneousIsotropicCorrelation.
+                    atmos_flux_inversion.correlations.
+                    HomogeneousIsotropicCorrelation.
                     from_function(corr_fun, test_nt, False))
 
                 for i, test_vec in enumerate(test_lst):
@@ -816,7 +843,7 @@ class TestCorrelations(unittest2.TestCase):
                     np.eye(10 * test_shape[0], test_size)[-1])
 
         for corr_class in (
-                inversion.correlations.DistanceCorrelationFunction.
+                atmos_flux_inversion.correlations.DistanceCorrelationFunction.
                 __subclasses__()):
             for dist in (1, 3):
                 # Magic numbers
@@ -824,10 +851,11 @@ class TestCorrelations(unittest2.TestCase):
                 noncorr_dist = 20 + 8 * dist
                 corr_fun = corr_class(dist)
 
-                corr_mat = inversion.correlations.make_matrix(
+                corr_mat = atmos_flux_inversion.correlations.make_matrix(
                     corr_fun, test_shape)
                 corr_op = (
-                    inversion.correlations.HomogeneousIsotropicCorrelation.
+                    atmos_flux_inversion.correlations.
+                    HomogeneousIsotropicCorrelation.
                     from_function(corr_fun, test_shape))
 
                 for i, test_vec in enumerate(test_lst):
@@ -847,7 +875,7 @@ class TestCorrelations(unittest2.TestCase):
                     with self.subTest(corr_class=getname(corr_class),
                                       dist=dist, test_num=i,
                                       direction="backward"):
-                        if ((corr_class is inversion.correlations.
+                        if ((corr_class is atmos_flux_inversion.correlations.
                              GaussianCorrelation and
                              dist >= 3)):
                             # Gaussian(3) has FFT less
@@ -881,17 +909,18 @@ class TestCorrelations(unittest2.TestCase):
                     np.eye(10 * test_shape[0], test_size)[-1])
 
         for corr_class in (
-                inversion.correlations.DistanceCorrelationFunction.
+                atmos_flux_inversion.correlations.DistanceCorrelationFunction.
                 __subclasses__()):
             for dist in (1, 3):
                 # Magic numbers
                 # May need to increase for larger domains
                 corr_fun = corr_class(dist)
 
-                corr_mat = inversion.correlations.make_matrix(
+                corr_mat = atmos_flux_inversion.correlations.make_matrix(
                     corr_fun, test_shape)
                 corr_op = (
-                    inversion.correlations.HomogeneousIsotropicCorrelation.
+                    atmos_flux_inversion.correlations.
+                    HomogeneousIsotropicCorrelation.
                     from_function(corr_fun, test_shape, False))
 
                 for i, test_vec in enumerate(test_lst):
@@ -917,17 +946,19 @@ class TestCorrelations(unittest2.TestCase):
         """
         test_size = 25
 
-        corr_class = inversion.correlations.ExponentialCorrelation
+        corr_class = atmos_flux_inversion.correlations.ExponentialCorrelation
         for dist in (1, 3, 5):
             with self.subTest(dist=dist):
                 corr_fun = corr_class(dist)
                 corr_op1 = (
-                    inversion.correlations.HomogeneousIsotropicCorrelation.
+                    atmos_flux_inversion.correlations.
+                    HomogeneousIsotropicCorrelation.
                     from_function(corr_fun, test_size, True))
                 first_column = corr_op1.dot(np.eye(test_size, 1)[:, 0])
 
                 corr_op2 = (
-                    inversion.correlations.HomogeneousIsotropicCorrelation.
+                    atmos_flux_inversion.correlations.
+                    HomogeneousIsotropicCorrelation.
                     from_array(first_column))
 
                 np_tst.assert_allclose(
@@ -936,8 +967,11 @@ class TestCorrelations(unittest2.TestCase):
 
     def test_kron_composition(self):
         """Test that `kron` works similar to composition of the domains."""
-        from inversion.correlations import HomogeneousIsotropicCorrelation
-        corr_class = inversion.correlations.GaussianCorrelation
+        HomogeneousIsotropicCorrelation = (
+            atmos_flux_inversion.correlations.
+            HomogeneousIsotropicCorrelation
+        )
+        corr_class = atmos_flux_inversion.correlations.GaussianCorrelation
         corr_fun = corr_class(5)
 
         shape1 = (5,)
@@ -962,8 +996,8 @@ class TestCorrelations(unittest2.TestCase):
     def test_kron_results(self):
         """Test the Kronecker product implementation."""
         HomogeneousIsotropicCorrelation = (
-            inversion.correlations.HomogeneousIsotropicCorrelation)
-        corr_class = inversion.correlations.ExponentialCorrelation
+            atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation)
+        corr_class = atmos_flux_inversion.correlations.ExponentialCorrelation
         test_shapes = (20, 25, (5, 6))
         distances = (3, 5,)
 
@@ -1004,14 +1038,17 @@ class TestCorrelations(unittest2.TestCase):
 
     def test_kron_delegate(self):
         """Test that kron delegates where appropriate."""
-        op1 = (inversion.correlations.HomogeneousIsotropicCorrelation.
+        op1 = (atmos_flux_inversion.correlations.
+               HomogeneousIsotropicCorrelation.
                from_array((1, .5, .25)))
         mat2 = np.eye(5)
 
         combined_op = op1.kron(mat2)
 
-        self.assertIsInstance(combined_op,
-                              inversion.correlations.SchmidtKroneckerProduct)
+        self.assertIsInstance(
+            combined_op,
+            atmos_flux_inversion.linalg.SchmidtKroneckerProduct
+        )
 
     def test_sqrt_direct(self):
         """Test the square root in the most direct manner possible.
@@ -1019,7 +1056,8 @@ class TestCorrelations(unittest2.TestCase):
         Checks whether matrices corresponding to sqrt.T@sqrt and the
         original matrix are approximately equal.
         """
-        operator = (inversion.correlations.HomogeneousIsotropicCorrelation.
+        operator = (atmos_flux_inversion.correlations.
+                    HomogeneousIsotropicCorrelation.
                     from_array((1, .5, .25, .125)))
         sqrt = operator.sqrt()
         sqrt_squared = sqrt.T.dot(sqrt)
@@ -1031,10 +1069,10 @@ class TestCorrelations(unittest2.TestCase):
 
     def test_from_function_direct(self):
         """Directly test the output of from_function."""
-        corr_func = (inversion.correlations.
+        corr_func = (atmos_flux_inversion.correlations.
                      ExponentialCorrelation(1 / np.log(2)))
         from_function = (
-            inversion.correlations.HomogeneousIsotropicCorrelation.
+            atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.
             from_function)
         toeplitz = scipy.linalg.toeplitz
 
@@ -1101,10 +1139,10 @@ class TestCorrelations(unittest2.TestCase):
 
     def test_inv(self):
         """Test inverse matches linalg."""
-        corr_func = (inversion.correlations.
+        corr_func = (atmos_flux_inversion.correlations.
                      ExponentialCorrelation(1 / np.log(2)))
         from_function = (
-            inversion.correlations.HomogeneousIsotropicCorrelation.
+            atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.
             from_function)
 
         for test_shape in (10, 11, (3, 3), (4, 4)):
@@ -1119,10 +1157,10 @@ class TestCorrelations(unittest2.TestCase):
 
     def test_acyclic_inv_fails(self):
         """Test inverse fails for acyclic correlations."""
-        corr_func = (inversion.correlations.
+        corr_func = (atmos_flux_inversion.correlations.
                      ExponentialCorrelation(1 / np.log(2)))
         from_function = (
-            inversion.correlations.HomogeneousIsotropicCorrelation.
+            atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.
             from_function)
 
         for test_shape in (10, 11, (3, 3), (4, 4)):
@@ -1135,10 +1173,10 @@ class TestCorrelations(unittest2.TestCase):
 
     def test_wrong_shape_fails(self):
         """Test that a vector of the wrong shape fails noisily."""
-        corr_func = (inversion.correlations.
+        corr_func = (atmos_flux_inversion.correlations.
                      ExponentialCorrelation(2))
         corr_op = (
-            inversion.correlations.HomogeneousIsotropicCorrelation.
+            atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.
             from_function(corr_func, (3, 4)))
 
         self.assertRaises(
@@ -1149,7 +1187,8 @@ class TestCorrelations(unittest2.TestCase):
     def test_cyclic_from_array(self):
         """Test from_array with assumed cyclic correlations."""
         array = [1, .5, .25, .125, .0625, .125, .25, .5]
-        op = (inversion.correlations.HomogeneousIsotropicCorrelation.
+        op = (atmos_flux_inversion.correlations.
+              HomogeneousIsotropicCorrelation.
               from_array(array))
         mat = scipy.linalg.toeplitz(array)
 
@@ -1159,7 +1198,8 @@ class TestCorrelations(unittest2.TestCase):
     def test_acyclic_from_array(self):
         """Test from_array with correlations assumed acyclic."""
         array = [1, .5, .25, .125, .0625, .03125]
-        op = (inversion.correlations.HomogeneousIsotropicCorrelation.
+        op = (atmos_flux_inversion.correlations.
+              HomogeneousIsotropicCorrelation.
               from_array(array, False))
         mat = scipy.linalg.toeplitz(array)
 
@@ -1188,7 +1228,7 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
         """Test that the implementation works with identity matrices."""
         test_sizes = (4, 5)
         SchmidtKroneckerProduct = (
-            inversion.correlations.SchmidtKroneckerProduct)
+            atmos_flux_inversion.linalg.SchmidtKroneckerProduct)
 
         # I want to be sure either being smaller works.
         # Even versus odd also causes problems occasionally
@@ -1211,7 +1251,7 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
         mat2 = ((1, .5, .25), (.5, 1, .5), (.25, .5, 1))
 
         np_tst.assert_allclose(
-            inversion.correlations.SchmidtKroneckerProduct(
+            atmos_flux_inversion.linalg.SchmidtKroneckerProduct(
                 mat1, mat2).dot(np.eye(9)),
             np.tile(mat2, (3, 3)))
 
@@ -1221,7 +1261,7 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
         mat2 = np.ones((3, 3))
 
         np_tst.assert_allclose(
-            inversion.correlations.SchmidtKroneckerProduct(
+            atmos_flux_inversion.linalg.SchmidtKroneckerProduct(
                 mat1, mat2).dot(np.eye(9)),
             np.repeat(np.repeat(mat1, 3, 0), 3, 1))
 
@@ -1230,7 +1270,7 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
         sigmax = np.array(((0, 1), (1, 0)))
         sigmaz = np.array(((1, 0), (0, -1)))
 
-        operator = inversion.correlations.SchmidtKroneckerProduct(
+        operator = atmos_flux_inversion.linalg.SchmidtKroneckerProduct(
             sigmax, sigmaz)
         matrix = scipy.linalg.kron(sigmax, sigmaz)
 
@@ -1244,7 +1284,7 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
     def test_drop_small(self):
         """Test that the implementation properly drops small components."""
         SchmidtKroneckerProduct = (
-            inversion.correlations.SchmidtKroneckerProduct)
+            atmos_flux_inversion.linalg.SchmidtKroneckerProduct)
 
         # I want to be sure either being smaller works.
         # Even versus odd also causes problems occasionally
@@ -1265,7 +1305,9 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
         mat1 = np.eye(2)
         mat2 = np.eye(3)
 
-        op = inversion.correlations.SchmidtKroneckerProduct(mat1, mat2)
+        op = atmos_flux_inversion.linalg.SchmidtKroneckerProduct(
+            mat1, mat2
+        )
 
         op_transpose = op.T
 
@@ -1277,7 +1319,8 @@ class TestSchmidtKroneckerProduct(unittest2.TestCase):
 class TestYMKroneckerProduct(unittest2.TestCase):
     """Test the YM13 Kronecker product implementation for LinearOperators.
 
-    This tests the :class:`~inversion.linalg.DaskKroneckerProductOperator`
+    This tests the
+    :class:`~atmos_flux_inversion.linalg.DaskKroneckerProductOperator`
     implementation based on the algorithm in Yadav and Michalak (2013)
     """
 
@@ -1285,7 +1328,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         """Test that the implementation works with identity matrices."""
         test_sizes = (4, 5)
         DaskKroneckerProductOperator = (
-            inversion.linalg.DaskKroneckerProductOperator)
+            atmos_flux_inversion.linalg.DaskKroneckerProductOperator)
 
         # I want to be sure either being smaller works.
         # Even versus odd also causes problems occasionally
@@ -1308,7 +1351,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         mat2 = np.array(((1, .5, .25), (.5, 1, .5), (.25, .5, 1)))
 
         np_tst.assert_allclose(
-            inversion.linalg.DaskKroneckerProductOperator(
+            atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
                 mat1, mat2).dot(np.eye(9)),
             np.tile(mat2, (3, 3)))
 
@@ -1318,7 +1361,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         mat2 = np.ones((3, 3))
 
         np_tst.assert_allclose(
-            inversion.linalg.DaskKroneckerProductOperator(
+            atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
                 mat1, mat2).dot(np.eye(9)),
             np.repeat(np.repeat(mat1, 3, 0), 3, 1))
 
@@ -1327,7 +1370,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         sigmax = np.array(((0, 1), (1, 0)))
         sigmaz = np.array(((1, 0), (0, -1)))
 
-        operator = inversion.linalg.DaskKroneckerProductOperator(
+        operator = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
             sigmax, sigmaz)
         matrix = scipy.linalg.kron(sigmax, sigmaz)
 
@@ -1356,10 +1399,10 @@ class TestYMKroneckerProduct(unittest2.TestCase):
     def test_transpose(self):
         """Test whether the transpose is properly implemented."""
         mat1 = np.eye(3)
-        mat2 = inversion.covariances.DiagonalOperator((1, 1))
+        mat2 = atmos_flux_inversion.covariances.DiagonalOperator((1, 1))
         mat3 = np.eye(4)
         DaskKroneckerProductOperator = (
-            inversion.linalg.DaskKroneckerProductOperator)
+            atmos_flux_inversion.linalg.DaskKroneckerProductOperator)
 
         with self.subTest(check="symmetric"):
             product = DaskKroneckerProductOperator(
@@ -1410,10 +1453,10 @@ class TestYMKroneckerProduct(unittest2.TestCase):
     def test_sqrt(self):
         """Test whether the sqrt method works as intended."""
         matrix1 = np.eye(2)
-        matrix2 = inversion.covariances.DiagonalOperator((1, 2, 3))
+        matrix2 = atmos_flux_inversion.covariances.DiagonalOperator((1, 2, 3))
         tester = np.eye(6)
 
-        product = inversion.linalg.DaskKroneckerProductOperator(
+        product = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
             matrix1, matrix2)
         sqrt = product.sqrt()
         proposed = sqrt.T.dot(sqrt)
@@ -1426,7 +1469,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         matrix1 = scipy.linalg.toeplitz((1., 1/3., 1/9., 1/27., 1/81.))  # noqa
         matrix2 = scipy.linalg.toeplitz((1., .5, .25, .125, .0625, .03125))
 
-        product = inversion.linalg.DaskKroneckerProductOperator(
+        product = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
             matrix1, matrix2)
 
         tester = np.eye(product.shape[0])
@@ -1439,7 +1482,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         np_tst.assert_allclose(product.quadratic_form(test_vec),
                                test_vec.dot(dense_product.dot(test_vec)))
 
-        test_op = inversion.linalg.DiagonalOperator(test_vec)
+        test_op = atmos_flux_inversion.linalg.DiagonalOperator(test_vec)
         self.assertRaises(
             TypeError,
             product.quadratic_form,
@@ -1466,7 +1509,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         """Test that the implementation works with MatrixLinearOperator."""
         test_sizes = (4, 5)
         DaskKroneckerProductOperator = (
-            inversion.linalg.DaskKroneckerProductOperator)
+            atmos_flux_inversion.linalg.DaskKroneckerProductOperator)
 
         # I want to be sure either being smaller works.
         # Even versus odd also causes problems occasionally
@@ -1489,12 +1532,12 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         The implementation requires it.  The implementation should
         fail quickly, not slowly.
         """
-        mat1 = inversion.linalg.DiagonalOperator(np.arange(10))
+        mat1 = atmos_flux_inversion.linalg.DiagonalOperator(np.arange(10))
         mat2 = np.eye(3)
 
         self.assertRaises(
             ValueError,
-            inversion.linalg.DaskKroneckerProductOperator,
+            atmos_flux_inversion.linalg.DaskKroneckerProductOperator,
             mat1, mat2)
 
     def test_sqrt_fails(self):
@@ -1502,7 +1545,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
 
         Specifically, non-square arrays and asymmetric arrays.
         """
-        kron_op = inversion.linalg.DaskKroneckerProductOperator
+        kron_op = atmos_flux_inversion.linalg.DaskKroneckerProductOperator
 
         self.assertRaises(
             ValueError,
@@ -1552,19 +1595,19 @@ class TestYMKroneckerProduct(unittest2.TestCase):
 
 
 class TestUtilKroneckerProduct(unittest2.TestCase):
-    """Test inversion.util.kronecker_product."""
+    """Test atmos_flux_inversion.util.kronecker_product."""
 
     def test_delegation(self):
         """Test that it delegates to subclasses where appropriate."""
         HomogeneousIsotropicCorrelation = (
-            inversion.correlations.HomogeneousIsotropicCorrelation)
-        corr_class = inversion.correlations.GaussianCorrelation
+            atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation)
+        corr_class = atmos_flux_inversion.correlations.GaussianCorrelation
         corr_fun = corr_class(5)
 
         op1 = HomogeneousIsotropicCorrelation.from_function(corr_fun, 15)
         op2 = HomogeneousIsotropicCorrelation.from_function(corr_fun, 20)
 
-        combined_op = inversion.util.kronecker_product(op1, op2)
+        combined_op = atmos_flux_inversion.util.kronecker_product(op1, op2)
         proposed_result = HomogeneousIsotropicCorrelation.from_function(
             corr_fun, (15, 20))
 
@@ -1584,7 +1627,7 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
         mat1 = np.eye(2)
         mat2 = np.eye(3)
 
-        combined_op = inversion.util.kronecker_product(mat1, mat2)
+        combined_op = atmos_flux_inversion.util.kronecker_product(mat1, mat2)
 
         self.assertIsInstance(combined_op, np.ndarray)
         self.assertSequenceEqual(combined_op.shape,
@@ -1600,10 +1643,10 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
         mat1 = np.eye(1 << 5)
         mat2 = np.eye(1 << 6)
 
-        combined = inversion.util.kronecker_product(mat1, mat2)
+        combined = atmos_flux_inversion.util.kronecker_product(mat1, mat2)
 
         self.assertIsInstance(
-            combined, inversion.linalg.DaskKroneckerProductOperator)
+            combined, atmos_flux_inversion.linalg.DaskKroneckerProductOperator)
         self.assertSequenceEqual(combined.shape,
                                  tuple(np.multiply(mat1.shape, mat2.shape)))
 
@@ -1612,11 +1655,13 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
         mat1 = np.eye(3)
         mat2 = scipy.sparse.eye(10)
 
-        combined_op = inversion.util.kronecker_product(mat1, mat2)
+        combined_op = atmos_flux_inversion.util.kronecker_product(mat1, mat2)
         big_ident = np.eye(30)
 
         self.assertIsInstance(
-            combined_op, inversion.linalg.DaskKroneckerProductOperator)
+            combined_op,
+            atmos_flux_inversion.linalg.DaskKroneckerProductOperator
+        )
         self.assertSequenceEqual(combined_op.shape,
                                  tuple(np.multiply(mat1.shape, mat2.shape)))
         np_tst.assert_allclose(combined_op.dot(big_ident),
@@ -1624,18 +1669,20 @@ class TestUtilKroneckerProduct(unittest2.TestCase):
 
     def test_linop_array(self):
         """Test linop-sparse Kronecker products."""
-        op1 = inversion.linalg.DiagonalOperator(np.arange(15))
+        op1 = atmos_flux_inversion.linalg.DiagonalOperator(np.arange(15))
         mat2 = np.eye(10)
-        combined_op = inversion.util.kronecker_product(op1, mat2)
+        combined_op = atmos_flux_inversion.util.kronecker_product(op1, mat2)
 
         self.assertIsInstance(
-            combined_op, inversion.correlations.SchmidtKroneckerProduct)
+            combined_op,
+            atmos_flux_inversion.linalg.SchmidtKroneckerProduct
+        )
         self.assertSequenceEqual(combined_op.shape,
                                  tuple(np.multiply(op1.shape, mat2.shape)))
 
 
 class TestUtilSchmidtDecomposition(unittest2.TestCase):
-    """Test the Schimdt decomposition code in inversion.linalg."""
+    """Test the Schimdt decomposition code in atmos_flux_inversion.linalg."""
 
     def setUp(self):
         """Set up the test vectors."""
@@ -1672,7 +1719,7 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
                 composite_state = scipy.linalg.kron(vec1, vec2)
 
                 lambdas, vecs1, vecs2 = (
-                    inversion.linalg.schmidt_decomposition(
+                    atmos_flux_inversion.linalg.schmidt_decomposition(
                         composite_state, vec1.shape[0], vec2.shape[0]))
 
                 np_tst.assert_allclose(np.nonzero(lambdas),
@@ -1700,7 +1747,7 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
             scipy.linalg.kron(self.k0, self.k00) +
             scipy.linalg.kron(self.k1, self.k01)) / sqrt2
         res_lambda, res_vec1, res_vec2 = (
-            inversion.linalg.schmidt_decomposition(
+            atmos_flux_inversion.linalg.schmidt_decomposition(
                 composite_state, 2, 4))
 
         self.assertEqual(res_vec1.shape, (2, 2))
@@ -1718,12 +1765,17 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
         sqrt2o2 = math.sqrt(2) / 2
         epr_state = (self.k01 - self.k10) * sqrt2o2
 
-        lambdas, vecs1, vecs2 = inversion.linalg.schmidt_decomposition(
-            epr_state, 2, 2)
+        lambdas, vecs1, vecs2 = (
+            atmos_flux_inversion.linalg.schmidt_decomposition(
+                epr_state, 2, 2
+            )
+        )
 
         lambdas = np.asarray(lambdas)
         vecs1 = np.asarray(vecs1)
         vecs2 = np.asarray(vecs2)
+
+        self.assertEqual(len(lambdas), 2)
 
         # This will not recover the original decomposition
         np_tst.assert_allclose(lambdas, (sqrt2o2, sqrt2o2))
@@ -1745,7 +1797,7 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
 
     def test_failure(self):
         """Test that schmidt_decomposition fails on invalid input."""
-        schmidt_decomp = inversion.linalg.schmidt_decomposition
+        schmidt_decomp = atmos_flux_inversion.linalg.schmidt_decomposition
         schmidt_decomp(np.eye(6, 1), 2, 3)
         schmidt_decomp(np.arange(6), 2, 3)
         self.assertRaises(
@@ -1755,7 +1807,7 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
         """Test size of results for large vectors."""
         vec = np.arange(1000, dtype=float)
         lambdas, uvecs, vvecs = (
-            inversion.linalg.schmidt_decomposition(vec, 10, 100))
+            atmos_flux_inversion.linalg.schmidt_decomposition(vec, 10, 100))
         self.assertLessEqual(len(lambdas), 10)
         self.assertNotIn(0, lambdas)
         np_tst.assert_allclose(
@@ -1769,18 +1821,26 @@ class TestUtilSchmidtDecomposition(unittest2.TestCase):
         """Test that all returned data is significant."""
         vec = np.eye(20, 1)
         lambdas, uvecs, vvecs = (
-            inversion.linalg.schmidt_decomposition(vec, 4, 5))
+            atmos_flux_inversion.linalg.schmidt_decomposition(vec, 4, 5))
         self.assertNotIn(0, lambdas)
+
+    def test_zeros(self):
+        """Test that function gives sensible output on zero input."""
+        vec = np.zeros(20)
+        lambdas, uvecs, vvecs = (
+            atmos_flux_inversion.linalg.schmidt_decomposition(vec, 4, 5)
+        )
+        self.assertSequenceEqual(lambdas, [0])
 
 
 class TestUtilIsOdd(unittest2.TestCase):
-    """Test inversion.linalg.is_odd."""
+    """Test atmos_flux_inversion.linalg.is_odd."""
 
     MAX_TO_TEST = 100
 
     def test_known_odd(self):
         """Test known odd numbers."""
-        is_odd = inversion.linalg_interface.is_odd
+        is_odd = atmos_flux_inversion.linalg_interface.is_odd
 
         for i in range(1, self.MAX_TO_TEST, 2):
             with self.subTest(i=i):
@@ -1788,7 +1848,7 @@ class TestUtilIsOdd(unittest2.TestCase):
 
     def test_known_even(self):
         """Test known even numbers."""
-        is_odd = inversion.linalg_interface.is_odd
+        is_odd = atmos_flux_inversion.linalg_interface.is_odd
 
         for i in range(0, self.MAX_TO_TEST, 2):
             with self.subTest(i=i):
@@ -1796,11 +1856,11 @@ class TestUtilIsOdd(unittest2.TestCase):
 
 
 class TestUtilToLinearOperator(unittest2.TestCase):
-    """Test inversion.linalg.tolinearoperator."""
+    """Test atmos_flux_inversion.linalg.tolinearoperator."""
 
     def test_tolinearoperator(self):
         """Test that tolinearoperator returns LinearOperators."""
-        tolinearoperator = inversion.linalg.tolinearoperator
+        tolinearoperator = atmos_flux_inversion.linalg.tolinearoperator
 
         for trial in (0, 1., (0, 1), [0, 1], ((1, 0), (0, 1)),
                       [[0, 1.], [1., 0]], np.arange(5),
@@ -1820,12 +1880,12 @@ class TestUtilToLinearOperator(unittest2.TestCase):
 
 
 class TestUtilKron(unittest2.TestCase):
-    """Test inversion.linalg.kron against scipy.linalg.kron."""
+    """Test atmos_flux_inversion.linalg.kron against scipy.linalg.kron."""
 
     def test_util_kron(self):
         """Test my kronecker implementation against scipy's."""
         trial_inputs = (1, (1,), [0], np.arange(10), np.eye(5))
-        my_kron = inversion.linalg.kron
+        my_kron = atmos_flux_inversion.linalg.kron
         scipy_kron = scipy.linalg.kron
 
         for input1, input2 in itertools.product(trial_inputs, repeat=2):
@@ -1845,8 +1905,9 @@ class TestHomogeneousInversions(unittest2.TestCase):
     """
 
     CURRENTLY_BROKEN = frozenset((
-        inversion.optimal_interpolation.scipy_chol,  # cho_factor/solve
-        inversion.variational.incr_chol,  # cho_factor/solve
+        # cho_factor/solve
+        atmos_flux_inversion.optimal_interpolation.scipy_chol,
+        atmos_flux_inversion.variational.incr_chol,
     ))
 
     def setUp(self):
@@ -1854,12 +1915,14 @@ class TestHomogeneousInversions(unittest2.TestCase):
         self.bg_vals = np.zeros(10, dtype=DTYPE)
         self.obs_vals = np.ones(3, dtype=DTYPE)
 
-        corr_class = inversion.correlations.ExponentialCorrelation
+        corr_class = atmos_flux_inversion.correlations.ExponentialCorrelation
         corr_fun = corr_class(2)
 
-        bg_corr = (inversion.correlations.HomogeneousIsotropicCorrelation.
+        bg_corr = (atmos_flux_inversion.correlations.
+                   HomogeneousIsotropicCorrelation.
                    from_function(corr_fun, self.bg_vals.shape))
-        obs_corr = (inversion.correlations.HomogeneousIsotropicCorrelation.
+        obs_corr = (atmos_flux_inversion.correlations.
+                    HomogeneousIsotropicCorrelation.
                     from_function(corr_fun, self.obs_vals.shape))
         obs_op = scipy.sparse.diags(
             (.5, 1, .5),
@@ -1868,10 +1931,12 @@ class TestHomogeneousInversions(unittest2.TestCase):
 
         self.bg_corr = (bg_corr, bg_corr.dot(np.eye(*bg_corr.shape)))
         self.obs_corr = (obs_corr, obs_corr.dot(np.eye(*obs_corr.shape)))
-        self.obs_op = (inversion.linalg.tolinearoperator(obs_op.toarray()),
-                       # Dask requires subscripting; diagonal sparse
-                       # matrices don't do this.
-                       obs_op.toarray())
+        self.obs_op = (
+            atmos_flux_inversion.linalg.tolinearoperator(obs_op.toarray()),
+            # Dask requires subscripting; diagonal sparse
+            # matrices don't do this.
+            obs_op.toarray()
+        )
 
         if HAVE_SPARSE:
             self.obs_op += (sparse.COO(obs_op.toarray()),)
@@ -1911,7 +1976,9 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
         mat1 = np.eye(2)
         vectors = np.eye(4)
 
-        product = inversion.linalg.DaskKroneckerProductOperator(mat1, mat1)
+        product = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
+            mat1, mat1
+        )
 
         for i, vec in enumerate(vectors):
             with self.subTest(i=i):
@@ -1924,7 +1991,9 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
         mat1 = np.eye(2)
         vectors = np.eye(4)
 
-        product = inversion.linalg.DaskKroneckerProductOperator(mat1, mat1)
+        product = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
+            mat1, mat1
+        )
 
         for i in range(4):
             stop = i + 1
@@ -1939,7 +2008,9 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
         mat2 = scipy.linalg.toeplitz(2.**-np.arange(10))
 
         scipy_kron = scipy.linalg.kron(mat1, mat2)
-        linop_kron = inversion.linalg.DaskKroneckerProductOperator(mat1, mat2)
+        linop_kron = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
+            mat1, mat2
+        )
 
         test_arry = np.eye(50, 20)
 
@@ -1966,7 +2037,7 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
         """Test the failure modes of YMKron.quadratic_form."""
         mat1 = np.eye(3, 2)
 
-        op1 = inversion.linalg.DaskKroneckerProductOperator(
+        op1 = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
             mat1, mat1)
 
         self.assertRaises(
@@ -1975,7 +2046,7 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
             np.arange(4))
 
         mat2 = np.eye(3)
-        op2 = inversion.linalg.DaskKroneckerProductOperator(
+        op2 = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
             mat2, mat2)
 
         self.assertRaises(
@@ -1995,8 +2066,10 @@ class TestUtilProduct(unittest2.TestCase):
     def test_symmetric_methods_added(self):
         """Test that the method is added or not as appropriate."""
         op1 = tolinearoperator(np.eye(2))
-        op2 = inversion.linalg.DiagonalOperator(np.ones(2))
-        ProductLinearOperator = inversion.linalg.ProductLinearOperator
+        op2 = atmos_flux_inversion.linalg.DiagonalOperator(np.ones(2))
+        ProductLinearOperator = (
+            atmos_flux_inversion.linalg.ProductLinearOperator
+        )
 
         with self.subTest(num=2, same=True):
             product = ProductLinearOperator(op1.T, op1)
@@ -2021,11 +2094,14 @@ class TestUtilProduct(unittest2.TestCase):
     def test_returned_shape(self):
         """Test that the shape of the result is correct."""
         op1 = tolinearoperator(np.eye(3))
-        op2 = inversion.linalg.DiagonalOperator(np.ones(3))
-        op3 = (inversion.correlations.HomogeneousIsotropicCorrelation
+        op2 = atmos_flux_inversion.linalg.DiagonalOperator(np.ones(3))
+        op3 = (atmos_flux_inversion.correlations.
+               HomogeneousIsotropicCorrelation
                .from_array(
                    (1, .5, .25), is_cyclic=False))
-        ProductLinearOperator = inversion.linalg.ProductLinearOperator
+        ProductLinearOperator = (
+            atmos_flux_inversion.linalg.ProductLinearOperator
+        )
 
         vectors = np.eye(3)
 
@@ -2065,8 +2141,10 @@ class TestUtilProduct(unittest2.TestCase):
         mat1 = np.eye(3)
         mat1[1, 0] = 1
         op1 = tolinearoperator(mat1)
-        op2 = inversion.linalg.DiagonalOperator((1, .25, .0625))
-        ProductLinearOperator = inversion.linalg.ProductLinearOperator
+        op2 = atmos_flux_inversion.linalg.DiagonalOperator((1, .25, .0625))
+        ProductLinearOperator = (
+            atmos_flux_inversion.linalg.ProductLinearOperator
+        )
 
         tester = np.eye(3)
 
@@ -2089,8 +2167,10 @@ class TestUtilProduct(unittest2.TestCase):
         mat1 = np.eye(3)
         mat1[1, 0] = 1
         op1 = tolinearoperator(mat1)
-        op2 = inversion.linalg.DiagonalOperator((1, .25, .0625))
-        ProductLinearOperator = inversion.linalg.ProductLinearOperator
+        op2 = atmos_flux_inversion.linalg.DiagonalOperator((1, .25, .0625))
+        ProductLinearOperator = (
+            atmos_flux_inversion.linalg.ProductLinearOperator
+        )
 
         product = ProductLinearOperator(op1, op2)
         result = product.T
@@ -2102,8 +2182,10 @@ class TestUtilProduct(unittest2.TestCase):
         mat1 = np.eye(3)
         mat1[1, 0] = 1
         op1 = tolinearoperator(mat1)
-        op2 = inversion.linalg.DiagonalOperator((1, .25, .0625))
-        ProductLinearOperator = inversion.linalg.ProductLinearOperator
+        op2 = atmos_flux_inversion.linalg.DiagonalOperator((1, .25, .0625))
+        ProductLinearOperator = (
+            atmos_flux_inversion.linalg.ProductLinearOperator
+        )
 
         product = ProductLinearOperator(op1, op2)
         result = product.H
@@ -2113,18 +2195,18 @@ class TestUtilProduct(unittest2.TestCase):
     def test_bad_shapes(self):
         """Test that the product fails if the shapes are incompatible."""
         self.assertRaises(
-            ValueError, inversion.linalg.ProductLinearOperator,
+            ValueError, atmos_flux_inversion.linalg.ProductLinearOperator,
             np.eye(10, 3), np.eye(4, 10))
         self.assertRaises(
-            ValueError, inversion.linalg.ProductLinearOperator,
+            ValueError, atmos_flux_inversion.linalg.ProductLinearOperator,
             np.eye(10, 3), np.eye(3, 6), np.eye(5, 10))
         self.assertRaises(
-            ValueError, inversion.linalg.ProductLinearOperator,
+            ValueError, atmos_flux_inversion.linalg.ProductLinearOperator,
             np.eye(10, 4), np.eye(3, 6), np.eye(6, 10))
 
     def test_product_without_transpose(self):
         """Test ProductLinearOperator of non-transposing operators."""
-        op = inversion.linalg_interface.DaskLinearOperator(
+        op = atmos_flux_inversion.linalg_interface.DaskLinearOperator(
             shape=(10, 10),
             dtype=np.complex128,
             matvec=lambda vec: vec,
@@ -2137,7 +2219,7 @@ class TestUtilProduct(unittest2.TestCase):
         self.assertRaises(
             AttributeError,
             op.transpose)
-        product = inversion.linalg_interface.ProductLinearOperator(
+        product = atmos_flux_inversion.linalg_interface.ProductLinearOperator(
             op, op)
         self.assertRaises(
             AttributeError,
@@ -2152,8 +2234,11 @@ class TestCorrelationStandardDeviation(unittest2.TestCase):
         correlations = np.eye(2)
         stds = np.ones(2)
 
-        covariances = inversion.covariances.CorrelationStandardDeviation(
-            correlations, stds)
+        covariances = (
+            atmos_flux_inversion.covariances.CorrelationStandardDeviation(
+                correlations, stds
+            )
+        )
 
         self.assertIs(covariances, covariances.T)
 
@@ -2162,8 +2247,11 @@ class TestCorrelationStandardDeviation(unittest2.TestCase):
         correlations = np.array(((1, .5), (.5, 1)))
         stds = (2, 1)
 
-        linop_cov = inversion.covariances.CorrelationStandardDeviation(
-            correlations, stds)
+        linop_cov = (
+            atmos_flux_inversion.covariances.CorrelationStandardDeviation(
+                correlations, stds
+            )
+        )
         np_cov = np.diag(stds).dot(correlations.dot(np.diag(stds)))
 
         np_tst.assert_allclose(linop_cov.dot(np.eye(2)), np_cov)
@@ -2173,8 +2261,11 @@ class TestCorrelationStandardDeviation(unittest2.TestCase):
         correlations = np.eye(2)
         stds = np.ones(2)
 
-        covariances = inversion.covariances.CorrelationStandardDeviation(
-            correlations, stds)
+        covariances = (
+            atmos_flux_inversion.covariances.CorrelationStandardDeviation(
+                correlations, stds
+            )
+        )
 
         self.assertIs(covariances, covariances.H)
 
@@ -2186,8 +2277,11 @@ class TestCorrelationStandardDeviation(unittest2.TestCase):
         correlations = corr_sqrt.T.dot(corr_sqrt)
         stds = [1, .5, .25]
 
-        covariance = inversion.covariances.CorrelationStandardDeviation(
-            correlations, stds)
+        covariance = (
+            atmos_flux_inversion.covariances.CorrelationStandardDeviation(
+                correlations, stds
+            )
+        )
         sqrt = covariance.sqrt()
         self.assertEqual(len(sqrt._operators), 2)
         np_tst.assert_allclose(sqrt._operators[0].A, corr_sqrt)
@@ -2203,13 +2297,13 @@ class TestCovariances(unittest2.TestCase):
         """Test DiagonalOperator creation from array of values."""
         stds = np.arange(20).reshape(4, 5)
 
-        inversion.covariances.DiagonalOperator(stds)
+        atmos_flux_inversion.covariances.DiagonalOperator(stds)
 
     def test_diagonal_operator_behavior(self):
         """Test behavior of DiagonalOperator."""
         diag = np.arange(10.) + 1.
 
-        op = inversion.covariances.DiagonalOperator(diag)
+        op = atmos_flux_inversion.covariances.DiagonalOperator(diag)
         arry = np.diag(diag)
 
         test_vecs = (np.arange(10.),
@@ -2233,7 +2327,7 @@ class TestCovariances(unittest2.TestCase):
     def test_diagonal_2d_vector(self):
         """Test DiagonalOperator works with Nx1 vector."""
         diag = np.arange(10.)
-        op = inversion.covariances.DiagonalOperator(diag)
+        op = atmos_flux_inversion.covariances.DiagonalOperator(diag)
         vec = np.arange(10.)[:, np.newaxis]
         result = op.dot(vec)
         self.assertEqual(np.squeeze(result).ndim, 1)
@@ -2241,15 +2335,17 @@ class TestCovariances(unittest2.TestCase):
 
     def test_diagonal_self_adjoint(self):
         """Test the self-adjoint methods of DiagonalOperator."""
-        operator = inversion.covariances.DiagonalOperator(np.arange(10.))
+        operator = atmos_flux_inversion.covariances.DiagonalOperator(
+            np.arange(10.)
+        )
 
         self.assertIs(operator, operator.H)
         self.assertIs(operator, operator.T)
 
     def test_diagonal_from_diagonal(self):
         """Test that creating a DiagonalOperator from another works."""
-        op1 = inversion.linalg.DiagonalOperator(np.arange(10))
-        op2 = inversion.linalg.DiagonalOperator(op1)
+        op1 = atmos_flux_inversion.linalg.DiagonalOperator(np.arange(10))
+        op2 = atmos_flux_inversion.linalg.DiagonalOperator(op1)
 
         np_tst.assert_allclose(
             op1.dot(np.arange(10)),
@@ -2257,7 +2353,7 @@ class TestCovariances(unittest2.TestCase):
 
     def test_diagonal_sqrt(self):
         """Test that DiagonalOperator.sqrt works as expected."""
-        DiagonalOperator = inversion.covariances.DiagonalOperator
+        DiagonalOperator = atmos_flux_inversion.covariances.DiagonalOperator
         diagonal = np.arange(10.)
         operator = DiagonalOperator(diagonal)
         sqrt = operator.sqrt()
@@ -2277,7 +2373,9 @@ class TestCovariances(unittest2.TestCase):
         operator_list = (np.arange(25.).reshape(5, 5) + np.diag((2.,) * 5),
                          np.eye(5, dtype=DTYPE),
                          np.ones((5, 5), dtype=DTYPE) + np.diag((1.,) * 5))
-        operator = inversion.linalg.ProductLinearOperator(*operator_list)
+        operator = atmos_flux_inversion.linalg.ProductLinearOperator(
+            *operator_list
+        )
 
         arry = reduce(lambda x, y: x.dot(y), operator_list)
 
@@ -2305,18 +2403,18 @@ class TestLinalgSolve(unittest2.TestCase):
         test_vec = np.arange(2)
 
         np_tst.assert_allclose(
-            inversion.linalg.solve(test_op, test_vec),
+            atmos_flux_inversion.linalg.solve(test_op, test_vec),
             la.solve(test_op, test_vec))
 
     def test_method_array(self):
         """Test that solve delegates."""
         test_op = (
-            inversion.correlations.HomogeneousIsotropicCorrelation.
+            atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.
             from_array([1, .5, .25, .5]))
         test_vec = np.arange(4)
 
         np_tst.assert_allclose(
-            inversion.linalg.solve(
+            atmos_flux_inversion.linalg.solve(
                 test_op, test_vec),
             la.solve(test_op.dot(np.eye(4)),
                      test_vec),
@@ -2331,23 +2429,23 @@ class TestLinalgSolve(unittest2.TestCase):
         test_vec = np.arange(4)
 
         np_tst.assert_allclose(
-            inversion.linalg.solve(test_op, test_vec),
+            atmos_flux_inversion.linalg.solve(test_op, test_vec),
             test_vec / test_diag)
 
         test_mat = np.eye(4)
         np_tst.assert_allclose(
-            inversion.linalg.solve(test_op, test_mat),
+            atmos_flux_inversion.linalg.solve(test_op, test_mat),
             test_mat / test_diag[np.newaxis, :])
 
     def test_array_linop(self):
         """Test solve with a linear operator as rhs."""
         test_diag = 1 + np.arange(4)
         test_op = (
-            inversion.linalg.DiagonalOperator(
+            atmos_flux_inversion.linalg.DiagonalOperator(
                 test_diag))
         test_arry = np.diag(test_diag)
 
-        result = inversion.linalg.solve(
+        result = atmos_flux_inversion.linalg.solve(
             test_arry, test_op)
         self.assertIsInstance(
             result, LinearOperator)
@@ -2364,7 +2462,7 @@ class TestLinalgSolve(unittest2.TestCase):
             np.arange(4).reshape(4, 1))
 
         np_tst.assert_allclose(
-            inversion.linalg.solve(
+            atmos_flux_inversion.linalg.solve(
                 test_op, test_vec),
             la.solve(test_op.A, test_vec.A))
 
@@ -2375,18 +2473,18 @@ class TestLinalgSolve(unittest2.TestCase):
 
         self.assertRaises(
             ValueError,
-            inversion.linalg.solve,
+            atmos_flux_inversion.linalg.solve,
             test_op, test_vec)
         self.assertRaises(
             la.LinAlgError,
-            inversion.linalg.solve,
+            atmos_flux_inversion.linalg.solve,
             test_op[:, :-1],
             test_vec[:-1])
 
     def test_solve_method_fails(self):
         """Test that solve still works if a solve method fails."""
         test_op = (
-            inversion.correlations.HomogeneousIsotropicCorrelation.
+            atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.
             from_array([1, .5, .25, .125, .0625], is_cyclic=False))
         ident = np.eye(*test_op.shape)
         test_mat = test_op.dot(ident)
@@ -2394,7 +2492,7 @@ class TestLinalgSolve(unittest2.TestCase):
         for vec in ident:
             with self.subTest(test_vec=vec):
                 np_tst.assert_allclose(
-                    inversion.linalg.solve(test_op, vec),
+                    atmos_flux_inversion.linalg.solve(test_op, vec),
                     np_la.solve(test_mat, vec),
                     atol=1e-10)
 
@@ -2408,7 +2506,7 @@ class TestLinopSolve(unittest2.TestCase):
         test_vec = np.arange(4)
 
         np_tst.assert_allclose(
-            inversion.linalg.linop_solve(
+            atmos_flux_inversion.linalg.linop_solve(
                 test_op, test_vec),
             la.solve(test_op, test_vec))
 
@@ -2418,17 +2516,17 @@ class TestLinopSolve(unittest2.TestCase):
         test_vecs = np.arange(12).reshape(4, 3)
 
         np_tst.assert_allclose(
-            inversion.linalg.linop_solve(
+            atmos_flux_inversion.linalg.linop_solve(
                 test_op, test_vecs),
             la.solve(test_op, test_vecs))
 
 
 class TestUtilMatrixSqrt(unittest2.TestCase):
-    """Test that inversion.linalg.sqrt works as planned."""
+    """Test that atmos_flux_inversion.linalg.sqrt works as planned."""
 
     def test_array(self):
         """Test that matrix_sqrt works with arrays."""
-        matrix_sqrt = inversion.linalg.matrix_sqrt
+        matrix_sqrt = atmos_flux_inversion.linalg.matrix_sqrt
 
         with self.subTest(trial="identity"):
             mat = np.eye(3)
@@ -2450,10 +2548,10 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
         mat = np.eye(10)
         mat_op = MatrixLinearOperator(mat)
 
-        result1 = inversion.linalg.matrix_sqrt(mat_op)
+        result1 = atmos_flux_inversion.linalg.matrix_sqrt(mat_op)
         self.assertIsInstance(result1, np.ndarray)
 
-        result2 = inversion.linalg.matrix_sqrt(mat)
+        result2 = atmos_flux_inversion.linalg.matrix_sqrt(mat)
         tester = np.eye(*result1.shape)
         np_tst.assert_allclose(result1.dot(tester), result2.dot(tester))
 
@@ -2468,34 +2566,37 @@ class TestUtilMatrixSqrt(unittest2.TestCase):
         mat = np.diag([1, 0])
 
         with self.assertRaises(la.LinAlgError):
-            proposed = inversion.linalg.matrix_sqrt(mat)
+            proposed = atmos_flux_inversion.linalg.matrix_sqrt(mat)
             # Fun with one and zero
             np_tst.assert_allclose(proposed, mat)
 
     def test_delegate(self):
         """Test that matrix_sqrt delegates where possible."""
-        operator = (inversion.correlations.HomogeneousIsotropicCorrelation.
+        operator = (atmos_flux_inversion.correlations.
+                    HomogeneousIsotropicCorrelation.
                     from_array((1, .5, .25, .125, .25, .5, 1)))
 
-        proposed = inversion.linalg.matrix_sqrt(operator)
+        proposed = atmos_flux_inversion.linalg.matrix_sqrt(operator)
 
         self.assertIsInstance(
-            proposed, inversion.correlations.HomogeneousIsotropicCorrelation)
+            proposed,
+            atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation
+        )
 
     def test_nonsquare(self):
         """Test matrix_sqrt raises for non-square input."""
         with self.assertRaises(ValueError):
-            inversion.linalg.matrix_sqrt(np.eye(4, 3))
+            atmos_flux_inversion.linalg.matrix_sqrt(np.eye(4, 3))
 
     def test_linop(self):
         """Test matrix_sqrt works for linear operators."""
         diag = np.arange(100, 0, -1)
         operator = LinearOperator(
             matvec=lambda x: diag * x, shape=(100, 100))
-        sqrt = inversion.linalg.matrix_sqrt(operator)
+        sqrt = atmos_flux_inversion.linalg.matrix_sqrt(operator)
 
         self.assertIsInstance(
-            sqrt, inversion.linalg.ProductLinearOperator)
+            sqrt, atmos_flux_inversion.linalg.ProductLinearOperator)
         self.assertEqual(len(sqrt._operators), 3)
         np_tst.assert_allclose(sqrt._operators[1]._diag,
                                0.07 + np.sqrt(np.arange(50, 100)),
@@ -2660,12 +2761,15 @@ class TestReducedUncertainties(unittest2.TestCase):
         temp_cov = scipy.linalg.toeplitz(
             (1 - 1. / 14) ** np.arange(bg.shape[0]))
         spatial_cov = (
-            inversion.correlations.HomogeneousIsotropicCorrelation
-            .from_function(inversion.correlations.ExponentialCorrelation(3.),
-                           bg.shape[1:],
-                           False))
+            atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation
+            .from_function(
+                atmos_flux_inversion.correlations.ExponentialCorrelation(3.),
+                bg.shape[1:],
+                False
+            )
+        )
 
-        bg_cov = inversion.linalg.DaskKroneckerProductOperator(
+        bg_cov = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
             temp_cov, spatial_cov)
 
         same_tower_corr = scipy.linalg.toeplitz(
@@ -2694,8 +2798,8 @@ class TestReducedUncertainties(unittest2.TestCase):
               temp_cov[:times_in_first_group, times_in_first_group:].mean()],
              [temp_cov[times_in_first_group:, :times_in_first_group].mean(),
               temp_cov[times_in_first_group:, times_in_first_group:].mean()]])
-        bg_cov_red = inversion.util.kron(temp_cov_reduced,
-                                         spatial_cov_reduced)
+        bg_cov_red = atmos_flux_inversion.util.kron(temp_cov_reduced,
+                                                    spatial_cov_reduced)
 
         obs_op_part_red = obs_op.sum(axis=-1).sum(axis=-1)
         obs_op_red = np.stack(
@@ -2757,7 +2861,7 @@ class TestWrapperMetadata(unittest2.TestCase):
 
     def test_cf(self):
         """Test metadata for CF attributes I can guess."""
-        metadata = inversion.wrapper.global_attributes_dict()
+        metadata = atmos_flux_inversion.wrapper.global_attributes_dict()
 
         self.assertIn("Conventions", metadata)
         self.assertIn("CF", metadata.get("Conventions", ""))
@@ -2765,7 +2869,7 @@ class TestWrapperMetadata(unittest2.TestCase):
 
     def test_acdd(self):
         """Test metadata for ACDD attributes I can guess."""
-        metadata = inversion.wrapper.global_attributes_dict()
+        metadata = atmos_flux_inversion.wrapper.global_attributes_dict()
 
         self.assertIn("Conventions", metadata)
         self.assertIn("standard_name_vocabulary", metadata)
@@ -2774,12 +2878,15 @@ class TestWrapperMetadata(unittest2.TestCase):
         self.assertIn("date_metadata_modified", metadata)
         self.assertIn("creator_name", metadata)
 
+    @expectFailureIf(sys.platform == "cygwin")
     def test_modules_list(self):
         """Test the list of installed modules.
 
         Will fail if neither pip nor conda is installed.
+
+        May also fail if subprocess is using fork on cygwin.
         """
-        metadata = inversion.wrapper.global_attributes_dict()
+        metadata = atmos_flux_inversion.wrapper.global_attributes_dict()
 
         self.assertIn("installed_modules", metadata)
         installed_modules = metadata["installed_modules"]
@@ -2840,17 +2947,17 @@ class TestWrapperUniform(unittest2.TestCase):
             name="prior_flux_standard_deviations",
             attrs=dict(units="umol/m^2/s"),
         )
-        result = inversion.wrapper.invert_uniform(
+        result = atmos_flux_inversion.wrapper.invert_uniform(
             prior_fluxes,
             observations,
             influence_function,
             5,
-            inversion.correlations.ExponentialCorrelation,
+            atmos_flux_inversion.correlations.ExponentialCorrelation,
             10,
             3,
             prior_flux_standard_deviations,
             3,
-            inversion.optimal_interpolation.save_sum,
+            atmos_flux_inversion.optimal_interpolation.save_sum,
         )
 
         self.assertIn("prior", result)
@@ -2910,17 +3017,17 @@ class TestWrapperUniform(unittest2.TestCase):
             name="prior_flux_standard_deviations",
             attrs=dict(units="umol/m^2/s"),
         )
-        result = inversion.wrapper.invert_uniform(
+        result = atmos_flux_inversion.wrapper.invert_uniform(
             prior_fluxes,
             observations,
             influence_function,
             5,
-            inversion.correlations.ExponentialCorrelation,
+            atmos_flux_inversion.correlations.ExponentialCorrelation,
             10,
             3,
             prior_flux_standard_deviations,
             3,
-            inversion.optimal_interpolation.save_sum,
+            atmos_flux_inversion.optimal_interpolation.save_sum,
         )
 
         self.assertIn("prior", result)
@@ -2988,17 +3095,17 @@ class TestWrapperUniform(unittest2.TestCase):
             observation=("observation_time", "site")
         ))
 
-        result = inversion.wrapper.invert_uniform(
+        result = atmos_flux_inversion.wrapper.invert_uniform(
             prior_fluxes,
             observations,
             influence_function,
             5,
-            inversion.correlations.ExponentialCorrelation,
+            atmos_flux_inversion.correlations.ExponentialCorrelation,
             10,
             3,
             prior_flux_standard_deviations,
             3,
-            inversion.optimal_interpolation.save_sum,
+            atmos_flux_inversion.optimal_interpolation.save_sum,
         )
 
         self.assertIn("prior", result)
@@ -3015,7 +3122,7 @@ class TestRemapper(unittest2.TestCase):
 
     def test_simple(self):
         """Test for the simplest possible case."""
-        extensive, intensive = inversion.remapper.get_remappers(
+        extensive, intensive = atmos_flux_inversion.remapper.get_remappers(
             (6, 6), 3)
 
         old_data = np.arange(36, dtype=float).reshape(6, 6)
@@ -3036,7 +3143,7 @@ class TestRemapper(unittest2.TestCase):
 
     def test_harder(self):
         """Test for domains that do not divide evenly."""
-        extensive, intensive = inversion.remapper.get_remappers(
+        extensive, intensive = atmos_flux_inversion.remapper.get_remappers(
             (7, 7), 3)
 
         old_data = np.arange(49, dtype=float).reshape(7, 7)
@@ -3056,6 +3163,90 @@ class TestRemapper(unittest2.TestCase):
             [[8, 11, 13],
              [29, 32, 34],
              [43, 46, 48]])
+
+
+class TestObservationCovariance(unittest2.TestCase):
+    """Test the generation of observation covariances."""
+
+    def test_simple_product(self):
+        """Test correlations for simple combination of sites and times."""
+        sites = ["LEF", "AMT", "WBI", "SCT"]
+        times = pd.to_datetime(
+            ["2015-06-01T16:00:00",
+             "2015-06-01T17:00:00",
+             "2015-06-01T18:00:00",
+             "2015-06-01T19:00:00",
+             "2015-06-02T16:00:00",
+             "2015-06-02T17:00:00",
+             "2015-06-02T18:00:00",
+             "2015-06-02T19:00:00"]
+        )
+        n_times = len(times)
+        n_obs = len(sites) * n_times
+        series_index = pd.MultiIndex.from_product(
+            [sites, times],
+            names=["site", "time"]
+        )
+        series = pd.Series(
+            data=np.ones(n_obs, dtype=float),
+            index=series_index,
+            name="observation_variances",
+        )
+        corr_fun = (
+            atmos_flux_inversion.correlations.ExponentialCorrelation(3)
+        )
+        corr_block = corr_fun(
+            abs(times[:, np.newaxis] - times[np.newaxis, :]) /
+            atmos_flux_inversion.covariances.OBSERVATION_INTERVAL
+        )
+        self.assertAlmostEqual(corr_block[0, 3], 1. / np.e)
+
+        corr_matrix = (
+            atmos_flux_inversion.covariances.observation_covariance_matrix(
+                series, corr_fun
+            )
+        )
+        self.assertEqual(corr_matrix.shape, (n_obs, n_obs))
+
+        for i, site1 in enumerate(sites):
+            for j, site2 in enumerate(sites):
+                block = corr_matrix[
+                    i * n_times:(i + 1) * n_times,
+                    j * n_times:(j + 1) * n_times
+                ]
+                if site1 != site2:
+                    np_tst.assert_allclose(block, 0)
+                else:
+                    np_tst.assert_allclose(block, corr_block)
+
+    def test_simple_variances(self):
+        """Test that the variances are faithfully reproduced."""
+        sites = ["AMT", "WKT", "WBI", "LEF", "SCT", "BAO"]
+        times = pd.to_datetime([
+            "2015-06-01T16:00:00",
+            "2015-06-01T16:00:00",
+            "2015-06-01T18:00:00",
+            "2015-06-01T18:00:00",
+            "2015-06-02T16:00:00",
+            "2015-06-02T16:00:00",
+        ])
+        obs_index = pd.MultiIndex.from_tuples(list(zip(sites, times)),
+                                              names=["site", "time"])
+        n_obs = len(sites)
+        series = pd.Series(np.arange(n_obs, dtype=float) + 1,
+                           index=obs_index,
+                           name="observation_error_variances")
+        corr_fun = (
+            atmos_flux_inversion.correlations.ExponentialCorrelation(3)
+        )
+        corr_matrix = (
+            atmos_flux_inversion.covariances.observation_covariance_matrix(
+                series, corr_fun
+            )
+        )
+
+        self.assertEqual(corr_matrix.shape, (n_obs, n_obs))
+        np_tst.assert_allclose(corr_matrix, np.diag(series.values))
 
 
 if __name__ == "__main__":
