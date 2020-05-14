@@ -19,6 +19,7 @@ Inversion Theory
 .. toctree::
    :maxdepth: 3
 
+   inverse_problems
    mathematical_formalism
    flux_representation
 
