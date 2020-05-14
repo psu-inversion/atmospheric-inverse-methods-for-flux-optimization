@@ -56,7 +56,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Inversions'
-copyright = u'2018, Daniel Wesloh'
+copyright = u'2018\N{EN DASH}2020, The Pennsylvania State University'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -271,7 +271,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'Inversions', u'Inversions Documentation',
+    (master_doc, 'atmos_flux_inversion',
+     u'Atmospheric Inverse Methods for Flux Optimization: Documentation',
      u'Daniel Wesloh', 'Inversions', 'Functions for geophysical inversions.',
      'Miscellaneous'),
 ]
