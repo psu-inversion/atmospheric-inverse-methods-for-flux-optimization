@@ -52,3 +52,4 @@ optimize the fluxes.
    best_linear_unbiased_estimator
    generalized_least_squares
    maximum_likelihood
+   bayes
