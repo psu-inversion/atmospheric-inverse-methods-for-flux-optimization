@@ -1,8 +1,8 @@
 .. _theory:
 
-=====================================
-Theory of Atmospheric Flux Inversions
-=====================================
+======================================================
+Mathematical Formalism for Atmospheric Flux Inversions
+======================================================
 
 Atmospheric flux inversions attempt to find what fluxes
 :math:`\vec{x}_a` are consistent with a set of atmospheric

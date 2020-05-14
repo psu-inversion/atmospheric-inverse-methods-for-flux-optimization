@@ -15,11 +15,11 @@ section on the theory <theory>`.  The :ref:`User Guide <user_guide>`
 walks through an example of using the code.
 
 Inversion Theory
-------
+----------------
 .. toctree::
    :maxdepth: 3
 
-   theory
+   mathematical_formalism
    flux_representation
 
 User Guide
