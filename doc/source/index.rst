@@ -22,6 +22,7 @@ Inversion Theory
    inverse_problems
    mathematical_formalism
    flux_representation
+   influence_functions
 
 User Guide
 ----------

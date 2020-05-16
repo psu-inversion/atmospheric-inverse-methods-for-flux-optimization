@@ -113,7 +113,11 @@ extlinks = dict(
 )
 
 # List of regexes linkcheck should ignore
-linkcheck_ignore = [r"https://www.jstor.org/stable/\w+"]
+linkcheck_ignore = [
+    # Require authentication:
+    r"https://www.jstor.org/stable/\w+",
+    r"https://dx.doi.org/10.1029/\w+",
+]
 
 # Mathjax configuration
 mathjax_config = dict(
