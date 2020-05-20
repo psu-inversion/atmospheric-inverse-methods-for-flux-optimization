@@ -17,6 +17,7 @@ import scipy.special
 import matplotlib as mpl
 mpl.use("Agg")
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 
 import cartopy.crs as ccrs
@@ -392,7 +393,7 @@ FRAT_COVARIANCE_DS = xarray.open_dataset(
     "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
     "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d_"
     "icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d_"
-    "covariance_output.nc4".format(
+    "162km_7D_covariance_output.nc4".format(
         year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
         noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
         noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
@@ -407,7 +408,7 @@ IDEN_COVARIANCE_DS = xarray.open_dataset(
     "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
     "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d_"
     "icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d_"
-    "covariance_output.nc4".format(
+    "162km_7D_covariance_output.nc4".format(
         year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
         noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
         noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
@@ -418,6 +419,133 @@ IDEN_COVARIANCE_DS = xarray.open_dataset(
                 reduced_dim_x_adjoint=3),
 )
 
+############################################################
+# Read in lower-resolution posterior covariance datasets
+
+LOWER_RES_FRAT_COVARIANCE_DS = xarray.open_dataset(
+    "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
+    "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d_"
+    "icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d_"
+    "216km_7D_covariance_output.nc4".format(
+        year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
+        noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
+        noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
+        invfun=INV_FUNCTION, invlen=INV_LENGTH,
+        inv_time_fun=INV_TIME_FUN, inv_time_len=INV_TIME_LEN
+    ),
+    chunks=dict(reduced_flux_time_adjoint=3, reduced_dim_y_adjoint=3,
+                reduced_dim_x_adjoint=3),
+)
+
+LOWER_RES_IDEN_COVARIANCE_DS = xarray.open_dataset(
+    "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
+    "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d_"
+    "icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d_"
+    "216km_7D_covariance_output.nc4".format(
+        year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
+        noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
+        noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
+        invfun=NOISE_FUNCTION, invlen=NOISE_LENGTH,
+        inv_time_fun=NOISE_TIME_FUN, inv_time_len=NOISE_TIME_LEN
+    ),
+    chunks=dict(reduced_flux_time_adjoint=3, reduced_dim_y_adjoint=3,
+                reduced_dim_x_adjoint=3),
+)
+
+LOWEST_RES_FRAT_COVARIANCE_DS = xarray.open_dataset(
+    "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
+    "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d_"
+    "icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d_"
+    "432km_7D_covariance_output.nc4".format(
+        year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
+        noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
+        noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
+        invfun=INV_FUNCTION, invlen=INV_LENGTH,
+        inv_time_fun=INV_TIME_FUN, inv_time_len=INV_TIME_LEN
+    ),
+    chunks=dict(reduced_flux_time_adjoint=3, reduced_dim_y_adjoint=3,
+                reduced_dim_x_adjoint=3),
+)
+
+LOWEST_RES_IDEN_COVARIANCE_DS = xarray.open_dataset(
+    "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
+    "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d_"
+    "icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d_"
+    "432km_7D_covariance_output.nc4".format(
+        year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
+        noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
+        noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
+        invfun=NOISE_FUNCTION, invlen=NOISE_LENGTH,
+        inv_time_fun=NOISE_TIME_FUN, inv_time_len=NOISE_TIME_LEN
+    ),
+    chunks=dict(reduced_flux_time_adjoint=3, reduced_dim_y_adjoint=3,
+                reduced_dim_x_adjoint=3),
+)
+
+HIGHER_RES_FRAT_COVARIANCE_DS = xarray.open_dataset(
+    "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
+    "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d_"
+    "icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d_"
+    "108km_7D_covariance_output.nc4".format(
+        year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
+        noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
+        noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
+        invfun=INV_FUNCTION, invlen=INV_LENGTH,
+        inv_time_fun=INV_TIME_FUN, inv_time_len=INV_TIME_LEN
+    ),
+    chunks=dict(reduced_flux_time_adjoint=3, reduced_dim_y_adjoint=3,
+                reduced_dim_x_adjoint=3),
+)
+
+HIGHER_RES_IDEN_COVARIANCE_DS = xarray.open_dataset(
+    "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
+    "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d_"
+    "icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d_"
+    "108km_7D_covariance_output.nc4".format(
+        year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
+        noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
+        noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
+        invfun=NOISE_FUNCTION, invlen=NOISE_LENGTH,
+        inv_time_fun=NOISE_TIME_FUN, inv_time_len=NOISE_TIME_LEN
+    ),
+    chunks=dict(reduced_flux_time_adjoint=3, reduced_dim_y_adjoint=3,
+                reduced_dim_x_adjoint=3),
+)
+
+############################################################
+# Now the experiments with temporal resolution
+HIGHEST_TEMP_RES_FRAT_COVARIANCE_DS = xarray.open_dataset(
+    "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
+    "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d_"
+    "icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d_"
+    "162km_2D_covariance_output.nc4".format(
+        year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
+        noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
+        noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
+        invfun=INV_FUNCTION, invlen=INV_LENGTH,
+        inv_time_fun=INV_TIME_FUN, inv_time_len=INV_TIME_LEN
+    ),
+    chunks=dict(reduced_flux_time_adjoint=3, reduced_dim_y_adjoint=3,
+                reduced_dim_x_adjoint=3),
+)
+
+# HIGHEST_TEMP_RES_IDEN_COVARIANCE_DS = xarray.open_dataset(
+#     "{year:04d}-{month:02d}_monthly_inversion_{interval:02d}h_{res:03d}km_"
+#     "noise{noisefun:s}{noiselen:d}km{noise_time_fun:s}{noise_time_len:d}d_"
+#     "icov{invfun:s}{invlen:d}km{inv_time_fun:s}{inv_time_len:d}d_"
+#     "162km_2D_covariance_output.nc4".format(
+#         year=YEAR, month=MONTH, interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,
+#         noisefun=NOISE_FUNCTION, noiselen=NOISE_LENGTH,
+#         noise_time_fun=NOISE_TIME_FUN, noise_time_len=NOISE_TIME_LEN,
+#         invfun=NOISE_FUNCTION, invlen=NOISE_LENGTH,
+#         inv_time_fun=NOISE_TIME_FUN, inv_time_len=NOISE_TIME_LEN
+#     ),
+#     chunks=dict(reduced_flux_time_adjoint=3, reduced_dim_y_adjoint=3,
+#                 reduced_dim_x_adjoint=3),
+# )
+
+############################################################
+# Read in the influence functions
 INFLUENCE_PATHS = ["/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
                    "ACT-America_trial5/2010/01/GROUP1",
                    "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
@@ -452,7 +580,8 @@ ALIGNED_TEMPORAL_INFLUENCES = xarray.concat(
     [here_infl.set_index(
         time_before_observation="flux_time"
     ).rename(
-        dict(time_before_observation="flux_time"))
+        dict(time_before_observation="flux_time")
+    )
      for here_infl in INFLUENCE_TEMPORAL_ONLY],
     "observation_time"
 )
@@ -1058,6 +1187,136 @@ frat_posterior_theoretical_variance_no_agg = (
     FRAT_COVARIANCE_DS["reduced_posterior_covariance_no_aggregation"].mean() *
     1e12
 ).values
+write_console_message("Done highest resolution, starting lower resolution")
+LOWER_RES_REDUCED_IDEN_COVARIANCE_DS = (
+    LOWER_RES_IDEN_COVARIANCE_DS.mean() * 1e12
+).persist()
+lower_res_iden_prior_theoretical_variance = (
+    LOWER_RES_REDUCED_IDEN_COVARIANCE_DS[
+        "reduced_prior_covariance"
+    ].values
+)
+lower_res_iden_posterior_theoretical_variance = (
+    LOWER_RES_REDUCED_IDEN_COVARIANCE_DS[
+        "reduced_posterior_covariance"
+    ].values
+)
+lower_res_iden_posterior_theoretical_variance_no_agg = (
+    LOWER_RES_REDUCED_IDEN_COVARIANCE_DS[
+        "reduced_posterior_covariance_no_aggregation"
+    ].values
+)
+LOWER_RES_REDUCED_FRAT_COVARIANCE_DS = (
+    LOWER_RES_FRAT_COVARIANCE_DS.mean() * 1e12
+).persist()
+lower_res_frat_prior_theoretical_variance = (
+    LOWER_RES_REDUCED_FRAT_COVARIANCE_DS[
+        "reduced_prior_covariance"
+    ].values
+)
+lower_res_frat_posterior_theoretical_variance = (
+    LOWER_RES_REDUCED_FRAT_COVARIANCE_DS[
+        "reduced_posterior_covariance"
+    ].values
+)
+lower_res_frat_posterior_theoretical_variance_no_agg = (
+    LOWER_RES_REDUCED_FRAT_COVARIANCE_DS[
+        "reduced_posterior_covariance_no_aggregation"
+    ].values
+)
+write_console_message("Done lower resolution, starting lowest_resolution")
+LOWEST_RES_REDUCED_IDEN_COVARIANCE_DS = (
+    LOWEST_RES_IDEN_COVARIANCE_DS.mean() * 1e12
+).persist()
+lowest_res_iden_prior_theoretical_variance = (
+    LOWEST_RES_REDUCED_IDEN_COVARIANCE_DS[
+        "reduced_prior_covariance"
+    ].values
+)
+lowest_res_iden_posterior_theoretical_variance = (
+    LOWEST_RES_REDUCED_IDEN_COVARIANCE_DS[
+        "reduced_posterior_covariance"
+    ].values
+)
+lowest_res_iden_posterior_theoretical_variance_no_agg = (
+    LOWEST_RES_REDUCED_IDEN_COVARIANCE_DS[
+        "reduced_posterior_covariance_no_aggregation"
+    ].values
+)
+LOWEST_RES_REDUCED_FRAT_COVARIANCE_DS = (
+    LOWEST_RES_FRAT_COVARIANCE_DS.mean() * 1e12
+).persist()
+lowest_res_frat_prior_theoretical_variance = (
+    LOWEST_RES_REDUCED_FRAT_COVARIANCE_DS[
+        "reduced_prior_covariance"
+    ].values
+)
+lowest_res_frat_posterior_theoretical_variance = (
+    LOWEST_RES_REDUCED_FRAT_COVARIANCE_DS[
+        "reduced_posterior_covariance"
+    ].values
+)
+lowest_res_frat_posterior_theoretical_variance_no_agg = (
+    LOWEST_RES_REDUCED_FRAT_COVARIANCE_DS[
+        "reduced_posterior_covariance_no_aggregation"
+    ].values
+)
+write_console_message("Done lowest resolution, starting higher resolution")
+HIGHER_RES_REDUCED_IDEN_COVARIANCE_DS = (
+    HIGHER_RES_IDEN_COVARIANCE_DS.mean() * 1e12
+).persist()
+higher_res_iden_prior_theoretical_variance = (
+    HIGHER_RES_REDUCED_IDEN_COVARIANCE_DS[
+        "reduced_prior_covariance"
+    ].values
+)
+higher_res_iden_posterior_theoretical_variance = (
+    HIGHER_RES_REDUCED_IDEN_COVARIANCE_DS[
+        "reduced_posterior_covariance"
+    ].values
+)
+higher_res_iden_posterior_theoretical_variance_no_agg = (
+    HIGHER_RES_REDUCED_IDEN_COVARIANCE_DS[
+        "reduced_posterior_covariance_no_aggregation"
+    ].values
+)
+HIGHER_RES_REDUCED_FRAT_COVARIANCE_DS = (
+    HIGHER_RES_FRAT_COVARIANCE_DS.mean() * 1e12
+).persist()
+higher_res_frat_prior_theoretical_variance = (
+    HIGHER_RES_REDUCED_FRAT_COVARIANCE_DS[
+        "reduced_prior_covariance"
+    ].values
+)
+higher_res_frat_posterior_theoretical_variance = (
+    HIGHER_RES_REDUCED_FRAT_COVARIANCE_DS[
+        "reduced_posterior_covariance"
+    ].values
+)
+higher_res_frat_posterior_theoretical_variance_no_agg = (
+    HIGHER_RES_REDUCED_FRAT_COVARIANCE_DS[
+        "reduced_posterior_covariance_no_aggregation"
+    ].values
+)
+# Temporal variance section
+HIGHEST_TEMP_RES_REDUCED_FRAT_COVARIANCE_DS = (
+    HIGHEST_TEMP_RES_FRAT_COVARIANCE_DS.mean() * 1e12
+).persist()
+highest_temp_res_frat_prior_theoretical_variance = (
+    HIGHEST_TEMP_RES_REDUCED_FRAT_COVARIANCE_DS[
+        "reduced_prior_covariance"
+    ].values
+)
+highest_temp_res_frat_posterior_theoretical_variance = (
+    HIGHEST_TEMP_RES_REDUCED_FRAT_COVARIANCE_DS[
+        "reduced_posterior_covariance"
+    ].values
+)
+highest_temp_res_frat_posterior_theoretical_variance_no_agg = (
+    HIGHEST_TEMP_RES_REDUCED_FRAT_COVARIANCE_DS[
+        "reduced_posterior_covariance_no_aggregation"
+    ].values
+)
 write_console_message("Done calculating variances")
 
 ############################################################
@@ -1123,9 +1382,108 @@ with open(
                    frat_posterior_theoretical_variance,
                    frat_posterior_theoretical_variance_no_agg]),
           file=out_file)
+    print("Lower-resolution Theoretical/analytic/deterministic "
+          "standard deviations: Identical-twin OSSE", file=out_file)
+    print(np.sqrt([lower_res_iden_prior_theoretical_variance,
+                   lower_res_iden_posterior_theoretical_variance,
+                   lower_res_iden_posterior_theoretical_variance_no_agg]),
+          file=out_file)
+    print("Lower-resolution Theoretical/analytic/deterministic "
+          "standard deviations: Fraternal-twin OSSE", file=out_file)
+    print(np.sqrt([lower_res_frat_prior_theoretical_variance,
+                   lower_res_frat_posterior_theoretical_variance,
+                   lower_res_frat_posterior_theoretical_variance_no_agg]),
+          file=out_file)
+    print("Lowest-resolution Theoretical/analytic/deterministic "
+          "standard deviations: Identical-twin OSSE", file=out_file)
+    print(np.sqrt([lowest_res_iden_prior_theoretical_variance,
+                   lowest_res_iden_posterior_theoretical_variance,
+                   lowest_res_iden_posterior_theoretical_variance_no_agg]),
+          file=out_file)
+    print("Lowest-resolution Theoretical/analytic/deterministic "
+          "standard deviations: Fraternal-twin OSSE", file=out_file)
+    print(np.sqrt([lowest_res_frat_prior_theoretical_variance,
+                   lowest_res_frat_posterior_theoretical_variance,
+                   lowest_res_frat_posterior_theoretical_variance_no_agg]),
+          file=out_file)
+    print("Higher-resolution Theoretical/analytic/deterministic "
+          "standard deviations: Identical-twin OSSE", file=out_file)
+    print(np.sqrt([higher_res_iden_prior_theoretical_variance,
+                   higher_res_iden_posterior_theoretical_variance,
+                   higher_res_iden_posterior_theoretical_variance_no_agg]),
+          file=out_file)
+    print("Highest-temporal-resolution Theoretical/analytic/deterministic "
+          "standard deviations: Fraternal-twin OSSE", file=out_file)
+    print(
+        np.sqrt([
+            highest_temp_res_frat_prior_theoretical_variance,
+            highest_temp_res_frat_posterior_theoretical_variance,
+            highest_temp_res_frat_posterior_theoretical_variance_no_agg,
+        ]),
+        file=out_file
+    )
+    theoretical_errors = pd.DataFrame(
+        np.sqrt([
+            [iden_prior_theoretical_variance,
+             iden_posterior_theoretical_variance,
+             iden_posterior_theoretical_variance_no_agg,
+             frat_prior_theoretical_variance,
+             frat_posterior_theoretical_variance,
+             frat_posterior_theoretical_variance_no_agg],
+            [lower_res_iden_prior_theoretical_variance,
+             lower_res_iden_posterior_theoretical_variance,
+             lower_res_iden_posterior_theoretical_variance_no_agg,
+             lower_res_frat_prior_theoretical_variance,
+             lower_res_frat_posterior_theoretical_variance,
+             lower_res_frat_posterior_theoretical_variance_no_agg],
+            [lowest_res_iden_prior_theoretical_variance,
+             lowest_res_iden_posterior_theoretical_variance,
+             lowest_res_iden_posterior_theoretical_variance_no_agg,
+             lowest_res_frat_prior_theoretical_variance,
+             lowest_res_frat_posterior_theoretical_variance,
+             lowest_res_frat_posterior_theoretical_variance_no_agg],
+            [higher_res_iden_prior_theoretical_variance,
+             higher_res_iden_posterior_theoretical_variance,
+             higher_res_iden_posterior_theoretical_variance_no_agg,
+             higher_res_frat_prior_theoretical_variance,
+             higher_res_frat_posterior_theoretical_variance,
+             higher_res_frat_posterior_theoretical_variance_no_agg],
+        ]),
+        columns=pd.MultiIndex.from_product(
+            [["Identical-twin OSSE", "Fraternal-twin OSSE"],
+             ["Prior", "Posterior (attempt agg.)", "Posterior (no agg.)"]],
+            names=["Experiment", "Source"]
+        ),
+        index=[162, 216, 432, 108],
+    )
+    print(
+        "Theoretical/analytic/deterministic "
+        "error standard deviation estimates\n"
+        "Averaged over all of space and time within domain\n"
+        "Both experiments, all resolutions\n",
+        theoretical_errors, file=out_file
+    )
+    theoretical_errors.to_csv(
+        "iden_frat_osse_deterministic_domain_avg_std_vs_res.csv"
+    )
     print("Description of errors", file=out_file)
-    ldesc = long_description(mean_error_df)
-    print(ldesc, file=out_file)
+    SUBSET_SIZES = (5, 10, 20, 40, 80)
+    std_cis = []
+    for n_realizations in SUBSET_SIZES:
+        print(
+            "Number of realizations considered:", n_realizations, file=out_file
+        )
+        ldesc = long_description(mean_error_df.iloc[:n_realizations, :])
+        print(ldesc, file=out_file)
+        std_cis.append(
+            ldesc.loc[["std point est", "std 95%CI low", "std 95%CI high"], :]
+        )
+    std_cis = pd.concat(std_cis, keys=SUBSET_SIZES, names=["N", "CI part"])
+    print("Standard deviation confidence intervals:\n",
+          std_cis, file=out_file)
+    std_cis.to_csv(
+        "iden_frat_osse_monte_carlo_domain_avg_std_vs_ensemble_size.csv"
+    )
     print("Coverage for 90% confidence interval, identical prior:",
           file=out_file)
     number_in_prior_ci = (
