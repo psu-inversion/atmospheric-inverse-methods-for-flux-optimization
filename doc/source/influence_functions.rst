@@ -58,7 +58,18 @@ the approach taken by Lagrangian Particle Dispersion Models, such as
 the [LPDM]_ of Uliasz (1994), the Stochastic Time-Inverted
 Lagrangian Transport [STILT]_ model, the HYbrid Single-Particle
 Lagrangian Integrated Trajectory [HYSPLIT]_ model, and the FLEXible
-PARTicle dispersion model [FLEXPART]_
+PARTicle dispersion model [FLEXPART]_.
+
+This method requires relating the change in mole fraction for one of
+these particles to the change in mole fraction of the measurement: if
+all the particles composing the measurement experience an increase in
+mole fraction of 1 ppm, then the measurement will be 1 ppm higher.  If
+only half the particles experience this 1 ppm increase and the other
+half are unaffected, the measurement will only be 0.5 ppm higher.
+Extending this, if a single particle experiences an increase in mole
+fraction of 1 (in arbitrary units), the measurement will be larger by
+the reciprocal of the number of particles composing the measurement
+(in the same units).
 
 .. [1] If all the measurements are in the troposphere, "much later" is
        two to three years.  If all the measurements are additionally

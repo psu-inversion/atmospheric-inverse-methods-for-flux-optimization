@@ -55,6 +55,46 @@ given the underlying physical processes.  Introducing correlations
 between the fluxes can alliviate that problem.  Correlations also make
 the problem larger and longer to solve.
 
+Initial and Boundary Conditions
+-------------------------------
+
+The forward problem requires specifying initial conditions, and if the
+domain is not global, lateral boundary conditions also need to be
+specified.  These can also be included in the inverse problem as
+unknowns to be solved for, that is, as an additional part of the state
+vector.  [Peylinetal2005]_ indicates that, for limited-area models,
+the influence of the initial conditions largely vanishes after a month
+or so, having been advected out of the domain, while the lateral
+boundary conditions become correspondingly more important.
+
+As with the fluxes, the concentration field at the lateral boundaries
+of the spatial domain is usually discritized into a finite-dimensional
+vector, which is appended to the flux vector to form the full state
+vector.
+
+The choice of basis functions is again arbitrary.  One possibility for
+the lateral boundary conditions is to model the inflow as a constant
+times the concentration field of a global model.  Another, which works
+better for small domains, is to model the inflow as a constant.  A
+third possibility is to again use the concentration field of a global
+model but treat the edges of the domain (often north, south, east, and
+west) separatly.  A fourth extends this idea, and splits the inflow
+farther.  One might split the inflow into boundary-layer and
+free-troposphere values in any of these schemes, or choose a finer
+vertical resolution.
+
+
 
 .. [1] Incidenally, this moves the procedure from Ordinary Least Squares to
        Weighted Least Squares.  The next step is Generalized Least Squares.
+
+References
+==========
+
+.. [Peylinetal2005] Peylin, P.; P.J. Rayner; P. Bousquet; C.
+                    Carouge; F.  Hourdin; P. Hinrich; P.  Ciais; and
+                    AEROCARB contributors (2005).  "Daily CO2 flux
+                    estimates over Europe from continuous atmospheric
+                    measurements: 1, inverse methodology" *Atmospheric
+                    Chemistry and Physics* vol. 5, no. 12
+                    pp. 3173-3186 :doi:`10.5194/acp-5-3173-2005`
