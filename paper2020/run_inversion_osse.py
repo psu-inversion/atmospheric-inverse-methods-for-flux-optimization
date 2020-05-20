@@ -61,7 +61,7 @@ Must divide twenty-four.
 """
 FLUX_RESOLUTION = 27
 """Resolution of fluxes and influence functions in kilometers."""
-UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR = 4
+UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR = 16
 """How much coarser uncertainty is than mean estimate in the x direction.
 
 If we compute the uncertainty at full resolution, the resulting file
@@ -293,7 +293,7 @@ FLUX_TIMES = (INFLUENCE_DATASET.coords["flux_time"] +
                        dtype='m8[ns]'))
 INFLUENCE_DATASET.coords["flux_time"] = FLUX_TIMES
 
-INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H
+INFLUENCE_FUNCTIONS = INFLUENCE_DATASET.H.astype(np.float32)
 # Use site names as index/dim coord for site dim
 INFLUENCE_FUNCTIONS.coords["site"] = np.char.decode(
     INFLUENCE_FUNCTIONS["site_names"].values, "ascii")
@@ -312,6 +312,7 @@ FLUX_TIMES_INDEX = pd.date_range(
     tz="UTC", closed="right",
     name="flux_times")
 N_FLUX_TIMES = len(FLUX_TIMES_INDEX)
+assert N_FLUX_TIMES % 4 == 0
 
 ############################################################
 # Set some constants based on the WRF file
@@ -379,7 +380,7 @@ OBS_DATASET = (
 del OBS_DATASET.coords["name_of_observation_site"]
 print(OBS_DATASET.dims, OBS_DATASET.coords)
 # Assign a few more coords and pull out only the fluxes we need.
-FLUX_DATASET = FLUX_DATASET.sel(flux_time=FLUX_TIMES_INDEX)
+FLUX_DATASET = FLUX_DATASET.sel(flux_time=FLUX_TIMES_INDEX.tz_convert(None))
 N_REALIZATIONS = len(FLUX_DATASET.indexes["realization"])
 
 WRF_DX = FLUX_DATASET.attrs["DX"]
@@ -513,9 +514,9 @@ aligned_influences = aligned_influences.transpose(
     "observation", "flux_time", "dim_y", "dim_x")
 write_progress_message("Rechunked to square")
 aligned_influences = aligned_influences.fillna(0)
-aligned_true_fluxes.load()
-aligned_prior_fluxes.load()
-aligned_influences.load()
+aligned_true_fluxes.astype(np.float32).load()
+aligned_prior_fluxes.astype(np.float32).load()
+aligned_influences.astype(np.float32).load()
 write_progress_message("Loaded data")
 
 posterior_var_atts = aligned_prior_fluxes.attrs.copy()
@@ -553,16 +554,16 @@ posterior_global_atts.update(dict(
 # Define correlation constants and get covariances
 # Constants for inversion
 write_progress_message("Getting covariances")
-CORRELATION_LENGTH = 200
+CORRELATION_LENGTH = 1000
 GRID_RESOLUTION = 27
 spatial_correlations = (
-    atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.
-    from_function(
+    atmos_flux_inversion.correlations.make_matrix(
         atmos_flux_inversion.correlations.ExponentialCorrelation(
             CORRELATION_LENGTH / GRID_RESOLUTION),
         (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
          len(TRUE_FLUXES_MATCHED.coords["dim_x"])),
-        is_cyclic=False))
+    )
+)
 # spatial_correlation_remapper = np.full(
 #     # Grid points at full resolution, grid points at reduced resolution
 #     (spatial_correlations.shape[0], 1),
@@ -593,7 +594,7 @@ hour_correlations = (
 hour_correlations_matrix = hour_correlations.dot(np.eye(
     hour_correlations.shape[0]))
 write_progress_message("Have hourly correlations")
-DAILY_FLUX_TIMESCALE = 21
+DAILY_FLUX_TIMESCALE = 7
 DAILY_FLUX_FUN = "exp"
 day_correlations = (
     atmos_flux_inversion.correlations.make_matrix(
@@ -603,8 +604,10 @@ day_correlations = (
         (len(aligned_prior_fluxes.indexes["flux_time"]) *
          FLUX_INTERVAL // HOURS_PER_DAY,)))
 write_progress_message("Have daily correlations")
-temporal_correlations = kron(day_correlations,
-                             hour_correlations_matrix)
+temporal_correlations = kron(
+    day_correlations,
+    hour_correlations_matrix
+).astype(np.float32)
 print("Temporal:", type(temporal_correlations))
 temporal_correlation_ds = xarray.DataArray(
     temporal_correlations,
@@ -641,8 +644,8 @@ write_progress_message("Have combined correlations")
 # x2 since MsTMIP spread does not represent full uncertainty
 # x5 since MsTMIP spread only represents monthly values and this uses sub-daily
 # x10 matches model-model for Raczka for 200km/21d
-# x3 matches model-model for 1000km/7d
-FLUX_VARIANCE_VARYING_FRACTION = 10.
+# x4 matches model-model for 1000km/7d
+FLUX_VARIANCE_VARYING_FRACTION = 4.
 flux_std_pattern = xarray.open_dataset(
     "../data_files/2010_MsTMIP_flux_std.nc4",
     engine=NC_ENGINE
@@ -671,7 +674,8 @@ for flux_part in flux_std_pattern.data_vars.values():
 #     ).data)
 reduced_flux_stds = (
     FLUX_VARIANCE_VARYING_FRACTION *
-    flux_std_pattern["E_TRA1"].data)
+    flux_std_pattern["E_TRA1"].data.astype(np.float32)
+)
 write_progress_message("Have standard deviations")
 
 spatial_covariance = (
@@ -739,7 +743,7 @@ reduced_influences = (
     .resample(flux_time=UNCERTAINTY_TEMPORAL_RESOLUTION).sum("flux_time")
 ).rename(dim_x_bins="reduced_dim_x", dim_y_bins="reduced_dim_y",
          flux_time="reduced_flux_time")
-reduced_influences.load()
+reduced_influences.astype(np.float32).load()
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have influence for monthly average plots")
 flush_output_streams()
@@ -772,7 +776,7 @@ here_obs = WRF_OBS_SITE[TRACER_NAME].sel(
         name="observation",
         dims=dict(observation=site_obs_pd_index)),
 ).rename(dict(projection_x_coordinate="tower_x",
-              projection_y_coordinate="tower_y"))
+              projection_y_coordinate="tower_y")).astype(np.float32)
 print(here_obs)
 
 OBSERVATION_STD = 2.
@@ -797,7 +801,7 @@ observation_covariance = OBS_CORR_FUN(
 observation_covariance[
     site_index[:, np.newaxis] != site_index[np.newaxis, :]] = 0
 observation_covariance *= OBSERVATION_STD ** 2
-observation_covariance = asarray(observation_covariance)
+observation_covariance = asarray(observation_covariance).astype(np.float32)
 obs_diag_index = np.arange(observation_covariance.shape[0])
 # Add representativeness and instrument errors
 observation_covariance[obs_diag_index, obs_diag_index] += 0.4 ** 2 + 0.1 ** 2
@@ -805,7 +809,7 @@ observation_covariance[obs_diag_index, obs_diag_index] += 0.4 ** 2 + 0.1 ** 2
 used_observation_vals = (
     here_obs.data[:, np.newaxis] +
     gaussian_noise(observation_covariance, N_REALIZATIONS).T.reshape(
-        here_obs.shape + (N_REALIZATIONS,))).persist()
+        here_obs.shape + (N_REALIZATIONS,))).astype(np.float32).persist()
 used_observations = xarray.DataArray(
     used_observation_vals,
     here_obs.coords,
@@ -827,19 +831,20 @@ posterior, reduced_posterior_covariances = (
     atmos_flux_inversion.optimal_interpolation.save_sum(
         aligned_prior_fluxes.values.reshape(
             N_GRID_POINTS * len(aligned_prior_fluxes.indexes["flux_time"]),
-            N_REALIZATIONS),
+            N_REALIZATIONS).astype(np.float32),
         prior_covariance,
-        used_observations.values,
-        observation_covariance,
+        used_observations.values.astype(np.float32),
+        observation_covariance.astype(np.float32),
         aligned_influences.stack(
             fluxes=("flux_time", "dim_y", "dim_x")
-        ).values,
+        ).values.astype(np.float32),
         # .reshape(aligned_influences.shape[0],
         #          np.prod(aligned_influences.shape[-3:]))),
         reduced_prior_covariance,
         reduced_influences.stack(
             fluxes=("reduced_flux_time", "reduced_dim_y",
-                    "reduced_dim_x")).values
+                    "reduced_dim_x")
+        ).values.astype(np.float32)
     )
 )
 print(datetime.datetime.now(UTC).strftime("%c"),
@@ -871,7 +876,7 @@ posterior_ds.to_netcdf(
     ("2010-07_monthly_inversion_{flux_interval:02d}h_027km_"
      "noise{ncorr_fun:s}{ncorr_len:d}km{ncorr_fun_time:s}{ncorr_len_time:d}d_"
      "icov{icorr_fun:s}{icorr_len:d}km{icorr_fun_time:s}{icorr_len_time:d}d_"
-     "output.nc4")
+     "output_dense_spatial_corr.nc4")
     .format(flux_interval=FLUX_INTERVAL, ncorr_fun=CORR_FUN,
             ncorr_len=CORR_LEN, icorr_len=CORRELATION_LENGTH, icorr_fun="exp",
             icorr_len_time=DAILY_FLUX_TIMESCALE, icorr_fun_time=DAILY_FLUX_FUN,
@@ -881,7 +886,7 @@ write_progress_message("Wrote posterior")
 
 
 write_progress_message(
-    "Finding posterior covariance without corrections for"
+    "Finding posterior covariance without corrections for "
     "aggregation error"
 )
 
@@ -999,7 +1004,7 @@ posterior_covariance_ds = xarray.Dataset(
         reduced_flux_time_adjoint=(
             reduced_temporal_correlation_ds.coords["flux_time_adjoint"].values
         ),
-        wrf_proj=reduced_influences.coords["wrf_proj"]
+        wrf_proj=((), -1, WRF_PROJECTION.cf()),
     ),
     posterior_global_atts
 )
@@ -1063,10 +1068,13 @@ posterior_covariance_ds.to_netcdf(
     ("2010-07_monthly_inversion_{flux_interval:02d}h_027km_"
      "noise{ncorr_fun:s}{ncorr_len:d}km{ncorr_fun_time:s}{ncorr_len_time:d}d_"
      "icov{icorr_fun:s}{icorr_len:d}km{icorr_fun_time:s}{icorr_len_time:d}d_"
-     "covariance_output.nc4")
+     "{cov_res:d}km_{cov_tres:s}_covariance_output_dense_spatial_corr.nc4")
     .format(flux_interval=FLUX_INTERVAL, ncorr_fun=CORR_FUN,
             ncorr_len=CORR_LEN, icorr_len=CORRELATION_LENGTH, icorr_fun="exp",
             icorr_len_time=DAILY_FLUX_TIMESCALE, icorr_fun_time=DAILY_FLUX_FUN,
-            ncorr_fun_time=TIME_CORR_FUN, ncorr_len_time=TIME_CORR_LEN),
+            ncorr_fun_time=TIME_CORR_FUN, ncorr_len_time=TIME_CORR_LEN,
+            cov_res=int(UNCERTAINTY_FLUX_RESOLUTION // 1e3),
+            cov_tres=UNCERTAINTY_TEMPORAL_RESOLUTION),
     encoding=encoding, engine=NC_ENGINE, mode="w")
 write_progress_message("Wrote posterior covariance")
+# UNCERTAINTY_FLUX_RESOLUTION UNCERTAINTY_TEMPORAL_RESOLUTION
