@@ -78,7 +78,7 @@ FOURIER_NEAR_ZERO = 1e-15
 
 1e-20 produces overflow with the dask tests
 """
-DTYPE = np.float64
+DTYPE = np.float32
 
 
 class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):

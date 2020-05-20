@@ -387,7 +387,8 @@ def get_installed_modules():
     try:  # pragma: no branch
         output = subprocess.check_output(
             pip_args,
-            universal_newlines=True)
+            universal_newlines=True
+        )
         package_info = [line.split("==") for line in output.split("\n")
                         if line and not line.startswith("-")]
 

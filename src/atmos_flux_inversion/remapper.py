@@ -9,7 +9,7 @@ from math import ceil
 import numpy as np
 from numpy import zeros, newaxis
 
-DTYPE = np.float64
+DTYPE = np.float32
 
 
 def get_remappers(domain_size, block_side=3):
