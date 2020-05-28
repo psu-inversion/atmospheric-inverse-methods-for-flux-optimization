@@ -1,8 +1,8 @@
 .. _theory:
 
-=====================================
-Theory of Atmospheric Flux Inversions
-=====================================
+======================================================
+Mathematical Formalism for Atmospheric Flux Inversions
+======================================================
 
 Atmospheric flux inversions attempt to find what fluxes
 :math:`\vec{x}_a` are consistent with a set of atmospheric
@@ -52,3 +52,4 @@ optimize the fluxes.
    best_linear_unbiased_estimator
    generalized_least_squares
    maximum_likelihood
+   bayes
