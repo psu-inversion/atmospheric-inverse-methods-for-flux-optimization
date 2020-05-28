@@ -14,12 +14,15 @@ Derivations of the equations and terminology are given in :ref:`the
 section on the theory <theory>`.  The :ref:`User Guide <user_guide>`
 walks through an example of using the code.
 
-Theory
-------
+Inversion Theory
+----------------
 .. toctree::
    :maxdepth: 3
 
-   theory
+   inverse_problems
+   mathematical_formalism
+   flux_representation
+   influence_functions
 
 User Guide
 ----------
