@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Welcome to Inversion’s documentation! &#8212; Inversions 0.4.0.dev0 documentation</title>
+    <title>Atmospheric Inverse Methods for Flux Optimization &#8212; Inversions 1.0.0rc3 documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
@@ -15,12 +15,10 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <script type="text/x-mathjax-config">MathJax.Hub.Config({"extensions": ["tex2jax.js"], "jax": ["input/TeX", "output/HTML-CSS"], "TeX": {"extensions": ["AMSmath.js"]}})</script>
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Theory of Atmospheric Flux Inversions" href="theory.html" /> 
+    <link rel="next" title="What is an Inverse Problem?" href="inverse_problems.html" /> 
   </head><body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
@@ -32,9 +30,9 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="theory.html" title="Theory of Atmospheric Flux Inversions"
+          <a href="inverse_problems.html" title="What is an Inverse Problem?"
              accesskey="N">next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">Inversions 0.4.0.dev0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="#">Inversions 1.0.0rc3 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -43,26 +41,48 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="welcome-to-inversion-s-documentation">
-<h1>Welcome to Inversion’s documentation!<a class="headerlink" href="#welcome-to-inversion-s-documentation" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="atmospheric-inverse-methods-for-flux-optimization">
+<h1>Atmospheric Inverse Methods for Flux Optimization<a class="headerlink" href="#atmospheric-inverse-methods-for-flux-optimization" title="Permalink to this headline">¶</a></h1>
 <p>This package contains functions and classes developed for the
 application of inverse methods to the optimization of carbon dioxide
 surface fluxes using atmospheric mixing ratio measurements.
-Derivations of the equations and terminology are given in <a class="reference internal" href="theory.html#theory"><span class="std std-ref">the
+Derivations of the equations and terminology are given in <a class="reference internal" href="mathematical_formalism.html#theory"><span class="std std-ref">the
 section on the theory</span></a>.  The <a class="reference internal" href="user_guide.html#user-guide"><span class="std std-ref">User Guide</span></a>
 walks through an example of using the code.</p>
-<div class="section" id="theory">
-<h2>Theory<a class="headerlink" href="#theory" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="inversion-theory">
+<h2>Inversion Theory<a class="headerlink" href="#inversion-theory" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="theory.html">Theory of Atmospheric Flux Inversions</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="theory.html#terminology">Terminology</a></li>
-<li class="toctree-l2"><a class="reference internal" href="theory.html#methodology">Methodology</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="inverse_problems.html">What is an Inverse Problem?</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="inverse_problems.html#forward-problem">Forward Problem</a></li>
+<li class="toctree-l2"><a class="reference internal" href="inverse_problems.html#inverse-problem">Inverse problem</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="inverse_problems.html#initial-and-boundary-conditions">Initial and Boundary Conditions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="inverse_problems.html#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="mathematical_formalism.html">Mathematical Formalism for Atmospheric Flux Inversions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="mathematical_formalism.html#terminology">Terminology</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mathematical_formalism.html#methodology">Methodology</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="best_linear_unbiased_estimator.html">Best Linear Unbiased Estimator</a></li>
 <li class="toctree-l3"><a class="reference internal" href="generalized_least_squares.html">Generalized Least Squares Estimator</a></li>
 <li class="toctree-l3"><a class="reference internal" href="maximum_likelihood.html">Maximum Likelihood Estimator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="bayes.html">Bayesian Estimator</a></li>
 </ul>
 </li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="flux_representation.html">Flux representation for inversions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="flux_representation.html#direct">Direct</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flux_representation.html#scaling-factor">Scaling Factor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flux_representation.html#larger-basis-functions">Larger Basis Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="influence_functions.html">Influence Functions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="influence_functions.html#foreward-model">Foreward Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="influence_functions.html#adjoint-model">Adjoint Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="influence_functions.html#references">References</a></li>
 </ul>
 </li>
 </ul>
@@ -80,40 +100,38 @@ walks through an example of using the code.</p>
 <h2>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="inversion.html">inversion package</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="inversion.html#submodules">Submodules</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="inversion.html#classes-for-defining-covariances">Classes for defining covariances</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="inversion.correlations.html">inversion.correlations module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="inversion.covariances.html">inversion.covariances module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="atmos_flux_inversion.html">atmos_flux_inversion package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="atmos_flux_inversion.html#submodules">Submodules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="atmos_flux_inversion.html#classes-for-defining-covariances">Classes for defining covariances</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="atmos_flux_inversion.correlations.html">atmos_flux_inversion.correlations module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="atmos_flux_inversion.covariances.html">atmos_flux_inversion.covariances module</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="inversion.html#inversion-functions">Inversion functions</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="inversion.optimal_interpolation.html">inversion.optimal_interpolation module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="inversion.variational.html">inversion.variational module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="inversion.psas.html">inversion.psas module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="atmos_flux_inversion.html#inversion-functions">Inversion functions</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="atmos_flux_inversion.optimal_interpolation.html">atmos_flux_inversion.optimal_interpolation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="atmos_flux_inversion.variational.html">atmos_flux_inversion.variational module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="atmos_flux_inversion.psas.html">atmos_flux_inversion.psas module</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="inversion.html#high-level-wrappers">High-level wrappers</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="inversion.wrapper.html">inversion.wrapper module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="atmos_flux_inversion.html#high-level-wrappers">High-level wrappers</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="atmos_flux_inversion.wrapper.html">atmos_flux_inversion.wrapper module</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="inversion.html#other-utilities">Other utilities</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="inversion.linalg.html">inversion.linalg module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="inversion.noise.html">inversion.noise module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="inversion.util.html">inversion.util module</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="inversion.html#module-inversion">Module contents</a></li>
+<li class="toctree-l3"><a class="reference internal" href="atmos_flux_inversion.html#other-utilities">Other utilities</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="atmos_flux_inversion.linalg.html">atmos_flux_inversion.linalg module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="atmos_flux_inversion.noise.html">atmos_flux_inversion.noise module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="atmos_flux_inversion.util.html">atmos_flux_inversion.util module</a></li>
 </ul>
 </li>
 </ul>
-</div>
-</div>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="atmos_flux_inversion.html#module-atmos_flux_inversion">Module contents</a></li>
+</ul>
+</li>
+</ul>
 </div>
 <div class="section" id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<h3>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
 <li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></li>
@@ -121,9 +139,11 @@ walks through an example of using the code.</p>
 </ul>
 </div>
 <div class="section" id="code-repository">
-<h1>Code Repository<a class="headerlink" href="#code-repository" title="Permalink to this headline">¶</a></h1>
+<h3>Code Repository<a class="headerlink" href="#code-repository" title="Permalink to this headline">¶</a></h3>
 <p>The <a class="reference external" href="https://github.com/psu-inversion/atmospheric-inverse-methods-for-flux-optimization">main code repository for this package</a>
 is hosted by the <a class="reference external" href="https://github.com/psu-inversion">PSU-inversion GitHub organization</a>.</p>
+</div>
+</div>
 </div>
 
 
@@ -134,19 +154,21 @@ is hosted by the <a class="reference external" href="https://github.com/psu-inve
         <div class="sphinxsidebarwrapper">
   <h3><a href="#">Table of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">Welcome to Inversion’s documentation!</a><ul>
-<li><a class="reference internal" href="#theory">Theory</a></li>
+<li><a class="reference internal" href="#">Atmospheric Inverse Methods for Flux Optimization</a><ul>
+<li><a class="reference internal" href="#inversion-theory">Inversion Theory</a></li>
 <li><a class="reference internal" href="#user-guide">User Guide</a></li>
-<li><a class="reference internal" href="#api-reference">API Reference</a></li>
-</ul>
-</li>
+<li><a class="reference internal" href="#api-reference">API Reference</a><ul>
 <li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
 <li><a class="reference internal" href="#code-repository">Code Repository</a></li>
 </ul>
+</li>
+</ul>
+</li>
+</ul>
 
   <h4>Next topic</h4>
-  <p class="topless"><a href="theory.html"
-                        title="next chapter">Theory of Atmospheric Flux Inversions</a></p>
+  <p class="topless"><a href="inverse_problems.html"
+                        title="next chapter">What is an Inverse Problem?</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -180,13 +202,13 @@ is hosted by the <a class="reference external" href="https://github.com/psu-inve
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="theory.html" title="Theory of Atmospheric Flux Inversions"
+          <a href="inverse_problems.html" title="What is an Inverse Problem?"
              >next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">Inversions 0.4.0.dev0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="#">Inversions 1.0.0rc3 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &#169; Copyright 2018, Daniel Wesloh.
+        &#169; Copyright 2018–2020, The Pennsylvania State University.
       Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
     </div>
   </body>

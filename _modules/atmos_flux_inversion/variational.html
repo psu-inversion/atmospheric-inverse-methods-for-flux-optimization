@@ -1,0 +1,607 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>atmos_flux_inversion.variational &#8212; Inversions 1.0.0rc3 documentation</title>
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../atmos_flux_inversion.html" accesskey="U">atmos_flux_inversion</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for atmos_flux_inversion.variational</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Functions implementing 3D-Var.</span>
+
+<span class="sd">Signatures follow the functions in</span>
+<span class="sd"> :mod:`atmos_flux_inversion.optimal_interpolation`</span>
+
+<span class="sd">Note</span>
+<span class="sd">----</span>
+<span class="sd">Forces in-memory computations.  BFGS method requires this, and there</span>
+<span class="sd">are odd shape-mismatch errors if I just change to dask arrays.</span>
+<span class="sd">Conjugate gradient solvers may work better for dask arrays if we drop</span>
+<span class="sd">the covariance matrix from the return values.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">scipy.optimize</span>
+<span class="kn">import</span> <span class="nn">scipy.linalg</span>
+<span class="c1"># I believe scipy&#39;s minimizer requires things that give boolean true</span>
+<span class="c1"># or false from the objective, rather than a yet-to-be-realized dask</span>
+<span class="c1"># array.</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">asarray</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">zeros_like</span>
+
+<span class="kn">from</span> <span class="nn">atmos_flux_inversion</span> <span class="k">import</span> <span class="n">ConvergenceError</span><span class="p">,</span> <span class="n">MAX_ITERATIONS</span><span class="p">,</span> <span class="n">GRAD_TOL</span>
+<span class="kn">from</span> <span class="nn">atmos_flux_inversion.util</span> <span class="k">import</span> <span class="n">solve</span><span class="p">,</span> <span class="n">method_common</span>
+
+
+<div class="viewcode-block" id="simple"><a class="viewcode-back" href="../../atmos_flux_inversion.variational.html#atmos_flux_inversion.variational.simple">[docs]</a><span class="nd">@method_common</span>
+<span class="k">def</span> <span class="nf">simple</span><span class="p">(</span><span class="n">background</span><span class="p">,</span> <span class="n">background_covariance</span><span class="p">,</span>
+           <span class="n">observations</span><span class="p">,</span> <span class="n">observation_covariance</span><span class="p">,</span>
+           <span class="n">observation_operator</span><span class="p">,</span>
+           <span class="n">reduced_background_covariance</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+           <span class="n">reduced_observation_operator</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Feed everything to scipy&#39;s minimizer.</span>
+
+<span class="sd">    Assumes everything follows a multivariate normal distribution</span>
+<span class="sd">    with the specified covariance matrices.  Under this assumption</span>
+<span class="sd">    `analysis_covariance` is exact, and `analysis` is the Maximum</span>
+<span class="sd">    Likelihood Estimator and the Best Linear Unbiased Estimator</span>
+<span class="sd">    for the underlying state in the frequentist framework, and</span>
+<span class="sd">    specify the posterior distribution for the state in the</span>
+<span class="sd">    Bayesian framework.  If these are not satisfied, these still</span>
+<span class="sd">    form the Generalized Least Squares estimates for the state and</span>
+<span class="sd">    an estimated uncertainty.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    background: array_like[N]</span>
+<span class="sd">        The background state estimate.</span>
+<span class="sd">    background_covariance:  array_like[N, N]</span>
+<span class="sd">        Covariance of background state estimate across</span>
+<span class="sd">        realizations/ensemble members.  &quot;Ensemble&quot; is here</span>
+<span class="sd">        interpreted in the sense used in statistical mechanics or</span>
+<span class="sd">        frequentist statistics, and may not be derived from a</span>
+<span class="sd">        sample as in meteorological ensemble Kalman filters</span>
+<span class="sd">    observations: array_like[M]</span>
+<span class="sd">        The observations constraining the background estimate.</span>
+<span class="sd">    observation_covariance: array_like[M, M]</span>
+<span class="sd">        Covariance of observations across realizations/ensemble</span>
+<span class="sd">        members.  &quot;Ensemble&quot; again has the statistical meaning.</span>
+<span class="sd">    observation_operator: array_like[M, N]</span>
+<span class="sd">        The relationship between the state and the observations.</span>
+<span class="sd">    reduced_background_covariance: array_like[Nred, Nred], optional</span>
+<span class="sd">        The covariance for a smaller state space, usually obtained by</span>
+<span class="sd">        reducing resolution in space and time.  Note that</span>
+<span class="sd">        `reduced_observation_operator` must also be provided</span>
+<span class="sd">    reduced_observation_operator: array_like[M, Nred], optional</span>
+<span class="sd">        The relationship between the reduced state space and the</span>
+<span class="sd">        observations.  Note that `reduced_background_covariance`</span>
+<span class="sd">        must also be provided.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    analysis: array_like[N]</span>
+<span class="sd">        Analysis state estimate</span>
+<span class="sd">    analysis_covariance: array_like[Nred, Nred] or array_like[N, N]</span>
+<span class="sd">        Estimated uncertainty of analysis across</span>
+<span class="sd">        realizations/ensemble members.  Calculated using</span>
+<span class="sd">        reduced_background_covariance and</span>
+<span class="sd">        reduced_observation_operator if possible</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ConvergenceError</span>
+<span class="sd">        If iterative solver does not converge</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    minimizes</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        (x - x_0)^T P_B^{-1} (x - x_0) + (y - h(x))^T R^{-1} (y - h(x))</span>
+
+<span class="sd">    which has gradient</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        P_B^{-1} (x - x_0) + H^T R^{-1} (y - h(x))</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">cost_function</span><span class="p">(</span><span class="n">test_state</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Mismatch between state, prior, and obs.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        test_state: np.ndarray[N]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            A measure of the mismatch between the test state and the</span>
+<span class="sd">            background and observations</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">prior_mismatch</span> <span class="o">=</span> <span class="n">asarray</span><span class="p">(</span><span class="n">test_state</span> <span class="o">-</span> <span class="n">background</span><span class="p">)</span>
+        <span class="n">test_obs</span> <span class="o">=</span> <span class="n">observation_operator</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">test_state</span><span class="p">)</span>
+        <span class="n">obs_mismatch</span> <span class="o">=</span> <span class="n">asarray</span><span class="p">(</span><span class="n">test_obs</span> <span class="o">-</span> <span class="n">observations</span><span class="p">)</span>
+
+        <span class="n">prior_fit</span> <span class="o">=</span> <span class="n">prior_mismatch</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">solve</span><span class="p">(</span>
+            <span class="n">background_covariance</span><span class="p">,</span> <span class="n">prior_mismatch</span><span class="p">))</span>
+        <span class="n">obs_fit</span> <span class="o">=</span> <span class="n">obs_mismatch</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">solve</span><span class="p">(</span>
+            <span class="n">observation_covariance</span><span class="p">,</span> <span class="n">obs_mismatch</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">prior_fit</span> <span class="o">+</span> <span class="n">obs_fit</span>
+
+    <span class="k">def</span> <span class="nf">cost_jacobian</span><span class="p">(</span><span class="n">test_state</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Gradiant of cost_function at `test_state`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        test_state: np.ndarray[N]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        jac: np.ndarray[N]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">prior_mismatch</span> <span class="o">=</span> <span class="n">test_state</span> <span class="o">-</span> <span class="n">background</span>
+        <span class="n">test_obs</span> <span class="o">=</span> <span class="n">observation_operator</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">test_state</span><span class="p">)</span>
+        <span class="n">obs_mismatch</span> <span class="o">=</span> <span class="n">test_obs</span> <span class="o">-</span> <span class="n">observations</span>
+
+        <span class="n">prior_gradient</span> <span class="o">=</span> <span class="n">solve</span><span class="p">(</span><span class="n">background_covariance</span><span class="p">,</span>
+                               <span class="n">prior_mismatch</span><span class="p">)</span>
+        <span class="n">obs_gradient</span> <span class="o">=</span> <span class="n">observation_operator</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span>
+            <span class="n">solve</span><span class="p">(</span><span class="n">observation_covariance</span><span class="p">,</span>
+                  <span class="n">obs_mismatch</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">prior_gradient</span> <span class="o">+</span> <span class="n">obs_gradient</span>
+
+    <span class="c1"># def cost_hessian_product(test_state, test_step):</span>
+    <span class="c1">#     &quot;&quot;&quot;Hessian of cost_function at `test_state` times `test_step`.</span>
+
+    <span class="c1">#     Parameters</span>
+    <span class="c1">#     ----------</span>
+    <span class="c1">#     test_state: np.ndarray[N]</span>
+    <span class="c1">#     test_step: np.ndarray[N]</span>
+
+    <span class="c1">#     Results</span>
+    <span class="c1">#     -------</span>
+    <span class="c1">#     hess_prod: np.ndarray[N]</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#     bg_prod = solve(background_covariance,</span>
+    <span class="c1">#                        test_step)</span>
+    <span class="c1">#     obs_prod = observation_operator.T.dot(</span>
+    <span class="c1">#         solve(observation_covariance,</span>
+    <span class="c1">#                  observation_operator.dot(test_step)))</span>
+    <span class="c1">#     return bg_prod + obs_prod</span>
+
+    <span class="k">if</span> <span class="n">reduced_background_covariance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;BFGS&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;Newton-CG&quot;</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">optimize</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span>
+        <span class="n">cost_function</span><span class="p">,</span> <span class="n">background</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+        <span class="n">jac</span><span class="o">=</span><span class="n">cost_jacobian</span><span class="p">,</span>
+        <span class="c1"># hessp=cost_hessian_product,</span>
+        <span class="n">options</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">maxiter</span><span class="o">=</span><span class="n">MAX_ITERATIONS</span><span class="p">,</span>
+                     <span class="n">gtol</span><span class="o">=</span><span class="n">GRAD_TOL</span><span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">ConvergenceError</span><span class="p">(</span><span class="s2">&quot;Did not converge: </span><span class="si">{msg:s}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">msg</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">message</span><span class="p">),</span> <span class="n">result</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">reduced_background_covariance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">hess_inv</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">result</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">hess_inv</span></div>
+
+
+<div class="viewcode-block" id="incremental"><a class="viewcode-back" href="../../atmos_flux_inversion.variational.html#atmos_flux_inversion.variational.incremental">[docs]</a><span class="nd">@method_common</span>
+<span class="k">def</span> <span class="nf">incremental</span><span class="p">(</span><span class="n">background</span><span class="p">,</span> <span class="n">background_covariance</span><span class="p">,</span>
+                <span class="n">observations</span><span class="p">,</span> <span class="n">observation_covariance</span><span class="p">,</span>
+                <span class="n">observation_operator</span><span class="p">,</span>
+                <span class="n">reduced_background_covariance</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">reduced_observation_operator</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Feed everything to scipy&#39;s minimizer.</span>
+
+<span class="sd">    Use the change from the background to try to avoid precision loss.</span>
+
+<span class="sd">    Assumes everything follows a multivariate normal distribution</span>
+<span class="sd">    with the specified covariance matrices.  Under this assumption</span>
+<span class="sd">    `analysis_covariance` is exact, and `analysis` is the Maximum</span>
+<span class="sd">    Likelihood Estimator and the Best Linear Unbiased Estimator</span>
+<span class="sd">    for the underlying state in the frequentist framework, and</span>
+<span class="sd">    specify the posterior distribution for the state in the</span>
+<span class="sd">    Bayesian framework.  If these are not satisfied, these still</span>
+<span class="sd">    form the Generalized Least Squares estimates for the state and</span>
+<span class="sd">    an estimated uncertainty.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    background: array_like[N]</span>
+<span class="sd">        The background state estimate.</span>
+<span class="sd">    background_covariance:  array_like[N, N]</span>
+<span class="sd">        Covariance of background state estimate across</span>
+<span class="sd">        realizations/ensemble members.  &quot;Ensemble&quot; is here</span>
+<span class="sd">        interpreted in the sense used in statistical mechanics or</span>
+<span class="sd">        frequentist statistics, and may not be derived from a</span>
+<span class="sd">        sample as in meteorological ensemble Kalman filters</span>
+<span class="sd">    observations: array_like[M]</span>
+<span class="sd">        The observations constraining the background estimate.</span>
+<span class="sd">    observation_covariance: array_like[M, M]</span>
+<span class="sd">        Covariance of observations across realizations/ensemble</span>
+<span class="sd">        members.  &quot;Ensemble&quot; again has the statistical meaning.</span>
+<span class="sd">    observation_operator: array_like[M, N]</span>
+<span class="sd">        The relationship between the state and the observations.</span>
+<span class="sd">    reduced_background_covariance: array_like[Nred, Nred], optional</span>
+<span class="sd">        The covariance for a smaller state space, usually obtained by</span>
+<span class="sd">        reducing resolution in space and time.  Note that</span>
+<span class="sd">        `reduced_observation_operator` must also be provided</span>
+<span class="sd">    reduced_observation_operator: array_like[M, Nred], optional</span>
+<span class="sd">        The relationship between the reduced state space and the</span>
+<span class="sd">        observations.  Note that `reduced_background_covariance`</span>
+<span class="sd">        must also be provided.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    analysis: array_like[N]</span>
+<span class="sd">        Analysis state estimate</span>
+<span class="sd">    analysis_covariance: array_like[Nred, Nred] or array_like[N, N]</span>
+<span class="sd">        Estimated uncertainty of analysis across</span>
+<span class="sd">        realizations/ensemble members.  Calculated using</span>
+<span class="sd">        reduced_background_covariance and</span>
+<span class="sd">        reduced_observation_operator if possible</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ConvergenceError</span>
+<span class="sd">        If iterative solver does not converge</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    minimizes</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        (dx)^T P_B^{-1} (dx) + (y - h(x_0) - H dx)^T R^{-1} (y - h(x_0) - H dx)</span>
+
+<span class="sd">    which has gradient</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        P_B^{-1} (dx) - H^T R^{-1} (y - h(x) - H dx)</span>
+
+<span class="sd">    where :math:`x = x_0 + dx`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">innovations</span> <span class="o">=</span> <span class="n">observations</span> <span class="o">-</span> <span class="n">observation_operator</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">background</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">cost_function</span><span class="p">(</span><span class="n">test_change</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Mismatch between state, prior, and obs.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        test_state: np.ndarray[N]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        cost: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">obs_change</span> <span class="o">=</span> <span class="n">observation_operator</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">test_change</span><span class="p">)</span>
+        <span class="n">obs_mismatch</span> <span class="o">=</span> <span class="n">innovations</span> <span class="o">-</span> <span class="n">obs_change</span>
+
+        <span class="n">prior_fit</span> <span class="o">=</span> <span class="n">test_change</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">asarray</span><span class="p">(</span><span class="n">solve</span><span class="p">(</span>
+            <span class="n">background_covariance</span><span class="p">,</span> <span class="n">test_change</span><span class="p">)))</span>
+        <span class="n">obs_fit</span> <span class="o">=</span> <span class="n">obs_mismatch</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">asarray</span><span class="p">(</span><span class="n">solve</span><span class="p">(</span>
+            <span class="n">observation_covariance</span><span class="p">,</span> <span class="n">obs_mismatch</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">prior_fit</span> <span class="o">+</span> <span class="n">obs_fit</span>
+
+    <span class="k">def</span> <span class="nf">cost_jacobian</span><span class="p">(</span><span class="n">test_change</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Gradiant of cost_function at `test_change`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        test_state: np.ndarray[N]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        jac: np.ndarray[N]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">obs_change</span> <span class="o">=</span> <span class="n">observation_operator</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">test_change</span><span class="p">)</span>
+        <span class="n">obs_mismatch</span> <span class="o">=</span> <span class="n">innovations</span> <span class="o">-</span> <span class="n">obs_change</span>
+
+        <span class="n">prior_gradient</span> <span class="o">=</span> <span class="n">solve</span><span class="p">(</span><span class="n">background_covariance</span><span class="p">,</span>
+                               <span class="n">test_change</span><span class="p">)</span>
+        <span class="n">obs_gradient</span> <span class="o">=</span> <span class="n">observation_operator</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span>
+            <span class="n">solve</span><span class="p">(</span><span class="n">observation_covariance</span><span class="p">,</span>
+                  <span class="n">obs_mismatch</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">prior_gradient</span> <span class="o">-</span> <span class="n">obs_gradient</span>
+
+    <span class="c1"># def cost_hessian_product(test_state, test_step):</span>
+    <span class="c1">#     &quot;&quot;&quot;Hessian of cost_function at `test_state` times `test_step`.</span>
+
+    <span class="c1">#     Parameters</span>
+    <span class="c1">#     ----------</span>
+    <span class="c1">#     test_state: np.ndarray[N]</span>
+    <span class="c1">#     test_step: np.ndarray[N]</span>
+
+    <span class="c1">#     Results</span>
+    <span class="c1">#     -------</span>
+    <span class="c1">#     hess_prod: np.ndarray[N]</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#     bg_prod = solve(background_covariance,</span>
+    <span class="c1">#                        test_step)</span>
+    <span class="c1">#     obs_prod = observation_operator.T.dot(</span>
+    <span class="c1">#         solve(observation_covariance,</span>
+    <span class="c1">#                  observation_operator.dot(test_step)))</span>
+    <span class="c1">#     return bg_prod + obs_prod</span>
+
+    <span class="k">if</span> <span class="n">reduced_background_covariance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;BFGS&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;Newton-CG&quot;</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">optimize</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span>
+        <span class="n">cost_function</span><span class="p">,</span> <span class="n">asarray</span><span class="p">(</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">background</span><span class="p">)),</span>
+        <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+        <span class="n">jac</span><span class="o">=</span><span class="n">cost_jacobian</span><span class="p">,</span>
+        <span class="c1"># hessp=cost_hessian_product,</span>
+        <span class="n">options</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">maxiter</span><span class="o">=</span><span class="n">MAX_ITERATIONS</span><span class="p">,</span>
+                     <span class="n">gtol</span><span class="o">=</span><span class="n">GRAD_TOL</span><span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="n">analysis</span> <span class="o">=</span> <span class="n">background</span> <span class="o">+</span> <span class="n">result</span><span class="o">.</span><span class="n">x</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">ConvergenceError</span><span class="p">(</span><span class="s2">&quot;Did not converge: </span><span class="si">{msg:s}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">msg</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">message</span><span class="p">),</span> <span class="n">result</span><span class="p">,</span> <span class="n">analysis</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">reduced_background_covariance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">hess_inv</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">analysis</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">hess_inv</span></div>
+
+
+<div class="viewcode-block" id="incr_chol"><a class="viewcode-back" href="../../atmos_flux_inversion.variational.html#atmos_flux_inversion.variational.incr_chol">[docs]</a><span class="nd">@method_common</span>
+<span class="k">def</span> <span class="nf">incr_chol</span><span class="p">(</span><span class="n">background</span><span class="p">,</span> <span class="n">background_covariance</span><span class="p">,</span>
+              <span class="n">observations</span><span class="p">,</span> <span class="n">observation_covariance</span><span class="p">,</span>
+              <span class="n">observation_operator</span><span class="p">,</span>
+              <span class="n">reduced_background_covariance</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">reduced_observation_operator</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Feed everything to scipy&#39;s minimizer.</span>
+
+<span class="sd">    Use the change from the background to try to avoid precision loss.</span>
+<span class="sd">    Also use Cholesky factorization of the covariances to speed</span>
+<span class="sd">    solution of matrix equations.</span>
+
+<span class="sd">    Assumes everything follows a multivariate normal distribution</span>
+<span class="sd">    with the specified covariance matrices.  Under this assumption</span>
+<span class="sd">    `analysis_covariance` is exact, and `analysis` is the Maximum</span>
+<span class="sd">    Likelihood Estimator and the Best Linear Unbiased Estimator</span>
+<span class="sd">    for the underlying state in the frequentist framework, and</span>
+<span class="sd">    specify the posterior distribution for the state in the</span>
+<span class="sd">    Bayesian framework.  If these are not satisfied, these still</span>
+<span class="sd">    form the Generalized Least Squares estimates for the state and</span>
+<span class="sd">    an estimated uncertainty.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    background: array_like[N]</span>
+<span class="sd">        The background state estimate.</span>
+<span class="sd">    background_covariance:  array_like[N, N]</span>
+<span class="sd">        Covariance of background state estimate across</span>
+<span class="sd">        realizations/ensemble members.  &quot;Ensemble&quot; is here</span>
+<span class="sd">        interpreted in the sense used in statistical mechanics or</span>
+<span class="sd">        frequentist statistics, and may not be derived from a</span>
+<span class="sd">        sample as in meteorological ensemble Kalman filters</span>
+<span class="sd">    observations: array_like[M]</span>
+<span class="sd">        The observations constraining the background estimate.</span>
+<span class="sd">    observation_covariance: array_like[M, M]</span>
+<span class="sd">        Covariance of observations across realizations/ensemble</span>
+<span class="sd">        members.  &quot;Ensemble&quot; again has the statistical meaning.</span>
+<span class="sd">    observation_operator: array_like[M, N]</span>
+<span class="sd">        The relationship between the state and the observations.</span>
+<span class="sd">    reduced_background_covariance: array_like[Nred, Nred], optional</span>
+<span class="sd">        The covariance for a smaller state space, usually obtained by</span>
+<span class="sd">        reducing resolution in space and time.  Note that</span>
+<span class="sd">        `reduced_observation_operator` must also be provided</span>
+<span class="sd">    reduced_observation_operator: array_like[M, Nred], optional</span>
+<span class="sd">        The relationship between the reduced state space and the</span>
+<span class="sd">        observations.  Note that `reduced_background_covariance`</span>
+<span class="sd">        must also be provided.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    analysis: array_like[N]</span>
+<span class="sd">        Analysis state estimate</span>
+<span class="sd">    analysis_covariance: array_like[Nred, Nred] or array_like[N, N]</span>
+<span class="sd">        Estimated uncertainty of analysis across</span>
+<span class="sd">        realizations/ensemble members.  Calculated using</span>
+<span class="sd">        reduced_background_covariance and</span>
+<span class="sd">        reduced_observation_operator if possible</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ConvergenceError</span>
+<span class="sd">        If iterative solver does not converge</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    minimizes</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        (dx)^T P_B^{-1} (dx) + (y - h(x_0) - H dx)^T R^{-1} (y - h(x_0) - H dx)</span>
+
+<span class="sd">    which has gradient</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        P_B^{-1} (dx) - H^T R^{-1} (y - h(x) - H dx)</span>
+
+<span class="sd">    where :math:`x = x_0 + dx`</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">innovations</span> <span class="o">=</span> <span class="n">observations</span> <span class="o">-</span> <span class="n">observation_operator</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">background</span><span class="p">)</span>
+
+    <span class="kn">from</span> <span class="nn">scipy.linalg</span> <span class="k">import</span> <span class="n">cho_factor</span><span class="p">,</span> <span class="n">cho_solve</span>
+
+    <span class="c1"># factor the covariances to make the matrix inversions faster</span>
+    <span class="n">bg_cov_chol_u</span> <span class="o">=</span> <span class="n">cho_factor</span><span class="p">(</span><span class="n">background_covariance</span><span class="p">)</span>
+    <span class="n">obs_cov_chol_u</span> <span class="o">=</span> <span class="n">cho_factor</span><span class="p">(</span><span class="n">observation_covariance</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">cost_function</span><span class="p">(</span><span class="n">test_change</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Mismatch between state, prior, and obs.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        test_state: np.ndarray[N]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        cost: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">obs_change</span> <span class="o">=</span> <span class="n">observation_operator</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">test_change</span><span class="p">)</span>
+        <span class="n">obs_mismatch</span> <span class="o">=</span> <span class="n">innovations</span> <span class="o">-</span> <span class="n">obs_change</span>
+
+        <span class="n">prior_fit</span> <span class="o">=</span> <span class="n">test_change</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">cho_solve</span><span class="p">(</span>
+            <span class="n">bg_cov_chol_u</span><span class="p">,</span> <span class="n">test_change</span><span class="p">))</span>
+        <span class="n">obs_fit</span> <span class="o">=</span> <span class="n">obs_mismatch</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">cho_solve</span><span class="p">(</span>
+            <span class="n">obs_cov_chol_u</span><span class="p">,</span> <span class="n">obs_mismatch</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">prior_fit</span> <span class="o">+</span> <span class="n">obs_fit</span>
+
+    <span class="k">def</span> <span class="nf">cost_jacobian</span><span class="p">(</span><span class="n">test_change</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Gradiant of cost_function at `test_change`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        test_state: np.ndarray[N]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        jac: np.ndarray[N]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">obs_change</span> <span class="o">=</span> <span class="n">observation_operator</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">test_change</span><span class="p">)</span>
+        <span class="n">obs_mismatch</span> <span class="o">=</span> <span class="n">innovations</span> <span class="o">-</span> <span class="n">obs_change</span>
+
+        <span class="n">prior_gradient</span> <span class="o">=</span> <span class="n">cho_solve</span><span class="p">(</span><span class="n">bg_cov_chol_u</span><span class="p">,</span>
+                                   <span class="n">test_change</span><span class="p">)</span>
+        <span class="n">obs_gradient</span> <span class="o">=</span> <span class="n">observation_operator</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span>
+            <span class="n">cho_solve</span><span class="p">(</span><span class="n">obs_cov_chol_u</span><span class="p">,</span>
+                      <span class="n">obs_mismatch</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">prior_gradient</span> <span class="o">-</span> <span class="n">obs_gradient</span>
+
+    <span class="c1"># def cost_hessian_product(test_state, test_step):</span>
+    <span class="c1">#     &quot;&quot;&quot;Hessian of cost_function at `test_state` times `test_step`.</span>
+
+    <span class="c1">#     Parameters</span>
+    <span class="c1">#     ----------</span>
+    <span class="c1">#     test_state: np.ndarray[N]</span>
+    <span class="c1">#     test_step: np.ndarray[N]</span>
+
+    <span class="c1">#     Results</span>
+    <span class="c1">#     -------</span>
+    <span class="c1">#     hess_prod: np.ndarray[N]</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#     bg_prod = solve(background_covariance,</span>
+    <span class="c1">#                        test_step)</span>
+    <span class="c1">#     obs_prod = observation_operator.T.dot(</span>
+    <span class="c1">#         solve(observation_covariance,</span>
+    <span class="c1">#                  observation_operator.dot(test_step)))</span>
+    <span class="c1">#     return bg_prod + obs_prod</span>
+
+    <span class="k">if</span> <span class="n">reduced_background_covariance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;BFGS&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;Newton-CG&quot;</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">optimize</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span>
+        <span class="n">cost_function</span><span class="p">,</span> <span class="n">asarray</span><span class="p">(</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">background</span><span class="p">)),</span>
+        <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+        <span class="n">jac</span><span class="o">=</span><span class="n">cost_jacobian</span><span class="p">,</span>
+        <span class="c1"># hessp=cost_hessian_product,</span>
+        <span class="n">options</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">maxiter</span><span class="o">=</span><span class="n">MAX_ITERATIONS</span><span class="p">,</span>
+                     <span class="n">gtol</span><span class="o">=</span><span class="n">GRAD_TOL</span><span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="n">analysis</span> <span class="o">=</span> <span class="n">background</span> <span class="o">+</span> <span class="n">result</span><span class="o">.</span><span class="n">x</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">ConvergenceError</span><span class="p">(</span><span class="s2">&quot;Did not converge: </span><span class="si">{msg:s}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">msg</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">message</span><span class="p">),</span> <span class="n">result</span><span class="p">,</span> <span class="n">analysis</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">reduced_background_covariance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">hess_inv</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">analysis</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">hess_inv</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="../atmos_flux_inversion.html" >atmos_flux_inversion</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018–2020, The Pennsylvania State University.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+  </body>
+</html>

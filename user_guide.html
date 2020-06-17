@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Inversion User Guide &#8212; Inversions 0.4.0.dev0 documentation</title>
+    <title>Inversion User Guide &#8212; Inversions 1.0.0rc3 documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
@@ -15,13 +15,11 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <script type="text/x-mathjax-config">MathJax.Hub.Config({"extensions": ["tex2jax.js"], "jax": ["input/TeX", "output/HTML-CSS"], "TeX": {"extensions": ["AMSmath.js"]}})</script>
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="inversion package" href="inversion.html" />
-    <link rel="prev" title="Maximum Likelihood Estimator" href="maximum_likelihood.html" /> 
+    <link rel="next" title="atmos_flux_inversion package" href="atmos_flux_inversion.html" />
+    <link rel="prev" title="Influence Functions" href="influence_functions.html" /> 
   </head><body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
@@ -33,12 +31,12 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="inversion.html" title="inversion package"
+          <a href="atmos_flux_inversion.html" title="atmos_flux_inversion package"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="maximum_likelihood.html" title="Maximum Likelihood Estimator"
+          <a href="influence_functions.html" title="Influence Functions"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Inversions 0.4.0.dev0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -66,7 +64,7 @@ method does not explicitly represent the uncertainty in the
 relationship between the fluxes and measurements, so that uncertainty
 is instead included in the uncertainty for the measurements
 <a class="footnote-reference" href="#transport-uncert" id="id3">[3]</a>.</p>
-<p><a class="reference internal" href="theory.html#theory"><span class="std std-ref">It turns out to be convenient</span></a> to represent these
+<p><a class="reference internal" href="mathematical_formalism.html#theory"><span class="std std-ref">It turns out to be convenient</span></a> to represent these
 uncertainties as covariance matrices.  We could assume that these
 matrices are diagonal: that the correction needed to bring any given
 flux into line with the atmospheric observations is completely
@@ -94,18 +92,18 @@ the temporal correlations in problems with our previous estimate are
 independent of the spatial location of those problems, and similarly
 the spatial correlations of the problems with the previous estimate
 with their neighbors are independent of the time those problems
-occured.  Both <a class="reference internal" href="inversion.linalg.html#inversion.linalg.DaskKroneckerProductOperator" title="inversion.linalg.DaskKroneckerProductOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">DaskKroneckerProductOperator</span></code></a>
+occured.  Both <a class="reference internal" href="atmos_flux_inversion.linalg.html#atmos_flux_inversion.linalg.DaskKroneckerProductOperator" title="atmos_flux_inversion.linalg.DaskKroneckerProductOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">DaskKroneckerProductOperator</span></code></a>
 and <code class="xref py py-class docutils literal notranslate"><span class="pre">SchmidtKroneckerProduct</span></code> are
 designed for this type of matrix.</p>
 <p>I tend to assume that the pointwise variances, which are related to
 how big we expect the problems in our previous estimate to be at any
 given point, are a function only of space, and are independent of
 time.  We can then use
-<a class="reference internal" href="inversion.covariances.html#inversion.covariances.CorrelationStandardDeviation" title="inversion.covariances.CorrelationStandardDeviation"><code class="xref py py-class docutils literal notranslate"><span class="pre">CorrelationStandardDeviation</span></code></a> to
+<a class="reference internal" href="atmos_flux_inversion.covariances.html#atmos_flux_inversion.covariances.CorrelationStandardDeviation" title="atmos_flux_inversion.covariances.CorrelationStandardDeviation"><code class="xref py py-class docutils literal notranslate"><span class="pre">CorrelationStandardDeviation</span></code></a> to
 represent the spatial part of the covariance, and are left with only
 the spatial and temporal correlations to completely specify the
 uncertainty estimate we need here.</p>
-<p><a class="reference internal" href="inversion.linalg.html#inversion.linalg.DaskKroneckerProductOperator" title="inversion.linalg.DaskKroneckerProductOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">DaskKroneckerProductOperator</span></code></a> requires an
+<p><a class="reference internal" href="atmos_flux_inversion.linalg.html#atmos_flux_inversion.linalg.DaskKroneckerProductOperator" title="atmos_flux_inversion.linalg.DaskKroneckerProductOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">DaskKroneckerProductOperator</span></code></a> requires an
 explicit array for its first argument.  The <a class="reference external" href="http://cfconventions.org">Climate and Forecast
 conventions</a> suggest ordering the dimensions for
 a gridded flux estimate as time by y by x, which means this would be
@@ -118,36 +116,36 @@ again.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">hour_correlation_time</span> <span class="o">=</span> <span class="mi">3</span>  <span class="c1"># hours</span>
 <span class="n">day_correlation_time</span> <span class="o">=</span> <span class="mi">14</span>  <span class="c1"># days</span>
 
-<span class="n">hour_correlation_function</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">ExponentialCorrelation</span><span class="p">(</span>
+<span class="n">hour_correlation_function</span> <span class="o">=</span> <span class="n">atmos_flux_inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">ExponentialCorrelation</span><span class="p">(</span>
     <span class="n">hour_correlation_time</span> <span class="o">/</span> <span class="n">flux_dt</span><span class="p">)</span>
-<span class="n">hour_correlations</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">make_matrix</span><span class="p">(</span>
+<span class="n">hour_correlations</span> <span class="o">=</span> <span class="n">atmos_flux_inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">make_matrix</span><span class="p">(</span>
     <span class="n">hour_correlation_function</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
 
-<span class="n">day_correlation_function</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">ExponentialCorrelation</span><span class="p">(</span>
+<span class="n">day_correlation_function</span> <span class="o">=</span> <span class="n">atmos_flux_inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">ExponentialCorrelation</span><span class="p">(</span>
     <span class="n">day_correlation_time</span><span class="p">)</span>
-<span class="n">day_correlations</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">make_matrix</span><span class="p">(</span>
+<span class="n">day_correlations</span> <span class="o">=</span> <span class="n">atmos_flux_inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">make_matrix</span><span class="p">(</span>
     <span class="n">day_correlation_function</span><span class="p">,</span> <span class="n">n_flux_days</span><span class="p">)</span>
 
-<span class="n">temporal_correlations</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">kron</span><span class="p">(</span>
+<span class="n">temporal_correlations</span> <span class="o">=</span> <span class="n">atmos_flux_inversion</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">kron</span><span class="p">(</span>
     <span class="n">day_correlations</span><span class="p">,</span> <span class="n">hour_correlations</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>We are left with the spatial correlations.  I have seen no evidence
 that the spatial correlations are related to Plant Functional Type, so
 I use correlations that are a function only of distance.
-<a class="reference internal" href="inversion.correlations.html#inversion.correlations.HomogeneousIsotropicCorrelation.from_function" title="inversion.correlations.HomogeneousIsotropicCorrelation.from_function"><code class="xref py py-class docutils literal notranslate"><span class="pre">from_function</span></code></a>
+<a class="reference internal" href="atmos_flux_inversion.correlations.html#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.from_function" title="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.from_function"><code class="xref py py-class docutils literal notranslate"><span class="pre">from_function</span></code></a>
 makes this somewhat easier, and is designed to work with instances of
-<a class="reference internal" href="inversion.correlations.html#inversion.correlations.DistanceCorrelationFunction" title="inversion.correlations.DistanceCorrelationFunction"><code class="xref py py-class docutils literal notranslate"><span class="pre">DistanceCorrelationFunction</span></code></a>.</p>
+<a class="reference internal" href="atmos_flux_inversion.correlations.html#atmos_flux_inversion.correlations.DistanceCorrelationFunction" title="atmos_flux_inversion.correlations.DistanceCorrelationFunction"><code class="xref py py-class docutils literal notranslate"><span class="pre">DistanceCorrelationFunction</span></code></a>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">correlation_length</span> <span class="o">=</span> <span class="mi">200</span>  <span class="c1"># km</span>
-<span class="n">spatial_correlation_function</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">ExponentialCorrelation</span><span class="p">(</span>
+<span class="n">spatial_correlation_function</span> <span class="o">=</span> <span class="n">atmos_flux_inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">ExponentialCorrelation</span><span class="p">(</span>
     <span class="n">correlation_length</span> <span class="o">/</span> <span class="n">dx</span><span class="p">)</span>
-<span class="n">spatial_correlations</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">HomogeneousIsotropicCorrelation</span><span class="o">.</span><span class="n">from_function</span><span class="p">(</span>
+<span class="n">spatial_correlations</span> <span class="o">=</span> <span class="n">atmos_flux_inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">HomogeneousIsotropicCorrelation</span><span class="o">.</span><span class="n">from_function</span><span class="p">(</span>
     <span class="n">spatial_correlation_function</span><span class="p">,</span> <span class="n">previous_surface_flux_estimate</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:],</span>
     <span class="bp">False</span><span class="p">)</span>
-<span class="n">spatial_covariance</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">covariances</span><span class="o">.</span><span class="n">CorrelationStandardDeviation</span><span class="p">(</span>
+<span class="n">spatial_covariance</span> <span class="o">=</span> <span class="n">atmos_flux_inversion</span><span class="o">.</span><span class="n">covariances</span><span class="o">.</span><span class="n">CorrelationStandardDeviation</span><span class="p">(</span>
     <span class="n">spatial_correlations</span><span class="p">,</span> <span class="n">standard_deviations</span><span class="p">)</span>
 
-<span class="n">full_covariance</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">DaskKroneckerProductOperator</span><span class="p">(</span>
+<span class="n">full_covariance</span> <span class="o">=</span> <span class="n">atmos_flux_inversion</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">DaskKroneckerProductOperator</span><span class="p">(</span>
     <span class="n">temporal_correlations</span><span class="p">,</span> <span class="n">spatial_covariance</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -160,7 +158,7 @@ correlated in time.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">observation_correlation_time</span> <span class="o">=</span> <span class="mi">3</span>  <span class="c1"># hours</span>
 <span class="n">observation_standard_deviation</span> <span class="o">=</span> <span class="mi">2</span>  <span class="c1"># ppm</span>
 <span class="n">observation_correlation_function</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="n">inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">ExponentialCorrelation</span><span class="p">(</span>
+    <span class="n">atmos_flux_inversion</span><span class="o">.</span><span class="n">correlations</span><span class="o">.</span><span class="n">ExponentialCorrelation</span><span class="p">(</span>
     <span class="n">observation_correlation_time</span> <span class="o">/</span>
     <span class="n">observation_dt</span><span class="p">)</span>
 <span class="p">)</span>
@@ -178,14 +176,14 @@ correlated in time.</p>
 </pre></div>
 </div>
 <p>At this point, we are nearly ready to pass everything to
-<a class="reference internal" href="inversion.optimal_interpolation.html#inversion.optimal_interpolation.save_sum" title="inversion.optimal_interpolation.save_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_sum()</span></code></a>; however, just
+<a class="reference internal" href="atmos_flux_inversion.optimal_interpolation.html#atmos_flux_inversion.optimal_interpolation.save_sum" title="atmos_flux_inversion.optimal_interpolation.save_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_sum()</span></code></a>; however, just
 passing everything now would result in that function calculating a
 full-resolution covariance matrix for its estimate.  If we want many
 fluxes, this is too big to fit in memory and will crash the system.
 Fortunately, <code class="xref py py-func docutils literal notranslate"><span class="pre">get_remappers()</span></code> will give us
 matrices to aggregate our flux uncertainty and influence functions to
 a coarser resolution.  If we pass these to
-<a class="reference internal" href="inversion.optimal_interpolation.html#inversion.optimal_interpolation.save_sum" title="inversion.optimal_interpolation.save_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_sum()</span></code></a>, it will calculate
+<a class="reference internal" href="atmos_flux_inversion.optimal_interpolation.html#atmos_flux_inversion.optimal_interpolation.save_sum" title="atmos_flux_inversion.optimal_interpolation.save_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_sum()</span></code></a>, it will calculate
 the uncertainty for its estimate at this reduced resolution, as:</p>
 <div class="math notranslate nohighlight">
 \[A_{red} = B_{red} -
@@ -198,7 +196,7 @@ H_{red} B_{red},\]</div>
 <span class="n">uncertainty_spatial_resolution</span> <span class="o">=</span> <span class="n">dx</span> <span class="o">*</span> <span class="n">resolution_reduction_factor</span>
 <span class="n">uncertainty_temporal_resolution</span> <span class="o">=</span> <span class="s2">&quot;7D&quot;</span>
 <span class="n">influence_function_remapper</span><span class="p">,</span> <span class="n">covariance_remapper</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="n">inversion</span><span class="o">.</span><span class="n">remapper</span><span class="o">.</span><span class="n">get_remappers</span><span class="p">(</span>
+    <span class="n">atmos_flux_inversion</span><span class="o">.</span><span class="n">remapper</span><span class="o">.</span><span class="n">get_remappers</span><span class="p">(</span>
         <span class="n">previous_surface_flux_estimate</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:],</span>
         <span class="n">resolution_reduction_factor</span>
     <span class="p">)</span>
@@ -258,19 +256,19 @@ H_{red} B_{red},\]</div>
     <span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="n">flux_time_adjoint</span><span class="o">=</span><span class="n">uncertainty_temporal_resolution</span><span class="p">)</span>
     <span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="s2">&quot;flux_time_adjoint&quot;</span><span class="p">)</span>
 <span class="p">)</span>
-<span class="n">reduced_covariance</span> <span class="o">=</span> <span class="n">inversion</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">DaskKroneckerProductOperator</span><span class="p">(</span>
+<span class="n">reduced_covariance</span> <span class="o">=</span> <span class="n">atmos_flux_inversion</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">DaskKroneckerProductOperator</span><span class="p">(</span>
     <span class="n">reduced_temporal_correlation_ds</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
     <span class="n">reduced_spatial_covariance</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p>The results from <a class="reference internal" href="inversion.optimal_interpolation.html#inversion.optimal_interpolation.save_sum" title="inversion.optimal_interpolation.save_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_sum()</span></code></a> are
+<p>The results from <a class="reference internal" href="atmos_flux_inversion.optimal_interpolation.html#atmos_flux_inversion.optimal_interpolation.save_sum" title="atmos_flux_inversion.optimal_interpolation.save_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_sum()</span></code></a> are
 the combined flux estimate, which uses both the previous estimate and
 the atmospheric measurements, and the uncertainty of that estimate
 represented as a covariance matrix, at reduced resolution if
 applicable.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">combined_flux_estimate</span><span class="p">,</span> <span class="n">reduced_uncertainty</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="n">inversion</span><span class="o">.</span><span class="n">optimal_interpolation</span><span class="o">.</span><span class="n">save_sum</span><span class="p">(</span>
+    <span class="n">atmos_flux_inversion</span><span class="o">.</span><span class="n">optimal_interpolation</span><span class="o">.</span><span class="n">save_sum</span><span class="p">(</span>
         <span class="n">previous_surface_flux_estimate</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
             <span class="n">state_space</span><span class="o">=</span><span class="p">(</span>
                 <span class="s2">&quot;flux_time&quot;</span><span class="p">,</span>
@@ -300,7 +298,7 @@ applicable.</p>
 <p>If there are multiple previous estimates for which the same
 uncertainty estimate applies, including those estimates as the columns
 of the first argument to
-<a class="reference internal" href="inversion.optimal_interpolation.html#inversion.optimal_interpolation.save_sum" title="inversion.optimal_interpolation.save_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_sum()</span></code></a> will produce a
+<a class="reference internal" href="atmos_flux_inversion.optimal_interpolation.html#atmos_flux_inversion.optimal_interpolation.save_sum" title="atmos_flux_inversion.optimal_interpolation.save_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_sum()</span></code></a> will produce a
 collection of combined estimates, with the columns again corresponding
 to the different previous estimates.  This has only been tested with
 corresponding columns in the observations; a simple way to obtain
@@ -335,7 +333,7 @@ fluxes.</td></tr>
 <table class="docutils footnote" frame="void" id="theory" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id4">[4]</a></td><td>The various derivations in <a class="reference internal" href="theory.html#theory"><span class="std std-ref">the section on theory</span></a> derive similar forms for the covariance of the
+<tr><td class="label"><a class="fn-backref" href="#id4">[4]</a></td><td>The various derivations in <a class="reference internal" href="mathematical_formalism.html#theory"><span class="std std-ref">the section on theory</span></a> derive similar forms for the covariance of the
 new flux estimate.</td></tr>
 </tbody>
 </table>
@@ -348,11 +346,11 @@ new flux estimate.</td></tr>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
   <h4>Previous topic</h4>
-  <p class="topless"><a href="maximum_likelihood.html"
-                        title="previous chapter">Maximum Likelihood Estimator</a></p>
+  <p class="topless"><a href="influence_functions.html"
+                        title="previous chapter">Influence Functions</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="inversion.html"
-                        title="next chapter">inversion package</a></p>
+  <p class="topless"><a href="atmos_flux_inversion.html"
+                        title="next chapter">atmos_flux_inversion package</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -386,16 +384,16 @@ new flux estimate.</td></tr>
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="inversion.html" title="inversion package"
+          <a href="atmos_flux_inversion.html" title="atmos_flux_inversion package"
              >next</a> |</li>
         <li class="right" >
-          <a href="maximum_likelihood.html" title="Maximum Likelihood Estimator"
+          <a href="influence_functions.html" title="Influence Functions"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Inversions 0.4.0.dev0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &#169; Copyright 2018, Daniel Wesloh.
+        &#169; Copyright 2018–2020, The Pennsylvania State University.
       Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
     </div>
   </body>

@@ -1,0 +1,213 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>What is an Inverse Problem? &#8212; Inversions 1.0.0rc3 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Mathematical Formalism for Atmospheric Flux Inversions" href="mathematical_formalism.html" />
+    <link rel="prev" title="Atmospheric Inverse Methods for Flux Optimization" href="index.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="mathematical_formalism.html" title="Mathematical Formalism for Atmospheric Flux Inversions"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Atmospheric Inverse Methods for Flux Optimization"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="what-is-an-inverse-problem">
+<h1>What is an Inverse Problem?<a class="headerlink" href="#what-is-an-inverse-problem" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="forward-problem">
+<h2>Forward Problem<a class="headerlink" href="#forward-problem" title="Permalink to this headline">¶</a></h2>
+<p>Given an initial mole fraction field <span class="math notranslate nohighlight">\(\chi\)</span> for some atmospheric
+trace gas, its surface flux field <span class="math notranslate nohighlight">\(f\)</span>, and the wind field
+<span class="math notranslate nohighlight">\(\vec{u}\)</span>, it is relatively straightforward to find the mixing
+ratio field at all future points in time if the trace gas is almost
+inert over the timescales of interest:</p>
+<p>plus boundary conditions, at the surface relating <span class="math notranslate nohighlight">\(f\)</span> to the
+gradient of <span class="math notranslate nohighlight">\(\chi\)</span>, and at the top of the domain of interest
+<span class="math notranslate nohighlight">\(\frac{\partial\chi}{\partial z} = 0\)</span> to ensure no flow through
+the top of the domain.  If the domain of interest is not global, there
+will be additional boundary conditions at the lateral boundaries.</p>
+<p>Since the PDE above is linear, one can prove the existence and
+uniqueness of the solutions.</p>
+</div>
+<div class="section" id="inverse-problem">
+<h2>Inverse problem<a class="headerlink" href="#inverse-problem" title="Permalink to this headline">¶</a></h2>
+<p>The problem this package tries to address is related: given the same
+equation for the evolution of <span class="math notranslate nohighlight">\(\chi\)</span> and a finite number of
+measurements at different points in time, find <span class="math notranslate nohighlight">\(f\)</span>.  Since this
+problem is nearly the reverse of the problem above, it is called an
+“Inverse Problem”.</p>
+<p>Usually, for practical purposes, the flux field is projected onto a
+finite-dimensional subspace, allowing the flux to be described as a
+vector (<span class="math notranslate nohighlight">\(\vec{f}\)</span>).  This vector is usually much larger than the
+vector of measurements, so that the inverse problem is
+underdetermined.</p>
+<p>One way to deal with this is to introduce an estimate for the fluxes
+obtained before looking at the measurements, <span class="math notranslate nohighlight">\(\vec{f}_b\)</span>, and
+minimize the difference between the measurements and the prediction
+using the flux estimate.  If <span class="math notranslate nohighlight">\(\vec{f}_b = \vec{0}\)</span>, this is
+equivalent to using the pseudo-inverse of the transport to find the
+fluxes.</p>
+<p>This allows the problem to be solved, but the problem is often
+ill-posed and the solution unstable: small changes in the measurements
+can lead to large changes in the fluxes.  Introducing uncertainties
+for the individual measurements and elements of the flux vector
+addresses some of this problem <a class="footnote-reference" href="#id3" id="id1">[1]</a>, but can still lead to
+discontinuities in the final flux field, which may not be realistic
+given the underlying physical processes.  Introducing correlations
+between the fluxes can alliviate that problem.  Correlations also make
+the problem larger and longer to solve.</p>
+<div class="section" id="initial-and-boundary-conditions">
+<h3>Initial and Boundary Conditions<a class="headerlink" href="#initial-and-boundary-conditions" title="Permalink to this headline">¶</a></h3>
+<p>The forward problem requires specifying initial conditions, and if the
+domain is not global, lateral boundary conditions also need to be
+specified.  These can also be included in the inverse problem as
+unknowns to be solved for, that is, as an additional part of the state
+vector.  <a class="reference internal" href="#peylinetal2005" id="id2">[Peylinetal2005]</a> indicates that, for limited-area models,
+the influence of the initial conditions largely vanishes after a month
+or so, having been advected out of the domain, while the lateral
+boundary conditions become correspondingly more important.</p>
+<p>As with the fluxes, the concentration field at the lateral boundaries
+of the spatial domain is usually discritized into a finite-dimensional
+vector, which is appended to the flux vector to form the full state
+vector.</p>
+<p>The choice of basis functions is again arbitrary.  One possibility for
+the lateral boundary conditions is to model the inflow as a constant
+times the concentration field of a global model.  Another, which works
+better for small domains, is to model the inflow as a constant.  A
+third possibility is to again use the concentration field of a global
+model but treat the edges of the domain (often north, south, east, and
+west) separatly.  A fourth extends this idea, and splits the inflow
+farther.  One might split the inflow into boundary-layer and
+free-troposphere values in any of these schemes, or choose a finer
+vertical resolution.</p>
+<table class="docutils footnote" frame="void" id="id3" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Incidenally, this moves the procedure from Ordinary Least Squares to
+Weighted Least Squares.  The next step is Generalized Least Squares.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
+<table class="docutils citation" frame="void" id="peylinetal2005" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[Peylinetal2005]</a></td><td>Peylin, P.; P.J. Rayner; P. Bousquet; C.
+Carouge; F.  Hourdin; P. Hinrich; P.  Ciais; and
+AEROCARB contributors (2005).  “Daily CO2 flux
+estimates over Europe from continuous atmospheric
+measurements: 1, inverse methodology” <em>Atmospheric
+Chemistry and Physics</em> vol. 5, no. 12
+pp. 3173-3186 <a class="reference external" href="https://dx.doi.org/10.5194/acp-5-3173-2005">doi:10.5194/acp-5-3173-2005</a></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">What is an Inverse Problem?</a><ul>
+<li><a class="reference internal" href="#forward-problem">Forward Problem</a></li>
+<li><a class="reference internal" href="#inverse-problem">Inverse problem</a><ul>
+<li><a class="reference internal" href="#initial-and-boundary-conditions">Initial and Boundary Conditions</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Atmospheric Inverse Methods for Flux Optimization</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="mathematical_formalism.html"
+                        title="next chapter">Mathematical Formalism for Atmospheric Flux Inversions</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/inverse_problems.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="mathematical_formalism.html" title="Mathematical Formalism for Atmospheric Flux Inversions"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Atmospheric Inverse Methods for Flux Optimization"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018–2020, The Pennsylvania State University.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+  </body>
+</html>
