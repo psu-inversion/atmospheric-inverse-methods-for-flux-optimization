@@ -1,0 +1,233 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bayesian Estimator &#8212; Inversions 1.0.0rc3 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Flux representation for inversions" href="flux_representation.html" />
+    <link rel="prev" title="Maximum Likelihood Estimator" href="maximum_likelihood.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="flux_representation.html" title="Flux representation for inversions"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="maximum_likelihood.html" title="Maximum Likelihood Estimator"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="mathematical_formalism.html" accesskey="U">Mathematical Formalism for Atmospheric Flux Inversions</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bayesian-estimator">
+<h1>Bayesian Estimator<a class="headerlink" href="#bayesian-estimator" title="Permalink to this headline">¶</a></h1>
+<p>Our prior information about the surface fluxes <span class="math notranslate nohighlight">\(\vec{x}\)</span> can be
+represented by a multivariate normal prior distribution:</p>
+<div class="math notranslate nohighlight">
+\[\vec{x} \sim \mathcal{N}(\vec{x}_b, B)\]</div>
+<p>The likelihood of observing a set of atmospheric measurements
+<span class="math notranslate nohighlight">\(\vec{y}\)</span> given surface fluxes <span class="math notranslate nohighlight">\(\vec{x}\)</span> is another
+multivariate normal:</p>
+<div class="math notranslate nohighlight">
+\[\vec{y} | \vec{x} \sim \mathcal{N}(H \vec{x}, R)\]</div>
+<p>We can combine these to obtain the posterior distribution for the
+surface fluxes <span class="math notranslate nohighlight">\(\vec{x}\)</span>.</p>
+<p>Set up Bayes’s rule:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}P(\vec{x} | \vec{y})
+&amp;= \frac{P(\vec{y} | \vec{x}) P(\vec{x})}{\int_{\vec{x}} P(\vec{y} | \vec{x}) d\vec{x}} \\
+&amp;\propto P(\vec{y} | \vec{x}) P(\vec{x})\end{split}\]</div>
+<p>Substitute in the prior and likelihood from above:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}P(\vec{x} | \vec{y})
+&amp;\propto (2\pi)^{-\frac{M}{2}} \det(R)^{-\frac{1}{2}}
+\exp[-\frac{1}{2} (\vec{y} - H \vec{x})^T R^{-1} (\vec{y} - H \vec{x})] \\
+&amp;\quad \times (2\pi)^{-\frac{N}{2}} \det(B)^{-\frac{1}{2}}
+\exp[-\frac{1}{2} (\vec{x} - \vec{x}_b)^T B^{-1} (\vec{x} - \vec{x}_b)]\end{split}\]</div>
+<p>Rearrange:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}P(\vec{x} | \vec{y})
+&amp;\propto (2\pi)^{-\frac{M + N}{2}} \det(R)^{-\frac{1}{2}} \det(B)^{-\frac{1}{2}} \\
+&amp;\quad \times \exp[-\frac{1}{2} (\vec{y} - H \vec{x})^T R^{-1} (\vec{y} - H \vec{x}_b)
+- \frac{1}{2} (\vec{x} - \vec{x}_b)^T B^{-1} (\vec{x} - \vec{x}_b)]]\end{split}\]</div>
+<p>Drop the constant factors out front and expand the quadratic forms:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}P(\vec{x} | \vec{y})
+&amp;\propto \exp[-\frac{1}{2} (
+\vec{y}^T R^{-1} \vec{y} - \vec{x}^T H^T R^{-1} \vec{y}
+- \vec{y}^T R^{-1} H \vec{x} + \vec{x}^T H^T R^{-1} H \vec{x} \\
+&amp;\qquad\qquad\qquad + \vec{x}^T B^{-1} \vec{x} - \vec{x}^T B^{-1} \vec{x_b}
+- \vec{x}_b^T B^{-1} \vec{x} + \vec{x}_b^T B^{-1} \vec{x}_b)]\end{split}\]</div>
+<p>Then rearrange the terms in the exponential until they look familiar.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}P(\vec{x} | \vec{y})
+&amp;\propto \exp\{-\frac{1}{2} [
+\vec{x}^T (B^{-1} + H R^{-1} H^T) \vec{x} + \vec{y}^T R^{-1} \vec{y}
+- \vec{x}^T H^T R^{-1} \vec{y} - \vec{y}^T R^{-1} H \vec{x} \\
+&amp;\qquad\qquad\qquad - \vec{x}^T B^{-1} \vec{x}_b
+- \vec{x}_b^T B^{-1} \vec{x} + \vec{x}_b^T B^{-1} \vec{x}_b]\}\end{split}\]</div>
+<p>At this point, it is apparent the posterior is a multivariate Gaussian
+with covariance <span class="math notranslate nohighlight">\(A = (B^{-1} + H R^{-1} H^T)^{-1}\)</span>, but the mean
+is not yet evident <a class="footnote-reference" href="#id2" id="id1">[1]</a>.  Since the mean of a multivariate Gaussian is
+also the mode, the location of the maximum of the posterior
+probability is the posterior mean.  The exponential function is
+monotonic increasing and the negation is monotonic decreasing, so this
+is equivalent to finding the minimum of</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}J(x) &amp;= \frac{1}{2} [
+\vec{x}^T (B^{-1} + H R^{-1} H^T) \vec{x} + \vec{y}^T R^{-1} \vec{y}
+- \vec{x}^T H^T R^{-1} \vec{y} - \vec{y}^T R^{-1} H \vec{x} \\
+&amp;\qquad\qquad - \vec{x}^T B^{-1} \vec{x}_b
+- \vec{x}_b^T B^{-1} \vec{x} + \vec{x}_b^T B^{-1} \vec{x}_b]\end{split}\]</div>
+<p>The derivative of this function with respect to <span class="math notranslate nohighlight">\(\vec{x}\)</span> is</p>
+<div class="math notranslate nohighlight">
+\[\frac{dJ}{d \vec{x} } = (B^{-1} + H R^{-1} H^T) \vec{x} - H^T R^{-1} \vec{y} - B^{-1} \vec{x}_b\]</div>
+<p>Setting this equal to zero to find the maximum of the posterior
+probability density <span class="math notranslate nohighlight">\(\vec{x}_a\)</span> and solving for
+<span class="math notranslate nohighlight">\(\vec{x}_a\)</span> gives</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}0 = (B^{-1} + H R^{-1} H^T) \vec{x}_a - H^T R^{-1} \vec{y} - B^{-1} \vec{x}_b \\
+(B^{-1} + H R^{-1} H^T) \vec{x}_a = H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b \\
+\vec{x}_a = (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)\end{split}\]</div>
+<p>This can be rearranged to look more like the answers from other methods:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\vec{x}_a &amp;= (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} - H^T R^{-1} H \vec{x}_b
+    + H^T R^{-1} H \vec{x}_b + B^{-1} \vec{x}_b) \\
+&amp;= (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} - H^T R^{-1} H \vec{x}_b)
+    + (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} H \vec{x}_b + B^{-1} \vec{x}_b) \\
+&amp;= (B^{-1} + H R^{-1} H^T)^{-1} H^T R^{-1} (\vec{y} - H \vec{x}_b)
+    + (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} H + B^{-1}) \vec{x}_b \\
+&amp;= (B^{-1} + H R^{-1} H^T)^{-1} H^T R^{-1} (\vec{y} - H \vec{x}_b) + \vec{x}_b \\
+&amp;= \vec{x}_b + (B^{-1} + H R^{-1} H^T)^{-1} H^T R^{-1} (\vec{y} - H \vec{x}_b).\end{split}\]</div>
+<p>Given this, the full posterior probability density is</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}P(\vec{x} | \vec{y}) &amp;= (2 \pi)^{-\frac{N}{2}} \det(A)^{-\frac{1}{2}}
+    \exp[-\frac{1}{2} (\vec{x} - \vec{x}_a)^T A^{-1} (\vec{x} - \vec{x}_a)] \\
+&amp;\propto \exp\{-\frac{1}{2} [\vec{x} - (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)]^T
+    (B^{-1} + H R^{-1} H^T) [\vec{x} - (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)] \\
+&amp;= \exp\{-\frac{1}{2} [
+    \vec{x}^T (B^{-1} + H R^{-1} H^T) \vec{x} +
+    (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)^T  (B^{-1} + H R^{-1} H^T)^{-T} (B^{-1} + H R^{-1} H^T) (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b) -
+    (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)^T  (B^{-1} + H R^{-1} H^T)^{-T} (B^{-1} + H R^{-1} H^T) \vec{x} -
+    \vec{x} (B^{-1} + H R^{-1} H^T) (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)
+]\}\end{split}\]</div>
+<p>Simplifying this and using the symmetry of <span class="math notranslate nohighlight">\(B\)</span> and <span class="math notranslate nohighlight">\(R\)</span> gives</p>
+<div class="math notranslate nohighlight">
+\[\begin{split} P(\vec{x} | \vec{y}) &amp;\propto \exp\{-\frac{1}{2} [
+     \vec{x}^T (B^{-1} + H R^{-1} H^T) \vec{x} +
+     (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)^T (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b) -
+     (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)^T \vec{x} -
+     \vec{x} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)
+ ]\} \\
+ &amp;= \exp[-\frac{1}{2}
+     (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)^T (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)
+ ]
+ \exp\{-\frac{1}{2} [
+     \vec{x}^T (B^{-1} + H R^{-1} H^T) \vec{x} -
+     (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)^T \vec{x} -
+     \vec{x}^T (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)
+]\}
+&amp;\propto \exp\{-\frac{1}{2} [
+    \vec{x}^T (B^{-1} + H R^{-1} H^T) \vec{x}
+    - \vec{y}^T R^{-1} H \vec{x} - \vec{x}_b^T B^{-1} \vec{x}
+    - \vec{x}^T H^T R^{-1} \vec{y} - \vec{x}^T B^{-1} \vec{x}_b
+]\},\end{split}\]</div>
+<p>which you will recognize from the line that was recognized as a
+multivariate Gaussian.</p>
+<table class="docutils footnote" frame="void" id="id2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>The highest-order term in the exponential is a quadratic of the
+form <span class="math notranslate nohighlight">\(\vec{x}^T A^{-1} \vec{x}\)</span>.  The linear terms will
+shift the mean around a bit.</td></tr>
+</tbody>
+</table>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="maximum_likelihood.html"
+                        title="previous chapter">Maximum Likelihood Estimator</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="flux_representation.html"
+                        title="next chapter">Flux representation for inversions</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/bayes.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="flux_representation.html" title="Flux representation for inversions"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="maximum_likelihood.html" title="Maximum Likelihood Estimator"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="mathematical_formalism.html" >Mathematical Formalism for Atmospheric Flux Inversions</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018–2020, The Pennsylvania State University.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+  </body>
+</html>

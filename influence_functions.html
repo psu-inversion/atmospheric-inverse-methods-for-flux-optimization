@@ -1,0 +1,259 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Influence Functions &#8212; Inversions 1.0.0rc3 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Inversion User Guide" href="user_guide.html" />
+    <link rel="prev" title="Flux representation for inversions" href="flux_representation.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="user_guide.html" title="Inversion User Guide"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="flux_representation.html" title="Flux representation for inversions"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="influence-functions">
+<h1>Influence Functions<a class="headerlink" href="#influence-functions" title="Permalink to this headline">¶</a></h1>
+<p>Influence functions describe how a unit change in any given element of
+the state vector (often, a unit change in the flux in a certain area)
+will change all of the observations.  For the instance where the state
+vector is the fluxes in each grid cell, one might calculate this as a
+number of observation sites by number of observation times by number
+of flux times by number of grid cells in the y direction by number of
+grid cells in the x direction array.  Many of the elements of this
+array will be zero, as no flux can affect a measurement before it.
+Similarly, if the observation time is much later than the flux time,
+the influence function will not vary much between sites <a class="footnote-reference" href="#id6" id="id1">[1]</a>.</p>
+<p>There are two approaches to calculating influence functions: one using
+a forward model and one using an adjoint model.</p>
+<div class="section" id="foreward-model">
+<h2>Foreward Model<a class="headerlink" href="#foreward-model" title="Permalink to this headline">¶</a></h2>
+<p>The most straightforward method to obtain influence functions is to do
+many runs of the tracer transport model, one for each element of the
+state vector.  The surface fluxes are those corresponding to a state
+vector with one element set to one and all the rest zero.  Sampling
+the simulated concentration fields at the time and place of the
+measurements then produces the influence functions.</p>
+<p>It is very easy to run experiments with different observation networks
+using this method, if the simulated concentration fields are saved.
+However, the cost of a separate run for each element of the state
+vector can become quickly prohibitive for high-resolution inversions.</p>
+</div>
+<div class="section" id="adjoint-model">
+<h2>Adjoint Model<a class="headerlink" href="#adjoint-model" title="Permalink to this headline">¶</a></h2>
+<p>Another method is to find the adjoint of the tracer transport model,
+then do adjoint runs back from each observation.  The adjoint model
+gives the sensitivity of a quantity of interest (a measurement at a
+particular place and time) to conditions before that (in particular,
+to the preceeding fluxes).  This method requires one run for each
+measurment at each location, and works well when the total number of
+measurements is much smaller than the total number of elements in the
+state vector.</p>
+<p>Running experiments with different observation networks with this
+method is somewhat difficult, since each new measurement requires a
+new run of the adjoint model.</p>
+<p>One method used to avoid finding the adjoint of the full tracer
+transport model is to release many imaginary particles at the time and
+place of each measurement, then use the winds from the tracer
+transport model to move the particles backward in time, finding where
+the particles would have to have been at each prior time to become
+part of the measurement.  Tracking where and how often these particles
+interact with the ground then gives the influence functions.  This is
+the approach taken by Lagrangian Particle Dispersion Models, such as
+the <a class="reference internal" href="#lpdm" id="id2">[LPDM]</a> of Uliasz (1994), the Stochastic Time-Inverted
+Lagrangian Transport <a class="reference internal" href="#stilt" id="id3">[STILT]</a> model, the HYbrid Single-Particle
+Lagrangian Integrated Trajectory <a class="reference internal" href="#hysplit" id="id4">[HYSPLIT]</a> model, and the FLEXible
+PARTicle dispersion model <a class="reference internal" href="#flexpart" id="id5">[FLEXPART]</a>.</p>
+<p>This method requires relating the change in mole fraction for one of
+these particles to the change in mole fraction of the measurement: if
+all the particles composing the measurement experience an increase in
+mole fraction of 1 ppm, then the measurement will be 1 ppm higher.  If
+only half the particles experience this 1 ppm increase and the other
+half are unaffected, the measurement will only be 0.5 ppm higher.
+Extending this, if a single particle experiences an increase in mole
+fraction of 1 (in arbitrary units), the measurement will be larger by
+the reciprocal of the number of particles composing the measurement
+(in the same units).</p>
+<table class="docutils footnote" frame="void" id="id6" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>If all the measurements are in the troposphere, “much later” is
+two to three years.  If all the measurements are additionally
+in the same hemisphere, “much later” is on the order of a
+month, perhaps less.  If the inversion is regional, with a
+spatial domain that does not cover the whole globe, “much
+later” is related to how long it takes air parcels to leave the
+domain.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
+<table class="docutils citation" frame="void" id="lpdm" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[LPDM]</a></td><td><p class="first">Uliasz, M. (1993). “The atmospheric Mesoscale Dispersion
+Modeling System”. <em>Journal of Applied Meteorology</em>, 32 (1),
+139–149.  Retrieved 2016-07-15, from
+<a class="reference external" href="https://journals.ametsoc.org/doi/abs/10.1175/1520-0450%281993%29032%3C0139%3ATAMDMS%3E2.0.CO%3B2">https://journals.ametsoc.org/doi/abs/10.1175/1520-0450%281993%29032%3C0139%3ATAMDMS%3E2.0.CO%3B2</a>
+<a class="reference external" href="https://dx.doi.org/10.1175/1520-0450(1993)032&lt;0139:TAMDMS&gt;2.0.CO;2">doi:10.1175/1520-0450(1993)032&lt;0139:TAMDMS&gt;2.0.CO;2</a></p>
+<p class="last">Uliasz, M. (1994).  “Lagrangian particle dispersion modeling
+in mesoscale applications”. <em>Environ Model: Comput Methods
+and Softw for Simulat Environ Pollut and Its Adverse Effects
+(CMP)</em>, 2 , 71–102. Retrieved from
+<a class="reference external" href="http://indico.ictp.it/event/a02274/contribution/22/material/0/0.pdf">http://indico.ictp.it/event/a02274/contribution/22/material/0/0.pdf</a></p>
+</td></tr>
+</tbody>
+</table>
+<table class="docutils citation" frame="void" id="stilt" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id3">[STILT]</a></td><td><p class="first"><a class="reference external" href="http://stilt-model.org/index.php/Main/HomePage">http://stilt-model.org/index.php/Main/HomePage</a></p>
+<p class="last">Lin, J.C., C. Gerbig, S.C. Wofsy, A.E. Andrews, B.C. Daube,
+K.J. Davis, and C.A. Grainger, “A near-field tool for
+simulating the upstream influence of atmospheric
+observations: The Stochastic Time-Inverted Lagrangian
+Transport (STILT) model”. <em>Journal of Geophysical
+Research-Atmospheres</em>, (2003) 108(D16): 4493,
+<a class="reference external" href="https://dx.doi.org/10.1029/2002JD003161">doi:10.1029/2002JD003161</a>.</p>
+</td></tr>
+</tbody>
+</table>
+<table class="docutils citation" frame="void" id="hysplit" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id4">[HYSPLIT]</a></td><td><p class="first"><a class="reference external" href="https://ready.arl.noaa.gov/HYSPLIT.php">https://ready.arl.noaa.gov/HYSPLIT.php</a></p>
+<p class="last">Stein, A.F., R.R. Draxler, G.D. Rolph, B.J. Stunder,
+M.D. Cohen, and F. Ngan, 2015: “NOAA’s HYSPLIT
+Atmospheric Transport and Dispersion Modeling
+System”. <em>Bull. Amer. Meteor. Soc.</em>, 96, 2059–2077,
+<a class="reference external" href="https://dx.doi.org/10.1175/BAMS-D-14-00110.1">doi:10.1175/BAMS-D-14-00110.1</a></p>
+</td></tr>
+</tbody>
+</table>
+<table class="docutils citation" frame="void" id="flexpart" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id5">[FLEXPART]</a></td><td><p class="first"><a class="reference external" href="https://www.flexpart.eu/">https://www.flexpart.eu/</a></p>
+<p>Ignacio Pisso, Espen Sollum, Henrik Grythe,
+Nina I. Kristiansen, Massimo Cassiani, Sabine Eckhardt,
+Delia Arnold, Don Morton, Rona L. Thompson,
+Christine D. Groot Zwaaftink, Nikolaos Evangeliou,
+Harald Sodemann, Leopold Haimberger, Stephan Henne,
+Dominik Brunner, John F. Burkhart, Anne Fouilloux,
+Jerome Brioude, Anne Philipp, Petra Seibert, and Andreas
+Stohl (2019), “The Lagrangian particle dispersion model
+FLEXPART version 10.4”.  <em>Geosci. Model Dev.</em>, 12,
+4955–4997, <a class="reference external" href="https://dx.doi.org/10.5194/gmd-12-4955-2019">doi:10.5194/gmd-12-4955-2019</a>.</p>
+<p class="last">Seibert, P., &amp; Frank, A. (2004, 1). “Source-receptor
+matrix calculation with a lagrangian particle dispersion model in
+backward mode.” <em>Atmospheric Chemistry and Physics</em>, 4 (1),
+51–63. <a class="reference external" href="https://dx.doi.org/10.5194/acp-4-51-2004">doi:10.5194/acp-4-51-2004</a></p>
+</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Influence Functions</a><ul>
+<li><a class="reference internal" href="#foreward-model">Foreward Model</a></li>
+<li><a class="reference internal" href="#adjoint-model">Adjoint Model</a></li>
+<li><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="flux_representation.html"
+                        title="previous chapter">Flux representation for inversions</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="user_guide.html"
+                        title="next chapter">Inversion User Guide</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/influence_functions.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="user_guide.html" title="Inversion User Guide"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="flux_representation.html" title="Flux representation for inversions"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018–2020, The Pennsylvania State University.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+  </body>
+</html>
