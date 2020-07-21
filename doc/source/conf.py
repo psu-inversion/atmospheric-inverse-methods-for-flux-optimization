@@ -117,7 +117,17 @@ linkcheck_ignore = [
     # Require authentication:
     r"https://www.jstor.org/stable/\w+",
     r"https://dx.doi.org/10.1029/\w+",
+    # Linkcheck ignores request headers
+    r"https://dx.doi.org/10.1175/\w+",
 ]
+linkcheck_request_headers = {
+    "https://dx.doi.org/10.1175/": {
+        "User-Agent": "Firefox/Gecko",
+    },
+    "https://journals.ametsoc.org/": {
+        "User-Agent": "Firefox/Gecko",
+    },
+}
 
 # Mathjax configuration
 mathjax_config = dict(
