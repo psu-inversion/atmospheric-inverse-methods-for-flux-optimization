@@ -32,7 +32,7 @@ abstract: |
     dependencies, and my reasons for prefering my package to the
     CT-Lagrange inversion code also apply here.
 title: 'Atmospheric Inverse Methods for Flux Optimization'
-doi: 10.5281/zenodo.3606590
+doi: 10.5281/zenodo.3338692
 # FIXME splitting of full names is error prone, please check if given/family name are correct
 authors:
 - given-names: DWesl
