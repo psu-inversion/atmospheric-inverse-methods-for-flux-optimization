@@ -129,15 +129,6 @@ linkcheck_request_headers = {
     },
 }
 
-# Mathjax configuration
-mathjax_config = dict(
-    extensions=["tex2jax.js"],
-    jax=["input/TeX", "output/HTML-CSS"],
-    TeX=dict(
-        extensions=["AMSmath.js"],
-    ),
-)
-
 
 # -- Options for HTML output ----------------------------------------------
 
