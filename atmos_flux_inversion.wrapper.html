@@ -1,21 +1,20 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>atmos_flux_inversion.wrapper module &#8212; Inversions 1.0.0 documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"extensions": ["tex2jax.js"], "jax": ["input/TeX", "output/HTML-CSS"], "TeX": {"extensions": ["AMSmath.js"]}})</script>
     
     <link rel="index" title="Index" href="genindex.html" />
@@ -39,7 +38,8 @@
           <a href="atmos_flux_inversion.psas.html" title="atmos_flux_inversion.psas module"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" accesskey="U">atmos_flux_inversion package</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" accesskey="U">atmos_flux_inversion package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">atmos_flux_inversion.wrapper module</a></li> 
       </ul>
     </div>  
 
@@ -56,27 +56,25 @@ Take prior and parameters, return posterior.</p>
 <p>The interface is still experimental at this point.  I am likely to
 remove functions and parameters as I find better ways to organize
 things.  The code still works fine as an example.</p>
-<dl class="function">
+<dl class="py function">
 <dt id="atmos_flux_inversion.wrapper.get_installed_modules">
-<code class="descclassname">atmos_flux_inversion.wrapper.</code><code class="descname">get_installed_modules</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/wrapper.html#get_installed_modules"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.wrapper.get_installed_modules" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.wrapper.</code><code class="sig-name descname">get_installed_modules</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/wrapper.html#get_installed_modules"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.wrapper.get_installed_modules" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the list of installed modules.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">List of currently installed packages, using conda if that is
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>List of currently installed packages, using conda if that is
 available or pip if it is not.  List of two-element strings
-giving name-version pairs.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">list of list of str</td>
-</tr>
-</tbody>
-</table>
+giving name-version pairs.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>list of list of str</p>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="atmos_flux_inversion.wrapper.global_attributes_dict">
-<code class="descclassname">atmos_flux_inversion.wrapper.</code><code class="descname">global_attributes_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/wrapper.html#global_attributes_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.wrapper.global_attributes_dict" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.wrapper.</code><code class="sig-name descname">global_attributes_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/wrapper.html#global_attributes_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.wrapper.global_attributes_dict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set global attributes required by conventions.</p>
 <p>Currently CF-1.6 and ACDD-1.3.</p>
 <p>Still needs title, summary, source, creator_institution,
@@ -84,84 +82,75 @@ product_version, references, cdm_data_type, institution,
 geospatial_vertical_{min,max,positive,units}, …</p>
 <p>Users may want to overwrite the history and creator_name
 attributes, as these are fancy guesses.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>global_atts</strong> – attribute_name: attribute_value mapping.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#dict" title="(in Python v3.4)">dict</a></td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>global_atts</strong> – attribute_name: attribute_value mapping.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#dict" title="(in Python v3.4)">dict</a></p>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="atmos_flux_inversion.wrapper.invert_uniform">
-<code class="descclassname">atmos_flux_inversion.wrapper.</code><code class="descname">invert_uniform</code><span class="sig-paren">(</span><em>prior_fluxes</em>, <em>observations</em>, <em>observation_operator</em>, <em>prior_correlation_length</em>, <em>prior_correlation_structure</em>, <em>prior_correlation_time_days</em>, <em>prior_correlation_time_hours</em>, <em>prior_flux_stds</em>, <em>observation_correlation_time</em>, <em>method=&lt;function fold_common&gt;</em>, <em>output_uncertainty_frequency='MS'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/wrapper.html#invert_uniform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.wrapper.invert_uniform" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.wrapper.</code><code class="sig-name descname">invert_uniform</code><span class="sig-paren">(</span><em class="sig-param">prior_fluxes</em>, <em class="sig-param">observations</em>, <em class="sig-param">observation_operator</em>, <em class="sig-param">prior_correlation_length</em>, <em class="sig-param">prior_correlation_structure</em>, <em class="sig-param">prior_correlation_time_days</em>, <em class="sig-param">prior_correlation_time_hours</em>, <em class="sig-param">prior_flux_stds</em>, <em class="sig-param">observation_correlation_time</em>, <em class="sig-param">method=&lt;function fold_common&gt;</em>, <em class="sig-param">output_uncertainty_frequency='MS'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/wrapper.html#invert_uniform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.wrapper.invert_uniform" title="Permalink to this definition">¶</a></dt>
 <dd><p>Perform an inversion.</p>
 <p>Assumes error correlations are invariant in time and space and
 that the error variances are constant in time.  Also assumes the
 observation correlations between towers is zero.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>prior_fluxes</strong> (<em>xarray.Dataarray</em><em>[</em><em>flux_time</em><em>, </em><em>y</em><em>, </em><em>x</em><em>]</em>) – The prior or background estimate of the fluxes</li>
-<li><strong>observations</strong> (<em>xarray.Dataarray</em><em>[</em><em>obs_time</em><em>, </em><em>site</em><em>]</em>) – The observed mole fractions</li>
-<li><strong>observation_operator</strong> (<em>xarray.Dataarray</em><em>[</em><em>obs_time</em><em>, </em><em>site</em><em>, </em><em>flux_time</em><em>, </em><em>y</em><em>, </em><em>x</em><em>]</em>) – The linearized operator mapping a flux distribution to
-observations.</li>
-<li><strong>prior_correlation_length</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)"><em>float</em></a>) – The lengthscale for the spatial correlations in the prior.</li>
-<li><strong>prior_correlation_structure</strong> (<em>inv_corr.DistanceCorrelationFunction</em>) – The structure of the spatial correlations in the prior.</li>
-<li><strong>prior_correlation_time_days</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)"><em>float</em></a>) – The correlation timescale for fluxes across different days.</li>
-<li><strong>prior_correlation_time_hours</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)"><em>float</em></a>) – The correlation timescale for fluxes within the same day.</li>
-<li><strong>prior_flux_stds</strong> (<em>xarray.Dataarray</em><em>[</em><em>y</em><em>, </em><em>x</em><em>]</em>) – The standard deviations of the prior flux distribution at each
-point in space.</li>
-<li><strong>observation_correlation_time</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)"><em>float</em></a>) – The correlation timescale for consecutive observations at a
-single site.</li>
-<li><strong>method</strong> (<em>function</em>) – The method to use.  Must match the signature of
-<a class="reference internal" href="atmos_flux_inversion.optimal_interpolation.html#atmos_flux_inversion.optimal_interpolation.simple" title="atmos_flux_inversion.optimal_interpolation.simple"><code class="xref py py-func docutils literal notranslate"><span class="pre">atmos_flux_inversion.optimal_interpolation.simple()</span></code></a></li>
-<li><strong>output_uncertainty_frequency</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) – One of the frequencies from
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>prior_fluxes</strong> (<em>xarray.Dataarray</em><em>[</em><em>flux_time</em><em>, </em><em>y</em><em>, </em><em>x</em><em>]</em>) – The prior or background estimate of the fluxes</p></li>
+<li><p><strong>observations</strong> (<em>xarray.Dataarray</em><em>[</em><em>obs_time</em><em>, </em><em>site</em><em>]</em>) – The observed mole fractions</p></li>
+<li><p><strong>observation_operator</strong> (<em>xarray.Dataarray</em><em>[</em><em>obs_time</em><em>, </em><em>site</em><em>, </em><em>flux_time</em><em>, </em><em>y</em><em>, </em><em>x</em><em>]</em>) – The linearized operator mapping a flux distribution to
+observations.</p></li>
+<li><p><strong>prior_correlation_length</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)"><em>float</em></a>) – The lengthscale for the spatial correlations in the prior.</p></li>
+<li><p><strong>prior_correlation_structure</strong> (<em>inv_corr.DistanceCorrelationFunction</em>) – The structure of the spatial correlations in the prior.</p></li>
+<li><p><strong>prior_correlation_time_days</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)"><em>float</em></a>) – The correlation timescale for fluxes across different days.</p></li>
+<li><p><strong>prior_correlation_time_hours</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)"><em>float</em></a>) – The correlation timescale for fluxes within the same day.</p></li>
+<li><p><strong>prior_flux_stds</strong> (<em>xarray.Dataarray</em><em>[</em><em>y</em><em>, </em><em>x</em><em>]</em>) – The standard deviations of the prior flux distribution at each
+point in space.</p></li>
+<li><p><strong>observation_correlation_time</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)"><em>float</em></a>) – The correlation timescale for consecutive observations at a
+single site.</p></li>
+<li><p><strong>method</strong> (<em>function</em>) – The method to use.  Must match the signature of
+<a class="reference internal" href="atmos_flux_inversion.optimal_interpolation.html#atmos_flux_inversion.optimal_interpolation.simple" title="atmos_flux_inversion.optimal_interpolation.simple"><code class="xref py py-func docutils literal notranslate"><span class="pre">atmos_flux_inversion.optimal_interpolation.simple()</span></code></a></p></li>
+<li><p><strong>output_uncertainty_frequency</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) – One of the frequencies from
 <a class="reference external" href="http://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases">http://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases</a>
 or “season”.  Often “M”, output_uncertainty_frequency, “Y”,
 “YS”, or “season” make the most sense.  Used to provide
-lower-temporal-resolution posterior uncertainties.</li>
+lower-temporal-resolution posterior uncertainties.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><p>The results of the inversion.
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><p>The results of the inversion.
 Contents:</p>
-<dl class="docutils">
-<dt>prior[flux_time, y, x]</dt>
-<dd><p class="first last">The prior mean for the inversion.</p>
+<dl class="simple">
+<dt>prior[flux_time, y, x]</dt><dd><p>The prior mean for the inversion.</p>
 </dd>
-<dt>increment[flux_time, y, x]</dt>
-<dd><p class="first last">The change from the prior to the posterior mean estimates.</p>
+<dt>increment[flux_time, y, x]</dt><dd><p>The change from the prior to the posterior mean estimates.</p>
 </dd>
-<dt>posterior[flux_time, y, x]</dt>
-<dd><p class="first last">The posterior mean for the inversion.</p>
+<dt>posterior[flux_time, y, x]</dt><dd><p>The posterior mean for the inversion.</p>
 </dd>
-<dt>post_cov[red_flux_time_adj, y_adj, x_adj, red_flux_time, y, x]</dt>
-<dd><p class="first last">The analytic uncertainty for the posterior, expressed as a
+<dt>post_cov[red_flux_time_adj, y_adj, x_adj, red_flux_time, y, x]</dt><dd><p>The analytic uncertainty for the posterior, expressed as a
 covariance matrix on a reduced-resolution domain.  If the
 prior and observation likelihood are Gaussian, this will
 be exact.</p>
 </dd>
 </dl>
 </p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.Dataset.html#xarray.Dataset" title="(in xarray v0.15.1)">xarray.Dataset</a></p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.Dataset.html#xarray.Dataset" title="(in xarray v0.15.1)">xarray.Dataset</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 </div>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
@@ -181,17 +170,15 @@ be exact.</p>
     </ul>
    </div>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -212,12 +199,13 @@ be exact.</p>
           <a href="atmos_flux_inversion.psas.html" title="atmos_flux_inversion.psas module"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" >atmos_flux_inversion package</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" >atmos_flux_inversion package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">atmos_flux_inversion.wrapper module</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2018–2020, The Pennsylvania State University.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.2.
     </div>
   </body>
 </html>

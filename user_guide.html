@@ -1,21 +1,20 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inversion User Guide &#8212; Inversions 1.0.0 documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"extensions": ["tex2jax.js"], "jax": ["input/TeX", "output/HTML-CSS"], "TeX": {"extensions": ["AMSmath.js"]}})</script>
     
     <link rel="index" title="Index" href="genindex.html" />
@@ -38,7 +37,8 @@
         <li class="right" >
           <a href="influence_functions.html" title="Influence Functions"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Inversion User Guide</a></li> 
       </ul>
     </div>  
 
@@ -55,17 +55,17 @@ to obtain an estimate for a set of <span class="math notranslate nohighlight">\(
 the set of atmospheric measurements, and the relationship between the
 two.  I will assume these are stored in variables
 <cite>previous_surface_flux_estimate</cite>, <cite>observations</cite>, and <cite>influence_functions</cite>
-<a class="footnote-reference" href="#infl-fun-deriv" id="id1">[1]</a>, respectively.</p>
+<a class="footnote-reference brackets" href="#infl-fun-deriv" id="id1">1</a>, respectively.</p>
 <p>In an ideal world, we would have <cite>observations ==
 influence_functions.dot(previous_surface_flux_estimate)</cite>
-<a class="footnote-reference" href="#matmul-op" id="id2">[2]</a>, but unfortunately this is probably not the case.  We
+<a class="footnote-reference brackets" href="#matmul-op" id="id2">2</a>, but unfortunately this is probably not the case.  We
 would like to refine <cite>previous_surface_flux_estimate</cite> so this is
 closer to true.  To do this, we need some estimate of the
 uncertainties in the flux estimate and in the observations.  This
 method does not explicitly represent the uncertainty in the
 relationship between the fluxes and measurements, so that uncertainty
 is instead included in the uncertainty for the measurements
-<a class="footnote-reference" href="#transport-uncert" id="id3">[3]</a>.</p>
+<a class="footnote-reference brackets" href="#transport-uncert" id="id3">3</a>.</p>
 <p><a class="reference internal" href="mathematical_formalism.html#theory"><span class="std std-ref">It turns out to be convenient</span></a> to represent these
 uncertainties as covariance matrices.  We could assume that these
 matrices are diagonal: that the correction needed to bring any given
@@ -193,7 +193,7 @@ B_{red} H_{red}^T
 (H_{full} B_{full} H_{full}^T + R)^{-1}
 H_{red} B_{red},\]</div>
 <p>taking advantage of calculations already done for the flux estimate
-<a class="footnote-reference" href="#theory" id="id4">[4]</a>.</p>
+<a class="footnote-reference brackets" href="#theory" id="id4">4</a>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">resolution_reduction_factor</span> <span class="o">=</span> <span class="mi">4</span>
 <span class="n">uncertainty_spatial_resolution</span> <span class="o">=</span> <span class="n">dx</span> <span class="o">*</span> <span class="n">resolution_reduction_factor</span>
 <span class="n">uncertainty_temporal_resolution</span> <span class="o">=</span> <span class="s2">&quot;7D&quot;</span>
@@ -308,40 +308,31 @@ these columns would be duplicating the values of the measurements in
 each column of <cite>observations</cite> to match the columns in the previous
 flux estimate.</p>
 <p class="rubric">Footnotes</p>
-<table class="docutils footnote" frame="void" id="infl-fun-deriv" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>We’re assuming here that the relationship between
-a single flux and a single observation is linear.</td></tr>
-</tbody>
-</table>
-<table class="docutils footnote" frame="void" id="matmul-op" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td><span class="target" id="index-0"></span><a class="pep reference external" href="https://www.python.org/dev/peps/pep-0465"><strong>PEP 465</strong></a> introduces <cite>&#64;</cite> as the matrix multiplication
-operator.</td></tr>
-</tbody>
-</table>
-<table class="docutils footnote" frame="void" id="transport-uncert" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id3">[3]</a></td><td>The assumption is that if we are unsure about
+<dl class="footnote brackets">
+<dt class="label" id="infl-fun-deriv"><span class="brackets"><a class="fn-backref" href="#id1">1</a></span></dt>
+<dd><p>We’re assuming here that the relationship between
+a single flux and a single observation is linear.</p>
+</dd>
+<dt class="label" id="matmul-op"><span class="brackets"><a class="fn-backref" href="#id2">2</a></span></dt>
+<dd><p><span class="target" id="index-0"></span><a class="pep reference external" href="https://www.python.org/dev/peps/pep-0465"><strong>PEP 465</strong></a> introduces <cite>&#64;</cite> as the matrix multiplication
+operator.</p>
+</dd>
+<dt class="label" id="transport-uncert"><span class="brackets"><a class="fn-backref" href="#id3">3</a></span></dt>
+<dd><p>The assumption is that if we are unsure about
 which fluxes impact which measurements, we
 cannot use as much information from the
 measurements to inform our estimates of the
-fluxes.</td></tr>
-</tbody>
-</table>
-<table class="docutils footnote" frame="void" id="theory" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id4">[4]</a></td><td>The various derivations in <a class="reference internal" href="mathematical_formalism.html#theory"><span class="std std-ref">the section on theory</span></a> derive similar forms for the covariance of the
-new flux estimate.</td></tr>
-</tbody>
-</table>
+fluxes.</p>
+</dd>
+<dt class="label" id="theory"><span class="brackets"><a class="fn-backref" href="#id4">4</a></span></dt>
+<dd><p>The various derivations in <a class="reference internal" href="mathematical_formalism.html#theory"><span class="std std-ref">the section on theory</span></a> derive similar forms for the covariance of the
+new flux estimate.</p>
+</dd>
+</dl>
 </div>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
@@ -361,17 +352,15 @@ new flux estimate.</td></tr>
     </ul>
    </div>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -391,12 +380,13 @@ new flux estimate.</td></tr>
         <li class="right" >
           <a href="influence_functions.html" title="Influence Functions"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Inversion User Guide</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2018–2020, The Pennsylvania State University.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.2.
     </div>
   </body>
 </html>

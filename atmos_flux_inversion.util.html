@@ -1,21 +1,20 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>atmos_flux_inversion.util module &#8212; Inversions 1.0.0 documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"extensions": ["tex2jax.js"], "jax": ["input/TeX", "output/HTML-CSS"], "TeX": {"extensions": ["AMSmath.js"]}})</script>
     
     <link rel="index" title="Index" href="genindex.html" />
@@ -35,7 +34,8 @@
           <a href="atmos_flux_inversion.noise.html" title="atmos_flux_inversion.noise module"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" accesskey="U">atmos_flux_inversion package</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" accesskey="U">atmos_flux_inversion package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">atmos_flux_inversion.util module</a></li> 
       </ul>
     </div>  
 
@@ -50,16 +50,16 @@
 <p>Some functions mirror <a class="reference external" href="https://numpy.org/doc/stable/reference/index.html#module-numpy" title="(in NumPy v1.19)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">numpy</span></code></a> functions but produce <code class="xref py py-mod docutils literal notranslate"><span class="pre">dask</span></code>
 output.  Others map similar functionality across the various methods
 to accomplish that end.</p>
-<dl class="data">
+<dl class="py data">
 <dt id="atmos_flux_inversion.util.ARRAY_TYPES">
-<code class="descclassname">atmos_flux_inversion.util.</code><code class="descname">ARRAY_TYPES</code><em class="property"> = (&lt;class 'numpy.ndarray'&gt;,)</em><a class="headerlink" href="#atmos_flux_inversion.util.ARRAY_TYPES" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.util.</code><code class="sig-name descname">ARRAY_TYPES</code><em class="property"> = (&lt;class 'numpy.ndarray'&gt;,)</em><a class="headerlink" href="#atmos_flux_inversion.util.ARRAY_TYPES" title="Permalink to this definition">¶</a></dt>
 <dd><p>Array types for determining Kronecker product type.</p>
 <p>These are combined for a direct product.</p>
 </dd></dl>
 
-<dl class="data">
+<dl class="py data">
 <dt id="atmos_flux_inversion.util.MAX_EXPLICIT_ARRAY">
-<code class="descclassname">atmos_flux_inversion.util.</code><code class="descname">MAX_EXPLICIT_ARRAY</code><em class="property"> = 1024</em><a class="headerlink" href="#atmos_flux_inversion.util.MAX_EXPLICIT_ARRAY" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.util.</code><code class="sig-name descname">MAX_EXPLICIT_ARRAY</code><em class="property"> = 1024</em><a class="headerlink" href="#atmos_flux_inversion.util.MAX_EXPLICIT_ARRAY" title="Permalink to this definition">¶</a></dt>
 <dd><p>Maximum size for an array represented explicitly.</p>
 <p><a class="reference internal" href="#atmos_flux_inversion.util.kronecker_product" title="atmos_flux_inversion.util.kronecker_product"><code class="xref py py-func docutils literal notranslate"><span class="pre">kronecker_product()</span></code></a> will form products smaller than this as an
 explicit matrix using <a class="reference internal" href="atmos_flux_inversion.linalg.html#atmos_flux_inversion.linalg.kron" title="atmos_flux_inversion.linalg.kron"><code class="xref py py-func docutils literal notranslate"><span class="pre">linalg.kron()</span></code></a>.  Arrays larger than this will use
@@ -69,58 +69,57 @@ explicit matrix using <a class="reference internal" href="atmos_flux_inversion.l
 Hopefully Dask knows not to try this.</p>
 </dd></dl>
 
-<dl class="data">
+<dl class="py data">
 <dt id="atmos_flux_inversion.util.REAL_DTYPE_KINDS">
-<code class="descclassname">atmos_flux_inversion.util.</code><code class="descname">REAL_DTYPE_KINDS</code><em class="property"> = 'fiu'</em><a class="headerlink" href="#atmos_flux_inversion.util.REAL_DTYPE_KINDS" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.util.</code><code class="sig-name descname">REAL_DTYPE_KINDS</code><em class="property"> = 'fiu'</em><a class="headerlink" href="#atmos_flux_inversion.util.REAL_DTYPE_KINDS" title="Permalink to this definition">¶</a></dt>
 <dd><p>The kinds used by dtypes to represent real numbers.</p>
 <p>Includes subsets.</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="atmos_flux_inversion.util.kronecker_product">
-<code class="descclassname">atmos_flux_inversion.util.</code><code class="descname">kronecker_product</code><span class="sig-paren">(</span><em>operator1</em>, <em>operator2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/util.html#kronecker_product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.util.kronecker_product" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.util.</code><code class="sig-name descname">kronecker_product</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">operator1</span></em>, <em class="sig-param"><span class="n">operator2</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/util.html#kronecker_product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.util.kronecker_product" title="Permalink to this definition">¶</a></dt>
 <dd><p>Form the Kronecker product of the given operators.</p>
 <p>Delegates to <code class="docutils literal notranslate"><span class="pre">operator1.kron()</span></code> if possible,
 <a class="reference internal" href="atmos_flux_inversion.linalg.html#atmos_flux_inversion.linalg.kron" title="atmos_flux_inversion.linalg.kron"><code class="xref py py-func docutils literal notranslate"><span class="pre">linalg.kron()</span></code></a> if both are <a class="reference internal" href="#atmos_flux_inversion.util.ARRAY_TYPES" title="atmos_flux_inversion.util.ARRAY_TYPES"><code class="xref py py-const docutils literal notranslate"><span class="pre">ARRAY_TYPES</span></code></a>, or
 <a class="reference internal" href="atmos_flux_inversion.linalg.html#atmos_flux_inversion.linalg.SchmidtKroneckerProduct" title="atmos_flux_inversion.linalg.SchmidtKroneckerProduct"><code class="xref py py-class docutils literal notranslate"><span class="pre">SchmidtKroneckerProduct</span></code></a>
 otherwise.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>operator2</strong> (<em>operator1</em><em>,</em>) – The component operators of the Kronecker product.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The kronecker product of the given operators.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.LinearOperator.html#scipy.sparse.linalg.LinearOperator" title="(in SciPy v1.5.2)">scipy.sparse.linalg.LinearOperator</a></td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>operator2</strong> (<em>operator1</em><em>,</em>) – The component operators of the Kronecker product.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The kronecker product of the given operators.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.LinearOperator.html#scipy.sparse.linalg.LinearOperator" title="(in SciPy v1.5.2)">scipy.sparse.linalg.LinearOperator</a></p>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="atmos_flux_inversion.util.method_common">
-<code class="descclassname">atmos_flux_inversion.util.</code><code class="descname">method_common</code><span class="sig-paren">(</span><em>inversion_method</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/util.html#method_common"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.util.method_common" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.util.</code><code class="sig-name descname">method_common</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">inversion_method</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/util.html#method_common"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.util.method_common" title="Permalink to this definition">¶</a></dt>
 <dd><p>Wrap method to validate args.</p>
 <p>Can also deal with posterior uncertainty for a reduced-resolution
 domain, where the method opts not to provide that.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>inversion_method</strong> (<em>function</em>) – The inversion function to wrap.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The wrapped function.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">function</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>inversion_method</strong> (<em>function</em>) – The inversion function to wrap.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The wrapped function.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>function</p>
+</dd>
+</dl>
 </dd></dl>
 
 </div>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
@@ -137,17 +136,15 @@ domain, where the method opts not to provide that.</p>
     </ul>
    </div>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -165,12 +162,13 @@ domain, where the method opts not to provide that.</p>
           <a href="atmos_flux_inversion.noise.html" title="atmos_flux_inversion.noise module"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" >atmos_flux_inversion package</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" >atmos_flux_inversion package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">atmos_flux_inversion.util module</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2018–2020, The Pennsylvania State University.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.2.
     </div>
   </body>
 </html>

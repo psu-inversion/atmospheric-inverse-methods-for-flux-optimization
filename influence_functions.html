@@ -1,21 +1,20 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Influence Functions &#8212; Inversions 1.0.0 documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"extensions": ["tex2jax.js"], "jax": ["input/TeX", "output/HTML-CSS"], "TeX": {"extensions": ["AMSmath.js"]}})</script>
     
     <link rel="index" title="Index" href="genindex.html" />
@@ -38,7 +37,8 @@
         <li class="right" >
           <a href="flux_representation.html" title="Flux representation for inversions"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Influence Functions</a></li> 
       </ul>
     </div>  
 
@@ -58,7 +58,7 @@ of flux times by number of grid cells in the y direction by number of
 grid cells in the x direction array.  Many of the elements of this
 array will be zero, as no flux can affect a measurement before it.
 Similarly, if the observation time is much later than the flux time,
-the influence function will not vary much between sites <a class="footnote-reference" href="#id6" id="id1">[1]</a>.</p>
+the influence function will not vary much between sites <a class="footnote-reference brackets" href="#id6" id="id1">1</a>.</p>
 <p>There are two approaches to calculating influence functions: one using
 a forward model and one using an adjoint model.</p>
 <div class="section" id="foreward-model">
@@ -95,10 +95,10 @@ the particles would have to have been at each prior time to become
 part of the measurement.  Tracking where and how often these particles
 interact with the ground then gives the influence functions.  This is
 the approach taken by Lagrangian Particle Dispersion Models, such as
-the <a class="reference internal" href="#lpdm" id="id2">[LPDM]</a> of Uliasz (1994), the Stochastic Time-Inverted
-Lagrangian Transport <a class="reference internal" href="#stilt" id="id3">[STILT]</a> model, the HYbrid Single-Particle
-Lagrangian Integrated Trajectory <a class="reference internal" href="#hysplit" id="id4">[HYSPLIT]</a> model, and the FLEXible
-PARTicle dispersion model <a class="reference internal" href="#flexpart" id="id5">[FLEXPART]</a>.</p>
+the <a class="reference internal" href="#lpdm" id="id2"><span>[LPDM]</span></a> of Uliasz (1994), the Stochastic Time-Inverted
+Lagrangian Transport <a class="reference internal" href="#stilt" id="id3"><span>[STILT]</span></a> model, the HYbrid Single-Particle
+Lagrangian Integrated Trajectory <a class="reference internal" href="#hysplit" id="id4"><span>[HYSPLIT]</span></a> model, and the FLEXible
+PARTicle dispersion model <a class="reference internal" href="#flexpart" id="id5"><span>[FLEXPART]</span></a>.</p>
 <p>This method requires relating the change in mole fraction for one of
 these particles to the change in mole fraction of the measurement: if
 all the particles composing the measurement experience an increase in
@@ -109,67 +109,53 @@ Extending this, if a single particle experiences an increase in mole
 fraction of 1 (in arbitrary units), the measurement will be larger by
 the reciprocal of the number of particles composing the measurement
 (in the same units).</p>
-<table class="docutils footnote" frame="void" id="id6" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>If all the measurements are in the troposphere, “much later” is
+<dl class="footnote brackets">
+<dt class="label" id="id6"><span class="brackets"><a class="fn-backref" href="#id1">1</a></span></dt>
+<dd><p>If all the measurements are in the troposphere, “much later” is
 two to three years.  If all the measurements are additionally
 in the same hemisphere, “much later” is on the order of a
 month, perhaps less.  If the inversion is regional, with a
 spatial domain that does not cover the whole globe, “much
 later” is related to how long it takes air parcels to leave the
-domain.</td></tr>
-</tbody>
-</table>
+domain.</p>
+</dd>
+</dl>
 </div>
 <div class="section" id="references">
 <h2>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
-<table class="docutils citation" frame="void" id="lpdm" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id2">[LPDM]</a></td><td><p class="first">Uliasz, M. (1993). “The atmospheric Mesoscale Dispersion
+<dl class="citation">
+<dt class="label" id="lpdm"><span class="brackets"><a class="fn-backref" href="#id2">LPDM</a></span></dt>
+<dd><p>Uliasz, M. (1993). “The atmospheric Mesoscale Dispersion
 Modeling System”. <em>Journal of Applied Meteorology</em>, 32 (1),
 139–149.  Retrieved 2016-07-15, from
 <a class="reference external" href="https://journals.ametsoc.org/doi/abs/10.1175/1520-0450%281993%29032%3C0139%3ATAMDMS%3E2.0.CO%3B2">https://journals.ametsoc.org/doi/abs/10.1175/1520-0450%281993%29032%3C0139%3ATAMDMS%3E2.0.CO%3B2</a>
 <a class="reference external" href="https://dx.doi.org/10.1175/1520-0450(1993)032&lt;0139:TAMDMS&gt;2.0.CO;2">doi:10.1175/1520-0450(1993)032&lt;0139:TAMDMS&gt;2.0.CO;2</a></p>
-<p class="last">Uliasz, M. (1994).  “Lagrangian particle dispersion modeling
+<p>Uliasz, M. (1994).  “Lagrangian particle dispersion modeling
 in mesoscale applications”. <em>Environ Model: Comput Methods
 and Softw for Simulat Environ Pollut and Its Adverse Effects
 (CMP)</em>, 2 , 71–102. Retrieved from
 <a class="reference external" href="http://indico.ictp.it/event/a02274/contribution/22/material/0/0.pdf">http://indico.ictp.it/event/a02274/contribution/22/material/0/0.pdf</a></p>
-</td></tr>
-</tbody>
-</table>
-<table class="docutils citation" frame="void" id="stilt" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id3">[STILT]</a></td><td><p class="first"><a class="reference external" href="http://stilt-model.org/index.php/Main/HomePage">http://stilt-model.org/index.php/Main/HomePage</a></p>
-<p class="last">Lin, J.C., C. Gerbig, S.C. Wofsy, A.E. Andrews, B.C. Daube,
+</dd>
+<dt class="label" id="stilt"><span class="brackets"><a class="fn-backref" href="#id3">STILT</a></span></dt>
+<dd><p><a class="reference external" href="http://stilt-model.org/index.php/Main/HomePage">http://stilt-model.org/index.php/Main/HomePage</a></p>
+<p>Lin, J.C., C. Gerbig, S.C. Wofsy, A.E. Andrews, B.C. Daube,
 K.J. Davis, and C.A. Grainger, “A near-field tool for
 simulating the upstream influence of atmospheric
 observations: The Stochastic Time-Inverted Lagrangian
 Transport (STILT) model”. <em>Journal of Geophysical
 Research-Atmospheres</em>, (2003) 108(D16): 4493,
 <a class="reference external" href="https://dx.doi.org/10.1029/2002JD003161">doi:10.1029/2002JD003161</a>.</p>
-</td></tr>
-</tbody>
-</table>
-<table class="docutils citation" frame="void" id="hysplit" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id4">[HYSPLIT]</a></td><td><p class="first"><a class="reference external" href="https://ready.arl.noaa.gov/HYSPLIT.php">https://ready.arl.noaa.gov/HYSPLIT.php</a></p>
-<p class="last">Stein, A.F., R.R. Draxler, G.D. Rolph, B.J. Stunder,
+</dd>
+<dt class="label" id="hysplit"><span class="brackets"><a class="fn-backref" href="#id4">HYSPLIT</a></span></dt>
+<dd><p><a class="reference external" href="https://ready.arl.noaa.gov/HYSPLIT.php">https://ready.arl.noaa.gov/HYSPLIT.php</a></p>
+<p>Stein, A.F., R.R. Draxler, G.D. Rolph, B.J. Stunder,
 M.D. Cohen, and F. Ngan, 2015: “NOAA’s HYSPLIT
 Atmospheric Transport and Dispersion Modeling
 System”. <em>Bull. Amer. Meteor. Soc.</em>, 96, 2059–2077,
 <a class="reference external" href="https://dx.doi.org/10.1175/BAMS-D-14-00110.1">doi:10.1175/BAMS-D-14-00110.1</a></p>
-</td></tr>
-</tbody>
-</table>
-<table class="docutils citation" frame="void" id="flexpart" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id5">[FLEXPART]</a></td><td><p class="first"><a class="reference external" href="https://www.flexpart.eu/">https://www.flexpart.eu/</a></p>
+</dd>
+<dt class="label" id="flexpart"><span class="brackets"><a class="fn-backref" href="#id5">FLEXPART</a></span></dt>
+<dd><p><a class="reference external" href="https://www.flexpart.eu/">https://www.flexpart.eu/</a></p>
 <p>Ignacio Pisso, Espen Sollum, Henrik Grythe,
 Nina I. Kristiansen, Massimo Cassiani, Sabine Eckhardt,
 Delia Arnold, Don Morton, Rona L. Thompson,
@@ -180,17 +166,17 @@ Jerome Brioude, Anne Philipp, Petra Seibert, and Andreas
 Stohl (2019), “The Lagrangian particle dispersion model
 FLEXPART version 10.4”.  <em>Geosci. Model Dev.</em>, 12,
 4955–4997, <a class="reference external" href="https://dx.doi.org/10.5194/gmd-12-4955-2019">doi:10.5194/gmd-12-4955-2019</a>.</p>
-<p class="last">Seibert, P., &amp; Frank, A. (2004, 1). “Source-receptor
+<p>Seibert, P., &amp; Frank, A. (2004, 1). “Source-receptor
 matrix calculation with a lagrangian particle dispersion model in
 backward mode.” <em>Atmospheric Chemistry and Physics</em>, 4 (1),
 51–63. <a class="reference external" href="https://dx.doi.org/10.5194/acp-4-51-2004">doi:10.5194/acp-4-51-2004</a></p>
-</td></tr>
-</tbody>
-</table>
+</dd>
+</dl>
 </div>
 </div>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
@@ -220,17 +206,15 @@ backward mode.” <em>Atmospheric Chemistry and Physics</em>, 4 (1),
     </ul>
    </div>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -250,12 +234,13 @@ backward mode.” <em>Atmospheric Chemistry and Physics</em>, 4 (1),
         <li class="right" >
           <a href="flux_representation.html" title="Flux representation for inversions"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Influence Functions</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2018–2020, The Pennsylvania State University.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.2.
     </div>
   </body>
 </html>

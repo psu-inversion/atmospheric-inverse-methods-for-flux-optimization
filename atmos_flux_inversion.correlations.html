@@ -1,21 +1,20 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>atmos_flux_inversion.correlations module &#8212; Inversions 1.0.0 documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">MathJax.Hub.Config({"extensions": ["tex2jax.js"], "jax": ["input/TeX", "output/HTML-CSS"], "TeX": {"extensions": ["AMSmath.js"]}})</script>
     
     <link rel="index" title="Index" href="genindex.html" />
@@ -39,7 +38,8 @@
           <a href="atmos_flux_inversion.html" title="atmos_flux_inversion package"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" accesskey="U">atmos_flux_inversion package</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" accesskey="U">atmos_flux_inversion package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">atmos_flux_inversion.correlations module</a></li> 
       </ul>
     </div>  
 
@@ -52,201 +52,179 @@
 <h1>atmos_flux_inversion.correlations module<a class="headerlink" href="#atmos-flux-inversion-correlations-module" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="generating-correlation-operators">
 <h2>Generating correlation operators<a class="headerlink" href="#generating-correlation-operators" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
+<dl class="py class">
 <dt id="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation">
-<em class="property">class </em><code class="descclassname">atmos_flux_inversion.correlations.</code><code class="descname">HomogeneousIsotropicCorrelation</code><span class="sig-paren">(</span><em>shape</em>, <em>computational_shape=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#HomogeneousIsotropicCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">atmos_flux_inversion.correlations.</code><code class="sig-name descname">HomogeneousIsotropicCorrelation</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#HomogeneousIsotropicCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="atmos_flux_inversion.linalg.html#atmos_flux_inversion.linalg.SelfAdjointLinearOperator" title="atmos_flux_inversion.linalg.SelfAdjointLinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">atmos_flux_inversion.linalg.SelfAdjointLinearOperator</span></code></a></p>
 <p>Homogeneous isotropic correlations using FFTs.</p>
 <p>This embeds the physical domain passed in a larger computational
 domain, which allows for treatment of domains that should not be
 considered periodic.</p>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Do not invoke this directly. Use
+<p class="admonition-title">Note</p>
+<p>Do not invoke this directly. Use
 <a class="reference internal" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.from_function" title="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.from_function"><code class="xref py py-func docutils literal notranslate"><span class="pre">HomogeneousIsotropicCorrelation.from_function()</span></code></a> or
 <code class="xref py py-func docutils literal notranslate"><span class="pre">HomogeneousIsotropicCorrelaiton.from_array()</span></code> instead.</p>
 </div>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.linalg.solve_circulant.html#scipy.linalg.solve_circulant" title="(in SciPy v1.5.2)"><code class="xref py py-func docutils literal notranslate"><span class="pre">scipy.linalg.solve_circulant()</span></code></a></dt>
-<dd>I stole the idea from here.</dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.linalg.solve_circulant.html#scipy.linalg.solve_circulant" title="(in SciPy v1.5.2)"><code class="xref py py-func docutils literal notranslate"><span class="pre">scipy.linalg.solve_circulant()</span></code></a></dt><dd><p>I stole the idea from here.</p>
+</dd>
 </dl>
 </div>
-<dl class="classmethod">
+<dl class="py method">
 <dt id="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.from_array">
-<em class="property">classmethod </em><code class="descname">from_array</code><span class="sig-paren">(</span><em>corr_array</em>, <em>is_cyclic=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#HomogeneousIsotropicCorrelation.from_array"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.from_array" title="Permalink to this definition">¶</a></dt>
+<em class="property">classmethod </em><code class="sig-name descname">from_array</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">corr_array</span></em>, <em class="sig-param"><span class="n">is_cyclic</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#HomogeneousIsotropicCorrelation.from_array"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.from_array" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create an instance with the given correlations.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>corr_array</strong> (<em>array_like</em>) – The correlation of the first element of the domain with
-each other element.</li>
-<li><strong>is_cyclic</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#bool" title="(in Python v3.4)"><em>bool</em></a>) – </li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>corr_array</strong> (<em>array_like</em>) – The correlation of the first element of the domain with
+each other element.</p></li>
+<li><p><strong>is_cyclic</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#bool" title="(in Python v3.4)"><em>bool</em></a>) – </p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"></p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation" title="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation">HomogeneousIsotropicCorrelation</a></p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation" title="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation">HomogeneousIsotropicCorrelation</a></p>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="classmethod">
+<dl class="py method">
 <dt id="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.from_function">
-<em class="property">classmethod </em><code class="descname">from_function</code><span class="sig-paren">(</span><em>corr_func</em>, <em>shape</em>, <em>is_cyclic=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#HomogeneousIsotropicCorrelation.from_function"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.from_function" title="Permalink to this definition">¶</a></dt>
+<em class="property">classmethod </em><code class="sig-name descname">from_function</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">corr_func</span></em>, <em class="sig-param"><span class="n">shape</span></em>, <em class="sig-param"><span class="n">is_cyclic</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#HomogeneousIsotropicCorrelation.from_function"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.from_function" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create an instance to apply the correlation function.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>corr_func</strong> (<em>callable</em><em>(</em><em>dist</em><em>) </em><em>-&gt; float</em>) – The correlation of the first element of the domain with
-each other element.</li>
-<li><strong>shape</strong> (<em>tuple of int</em>) – The state is formally a vector, but the correlations are
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>corr_func</strong> (<em>callable</em><em>(</em><em>dist</em><em>) </em><em>-&gt; float</em>) – The correlation of the first element of the domain with
+each other element.</p></li>
+<li><p><strong>shape</strong> (<em>tuple of int</em>) – The state is formally a vector, but the correlations are
 assumed to depend on the layout in some other shape,
 usually related to the physical layout. This is the other
-shape.</li>
-<li><strong>is_cyclic</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#bool" title="(in Python v3.4)"><em>bool</em></a>) – Whether to assume the domain is periodic in all directions.</li>
+shape.</p></li>
+<li><p><strong>is_cyclic</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#bool" title="(in Python v3.4)"><em>bool</em></a>) – Whether to assume the domain is periodic in all directions.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"></p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation" title="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation">HomogeneousIsotropicCorrelation</a></p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation" title="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation">HomogeneousIsotropicCorrelation</a></p>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.inv">
-<code class="descname">inv</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#HomogeneousIsotropicCorrelation.inv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.inv" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">inv</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#HomogeneousIsotropicCorrelation.inv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.inv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Construct the matrix inverse of this operator.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"></td>
-</tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">LinearOperator</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> – if the instance is acyclic.</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>LinearOperator</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><strong>ValueError</strong></a> – if the instance is acyclic.</p>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.kron">
-<code class="descname">kron</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#HomogeneousIsotropicCorrelation.kron"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.kron" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">kron</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">other</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#HomogeneousIsotropicCorrelation.kron"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.kron" title="Permalink to this definition">¶</a></dt>
 <dd><p>Construct the Kronecker product of this operator and other.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>other</strong> (<a class="reference internal" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation" title="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation"><em>HomogeneousIsotropicCorrelation</em></a>) – The other operator for the Kronecker product.
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>other</strong> (<a class="reference internal" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation" title="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation"><em>HomogeneousIsotropicCorrelation</em></a>) – The other operator for the Kronecker product.
 This implementation will accept other objects,
-passing them along to <a class="reference internal" href="atmos_flux_inversion.linalg.html#atmos_flux_inversion.linalg.SchmidtKroneckerProduct" title="atmos_flux_inversion.linalg.SchmidtKroneckerProduct"><code class="xref py py-class docutils literal notranslate"><span class="pre">linalg.SchmidtKroneckerProduct</span></code></a>.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.LinearOperator.html#scipy.sparse.linalg.LinearOperator" title="(in SciPy v1.5.2)">scipy.sparse.linalg.LinearOperator</a></td>
-</tr>
-</tbody>
-</table>
+passing them along to <a class="reference internal" href="atmos_flux_inversion.linalg.html#atmos_flux_inversion.linalg.SchmidtKroneckerProduct" title="atmos_flux_inversion.linalg.SchmidtKroneckerProduct"><code class="xref py py-class docutils literal notranslate"><span class="pre">linalg.SchmidtKroneckerProduct</span></code></a>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.LinearOperator.html#scipy.sparse.linalg.LinearOperator" title="(in SciPy v1.5.2)">scipy.sparse.linalg.LinearOperator</a></p>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.solve">
-<code class="descname">solve</code><span class="sig-paren">(</span><em>vec</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#HomogeneousIsotropicCorrelation.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.solve" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">solve</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">vec</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#HomogeneousIsotropicCorrelation.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.solve" title="Permalink to this definition">¶</a></dt>
 <dd><p>Solve A &#64; x = vec.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>vec</strong> (<em>array_like</em><em>[</em><em>N</em><em>]</em>) – </p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Solution of <cite>self &#64; x = vec</cite></p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">array_like[N]</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
-<li><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#NotImplementedError" title="(in Python v3.4)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> – if the instance is acyclic.</li>
-<li><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> – If vec is the wrong shape</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>vec</strong> (<em>array_like</em><em>[</em><em>N</em><em>]</em>) – </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Solution of <cite>self &#64; x = vec</cite></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>array_like[N]</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#NotImplementedError" title="(in Python v3.4)"><strong>NotImplementedError</strong></a> – if the instance is acyclic.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><strong>ValueError</strong></a> – If vec is the wrong shape</p></li>
 </ul>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.sqrt">
-<code class="descname">sqrt</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#HomogeneousIsotropicCorrelation.sqrt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.sqrt" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">sqrt</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#HomogeneousIsotropicCorrelation.sqrt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation.sqrt" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute an S such that S.T &#64; S == self.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>S</strong></td>
-</tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation" title="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation">HomogeneousIsotropicCorrelation</a></td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>S</strong></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation" title="atmos_flux_inversion.correlations.HomogeneousIsotropicCorrelation">HomogeneousIsotropicCorrelation</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="atmos_flux_inversion.correlations.make_matrix">
-<code class="descclassname">atmos_flux_inversion.correlations.</code><code class="descname">make_matrix</code><span class="sig-paren">(</span><em>corr_func</em>, <em>shape</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#make_matrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.make_matrix" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.correlations.</code><code class="sig-name descname">make_matrix</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">corr_func</span></em>, <em class="sig-param"><span class="n">shape</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#make_matrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.make_matrix" title="Permalink to this definition">¶</a></dt>
 <dd><p>Make a correlation matrix for a domain with shape <cite>shape</cite>.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>corr_func</strong> (<em>callable</em><em>(</em><a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)"><em>float</em></a><em>) </em><em>-&gt; float</em><em>[</em><em>-1</em><em>, </em><em>1</em><em>]</em>) – Function giving correlation between two indices a distance d
-from each other.</li>
-<li><strong>shape</strong> (<em>tuple of int</em>) – The underlying shape of the domain. It is viewed as a vector
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>corr_func</strong> (<em>callable</em><em>(</em><a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)"><em>float</em></a><em>) </em><em>-&gt; float</em><em>[</em><em>-1</em><em>, </em><em>1</em><em>]</em>) – Function giving correlation between two indices a distance d
+from each other.</p></li>
+<li><p><strong>shape</strong> (<em>tuple of int</em>) – The underlying shape of the domain. It is viewed as a vector
 here, but may be more naturally seen as an N-D array. This is
 the shape of that array.
-<cite>N = prod(shape)</cite></li>
+<cite>N = prod(shape)</cite></p></li>
 </ul>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference external" href="https://www.statsmodels.org/stable/generated/statsmodels.stats.correlation_tools.corr_clipped.html#statsmodels.stats.correlation_tools.corr_clipped" title="(in statsmodels vv0.11.1)"><code class="xref py py-func docutils literal notranslate"><span class="pre">statsmodels.stats.correlation_tools.corr_clipped()</span></code></a></dt>
-<dd>Does something similar, and refers to other functions that may give more accurate results.</dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference external" href="https://www.statsmodels.org/stable/generated/statsmodels.stats.correlation_tools.corr_clipped.html#statsmodels.stats.correlation_tools.corr_clipped" title="(in statsmodels vv0.11.1)"><code class="xref py py-func docutils literal notranslate"><span class="pre">statsmodels.stats.correlation_tools.corr_clipped()</span></code></a></dt><dd><p>Does something similar, and refers to other functions that may give more accurate results.</p>
+</dd>
 </dl>
 </div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>corr</strong> – Positive definite dense array, entirely in memory</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">np.ndarray[N, N]</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>corr</strong> – Positive definite dense array, entirely in memory</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>np.ndarray[N, N]</p>
+</dd>
+</dl>
 </dd></dl>
 
 </div>
@@ -254,30 +232,29 @@ the shape of that array.
 <h2>Correlation shapes<a class="headerlink" href="#correlation-shapes" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="interface">
 <h3>Interface<a class="headerlink" href="#interface" title="Permalink to this headline">¶</a></h3>
-<dl class="class">
+<dl class="py class">
 <dt id="atmos_flux_inversion.correlations.DistanceCorrelationFunction">
-<em class="property">class </em><code class="descclassname">atmos_flux_inversion.correlations.</code><code class="descname">DistanceCorrelationFunction</code><span class="sig-paren">(</span><em>length</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#DistanceCorrelationFunction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.DistanceCorrelationFunction" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">atmos_flux_inversion.correlations.</code><code class="sig-name descname">DistanceCorrelationFunction</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">length</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#DistanceCorrelationFunction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.DistanceCorrelationFunction" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/functions.html#object" title="(in Python v3.4)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>A correlation function that depends only on distance.</p>
-<dl class="method">
+<dl class="py method">
 <dt id="atmos_flux_inversion.correlations.DistanceCorrelationFunction.correlation_from_index">
-<code class="descname">correlation_from_index</code><span class="sig-paren">(</span><em>*indices</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#DistanceCorrelationFunction.correlation_from_index"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.DistanceCorrelationFunction.correlation_from_index" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">correlation_from_index</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">indices</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#DistanceCorrelationFunction.correlation_from_index"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.DistanceCorrelationFunction.correlation_from_index" title="Permalink to this definition">¶</a></dt>
 <dd><p>Find the correlation between the indices.</p>
 <p>Should be independent of the length of the underlying shape,
 but <cite>indices</cite> must still be even.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>indices</strong> (<em>tuple of int</em>) – </td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Find the correlation of the point contained in the first
-half of the indices with that contained in the second.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)">float</a></td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>indices</strong> (<em>tuple of int</em>) – </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Find the correlation of the point contained in the first
+half of the indices with that contained in the second.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)">float</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -285,9 +262,9 @@ half of the indices with that contained in the second.</td>
 </div>
 <div class="section" id="provided-shapes">
 <h3>Provided shapes<a class="headerlink" href="#provided-shapes" title="Permalink to this headline">¶</a></h3>
-<dl class="class">
+<dl class="py class">
 <dt id="atmos_flux_inversion.correlations.ExponentialCorrelation">
-<em class="property">class </em><code class="descclassname">atmos_flux_inversion.correlations.</code><code class="descname">ExponentialCorrelation</code><span class="sig-paren">(</span><em>length</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#ExponentialCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.ExponentialCorrelation" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">atmos_flux_inversion.correlations.</code><code class="sig-name descname">ExponentialCorrelation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">length</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#ExponentialCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.ExponentialCorrelation" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#atmos_flux_inversion.correlations.DistanceCorrelationFunction" title="atmos_flux_inversion.correlations.DistanceCorrelationFunction"><code class="xref py py-class docutils literal notranslate"><span class="pre">atmos_flux_inversion.correlations.DistanceCorrelationFunction</span></code></a></p>
 <p>A exponential correlation structure.</p>
 <p class="rubric">Notes</p>
@@ -295,9 +272,9 @@ half of the indices with that contained in the second.</td>
 where dist is the distance between the points.</p>
 </dd></dl>
 
-<dl class="class">
+<dl class="py class">
 <dt id="atmos_flux_inversion.correlations.BalgovindCorrelation">
-<em class="property">class </em><code class="descclassname">atmos_flux_inversion.correlations.</code><code class="descname">BalgovindCorrelation</code><span class="sig-paren">(</span><em>length</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#BalgovindCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.BalgovindCorrelation" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">atmos_flux_inversion.correlations.</code><code class="sig-name descname">BalgovindCorrelation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">length</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#BalgovindCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.BalgovindCorrelation" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#atmos_flux_inversion.correlations.DistanceCorrelationFunction" title="atmos_flux_inversion.correlations.DistanceCorrelationFunction"><code class="xref py py-class docutils literal notranslate"><span class="pre">atmos_flux_inversion.correlations.DistanceCorrelationFunction</span></code></a></p>
 <p>A Balgovind 3D correlation structure.</p>
 <p>Follows Balgovind et al. 1983 recommendations for a 3D field,
@@ -314,9 +291,9 @@ Error Statistics <em>Monthly Weather Review</em> 111(4) 701–722.
 <a class="reference external" href="https://dx.doi.org/10.1175/1520-0493(1983)111&lt;0701:asdmft&gt;2.0.co;2">doi:10.1175/1520-0493(1983)111&lt;0701:asdmft&gt;2.0.co;2</a></p>
 </dd></dl>
 
-<dl class="class">
+<dl class="py class">
 <dt id="atmos_flux_inversion.correlations.MaternCorrelation">
-<em class="property">class </em><code class="descclassname">atmos_flux_inversion.correlations.</code><code class="descname">MaternCorrelation</code><span class="sig-paren">(</span><em>length</em>, <em>kappa=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#MaternCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.MaternCorrelation" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">atmos_flux_inversion.correlations.</code><code class="sig-name descname">MaternCorrelation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">length</span></em>, <em class="sig-param"><span class="n">kappa</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#MaternCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.MaternCorrelation" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#atmos_flux_inversion.correlations.DistanceCorrelationFunction" title="atmos_flux_inversion.correlations.DistanceCorrelationFunction"><code class="xref py py-class docutils literal notranslate"><span class="pre">atmos_flux_inversion.correlations.DistanceCorrelationFunction</span></code></a></p>
 <p>A Matern correlation structure.</p>
 <p>Follows Matern (1986) <em>Spatial Variation</em>.  The specific
@@ -334,9 +311,9 @@ Statistics (issn:0172-7397) isbn:978-1-4612-7166-6.
 <a class="reference external" href="https://dx.doi.org/10.1007/978-1-4612-1494-6">doi:10.1007/978-1-4612-1494-6</a></p>
 </dd></dl>
 
-<dl class="class">
+<dl class="py class">
 <dt id="atmos_flux_inversion.correlations.GaussianCorrelation">
-<em class="property">class </em><code class="descclassname">atmos_flux_inversion.correlations.</code><code class="descname">GaussianCorrelation</code><span class="sig-paren">(</span><em>length</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#GaussianCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.GaussianCorrelation" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">atmos_flux_inversion.correlations.</code><code class="sig-name descname">GaussianCorrelation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">length</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/correlations.html#GaussianCorrelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.correlations.GaussianCorrelation" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#atmos_flux_inversion.correlations.DistanceCorrelationFunction" title="atmos_flux_inversion.correlations.DistanceCorrelationFunction"><code class="xref py py-class docutils literal notranslate"><span class="pre">atmos_flux_inversion.correlations.DistanceCorrelationFunction</span></code></a></p>
 <p>A gaussian correlation structure.</p>
 <p class="rubric">Notes</p>
@@ -349,6 +326,7 @@ distance between the points.</p>
 </div>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
@@ -381,17 +359,15 @@ distance between the points.</p>
     </ul>
    </div>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -412,12 +388,13 @@ distance between the points.</p>
           <a href="atmos_flux_inversion.html" title="atmos_flux_inversion package"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" >atmos_flux_inversion package</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" >atmos_flux_inversion package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">atmos_flux_inversion.correlations module</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2018–2020, The Pennsylvania State University.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.2.
     </div>
   </body>
 </html>
