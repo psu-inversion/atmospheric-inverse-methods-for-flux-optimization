@@ -1,20 +1,20 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>atmos_flux_inversion.linalg module &#8212; Inversions 1.0.0rc3 documentation</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>atmos_flux_inversion.linalg module &#8212; Inversions 1.0.0 documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -36,8 +36,9 @@
         <li class="right" >
           <a href="atmos_flux_inversion.wrapper.html" title="atmos_flux_inversion.wrapper module"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" accesskey="U">atmos_flux_inversion package</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" accesskey="U">atmos_flux_inversion package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">atmos_flux_inversion.linalg module</a></li> 
       </ul>
     </div>  
 
@@ -50,9 +51,9 @@
 <span id="atmos-flux-inversion-linalg-module"></span><h1>atmos_flux_inversion.linalg module<a class="headerlink" href="#module-atmos_flux_inversion.linalg" title="Permalink to this headline">¶</a></h1>
 <p>All the linear algebra details for the package.</p>
 <p>I figured it would be more useful to have it separate</p>
-<dl class="class">
+<dl class="py class">
 <dt id="atmos_flux_inversion.linalg.DaskKroneckerProductOperator">
-<em class="property">class </em><code class="descclassname">atmos_flux_inversion.linalg.</code><code class="descname">DaskKroneckerProductOperator</code><span class="sig-paren">(</span><em>operator1</em>, <em>operator2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#DaskKroneckerProductOperator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.DaskKroneckerProductOperator" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">atmos_flux_inversion.linalg.</code><code class="sig-name descname">DaskKroneckerProductOperator</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#DaskKroneckerProductOperator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.DaskKroneckerProductOperator" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">atmos_flux_inversion.linalg_interface.DaskLinearOperator</span></code></p>
 <p>Operator for Kronecker product.</p>
 <p>Uses the <span class="math notranslate nohighlight">\(O(n^{2.5})\)</span> algorithm of Yadav and Michalak (2013)
@@ -64,31 +65,27 @@ large linear inverse problems: an example from carbon dioxide flux
 estimation” <em>Geosci. Model Dev.</em> 2013. Vol 6, pp. 583–590.
 URL: <a class="reference external" href="https://www.geosci-model-dev.net/6/583/2013">https://www.geosci-model-dev.net/6/583/2013</a>
 <a class="reference external" href="https://dx.doi.org/10.5194/gmd-6-583-2013">doi:10.5194/gmd-6-583-2013</a>.</p>
-<dl class="method">
+<dl class="py method">
 <dt id="atmos_flux_inversion.linalg.DaskKroneckerProductOperator.quadratic_form">
-<code class="descname">quadratic_form</code><span class="sig-paren">(</span><em>mat</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#DaskKroneckerProductOperator.quadratic_form"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.DaskKroneckerProductOperator.quadratic_form" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">quadratic_form</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">mat</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#DaskKroneckerProductOperator.quadratic_form"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.DaskKroneckerProductOperator.quadratic_form" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the quadratic form mat.T &#64; self &#64; mat.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>mat</strong> (<em>array_like</em><em>[</em><em>N</em><em>, </em><em>M</em><em>]</em>) – </p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The product mat.T &#64; self &#64; mat</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">array_like[M, M]</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
-<li><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#TypeError" title="(in Python v3.4)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">TypeError</span></code></a> – if mat is not an array or if self is not square</li>
-<li><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> – if the shapes of self and mat are not compatible</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>mat</strong> (<em>array_like</em><em>[</em><em>N</em><em>, </em><em>M</em><em>]</em>) – </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The product mat.T &#64; self &#64; mat</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>array_like[M, M]</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#TypeError" title="(in Python v3.4)"><strong>TypeError</strong></a> – if mat is not an array or if self is not square</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><strong>ValueError</strong></a> – if the shapes of self and mat are not compatible</p></li>
 </ul>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 <p class="rubric">Notes</p>
 <p>Implementation depends on Kronecker structure, using the
 <code class="xref py py-meth docutils literal notranslate"><span class="pre">_matmat()</span></code> algorithm for self &#64; mat.  If mat is a lazy
@@ -98,95 +95,90 @@ avoid dask keeping it all in memory.</p>
 addition, which defaults to using all available cores.</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="atmos_flux_inversion.linalg.DaskKroneckerProductOperator.sqrt">
-<code class="descname">sqrt</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#DaskKroneckerProductOperator.sqrt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.DaskKroneckerProductOperator.sqrt" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">sqrt</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#DaskKroneckerProductOperator.sqrt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.DaskKroneckerProductOperator.sqrt" title="Permalink to this definition">¶</a></dt>
 <dd><p>Find an operator S such that S.T &#64; S == self.</p>
 <p>Requires self be symmetric.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The square root S of the operator
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The square root S of the operator
 S.T &#64; S == self</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first"><a class="reference internal" href="#atmos_flux_inversion.linalg.DaskKroneckerProductOperator" title="atmos_flux_inversion.linalg.DaskKroneckerProductOperator">DaskKroneckerProductOperator</a></p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
-<li><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> – if operator not self-adjoint</li>
-<li><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> – if operator not symmetric</li>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#atmos_flux_inversion.linalg.DaskKroneckerProductOperator" title="atmos_flux_inversion.linalg.DaskKroneckerProductOperator">DaskKroneckerProductOperator</a></p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><strong>ValueError</strong></a> – if operator not self-adjoint</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><strong>ValueError</strong></a> – if operator not symmetric</p></li>
 </ul>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
 
-<dl class="class">
+<dl class="py class">
 <dt id="atmos_flux_inversion.linalg.DiagonalOperator">
-<em class="property">class </em><code class="descclassname">atmos_flux_inversion.linalg.</code><code class="descname">DiagonalOperator</code><span class="sig-paren">(</span><em>array</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#DiagonalOperator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.DiagonalOperator" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">atmos_flux_inversion.linalg.</code><code class="sig-name descname">DiagonalOperator</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#DiagonalOperator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.DiagonalOperator" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#atmos_flux_inversion.linalg.SelfAdjointLinearOperator" title="atmos_flux_inversion.linalg.SelfAdjointLinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">atmos_flux_inversion.linalg.SelfAdjointLinearOperator</span></code></a></p>
 <p>Operator with entries only on the diagonal.</p>
-<dl class="method">
+<dl class="py method">
 <dt id="atmos_flux_inversion.linalg.DiagonalOperator.solve">
-<code class="descname">solve</code><span class="sig-paren">(</span><em>vector</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#DiagonalOperator.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.DiagonalOperator.solve" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">solve</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">vector</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#DiagonalOperator.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.DiagonalOperator.solve" title="Permalink to this definition">¶</a></dt>
 <dd><p>Solve A &#64; x == vector.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>vector</strong> (<em>array_like</em>) – </td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Solution of self &#64; x == vec</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">array_like</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>vector</strong> (<em>array_like</em>) – </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Solution of self &#64; x == vec</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>array_like</p>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="atmos_flux_inversion.linalg.DiagonalOperator.sqrt">
-<code class="descname">sqrt</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#DiagonalOperator.sqrt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.DiagonalOperator.sqrt" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">sqrt</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#DiagonalOperator.sqrt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.DiagonalOperator.sqrt" title="Permalink to this definition">¶</a></dt>
 <dd><p>Find S such that S.T &#64; S == self.</p>
 </dd></dl>
 
 </dd></dl>
 
-<dl class="data">
+<dl class="py data">
 <dt id="atmos_flux_inversion.linalg.NEAR_ZERO">
-<code class="descclassname">atmos_flux_inversion.linalg.</code><code class="descname">NEAR_ZERO</code><em class="property"> = 1e-20</em><a class="headerlink" href="#atmos_flux_inversion.linalg.NEAR_ZERO" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.linalg.</code><code class="sig-name descname">NEAR_ZERO</code><em class="property"> = 1e-20</em><a class="headerlink" href="#atmos_flux_inversion.linalg.NEAR_ZERO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Where correlations are rounded to zero.</p>
 <p>The method of assuring positive definiteness increases some values
 away from zero due to roundoff. Values that were originally smaller
 than this are reset to zero.</p>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<p class="last"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atmos_flux_inversion.correlations.NEAR_ZERO</span></code></p>
+<p class="admonition-title">See also</p>
+<p><code class="xref py py-obj docutils literal notranslate"><span class="pre">atmos_flux_inversion.correlations.NEAR_ZERO</span></code></p>
 </div>
 </dd></dl>
 
-<dl class="data">
+<dl class="py data">
 <dt id="atmos_flux_inversion.linalg.OPTIMAL_ELEMENTS">
-<code class="descclassname">atmos_flux_inversion.linalg.</code><code class="descname">OPTIMAL_ELEMENTS</code><em class="property"> = 65536</em><a class="headerlink" href="#atmos_flux_inversion.linalg.OPTIMAL_ELEMENTS" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.linalg.</code><code class="sig-name descname">OPTIMAL_ELEMENTS</code><em class="property"> = 65536</em><a class="headerlink" href="#atmos_flux_inversion.linalg.OPTIMAL_ELEMENTS" title="Permalink to this definition">¶</a></dt>
 <dd><p>Maximum size for the approximate square root of a LinearOperator.</p>
 <p>Bounding the eigenvector matrix by this should keep everything in
 memory.</p>
 </dd></dl>
 
-<dl class="data">
+<dl class="py data">
 <dt id="atmos_flux_inversion.linalg.ROUNDOFF">
-<code class="descclassname">atmos_flux_inversion.linalg.</code><code class="descname">ROUNDOFF</code><em class="property"> = 1e-10</em><a class="headerlink" href="#atmos_flux_inversion.linalg.ROUNDOFF" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.linalg.</code><code class="sig-name descname">ROUNDOFF</code><em class="property"> = 1e-10</em><a class="headerlink" href="#atmos_flux_inversion.linalg.ROUNDOFF" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determines how many terms should be kept from SVD.</p>
 </dd></dl>
 
-<dl class="class">
+<dl class="py class">
 <dt id="atmos_flux_inversion.linalg.SchmidtKroneckerProduct">
-<em class="property">class </em><code class="descclassname">atmos_flux_inversion.linalg.</code><code class="descname">SchmidtKroneckerProduct</code><span class="sig-paren">(</span><em>operator1</em>, <em>operator2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#SchmidtKroneckerProduct"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.SchmidtKroneckerProduct" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">atmos_flux_inversion.linalg.</code><code class="sig-name descname">SchmidtKroneckerProduct</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#SchmidtKroneckerProduct"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.SchmidtKroneckerProduct" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">atmos_flux_inversion.linalg_interface.DaskLinearOperator</span></code></p>
 <p>Kronecker product of two operators using Schmidt decomposition.</p>
 <p>This works best when the input vectors are nearly Kronecker
@@ -208,123 +200,107 @@ some difficulties with the dask cache getting flushed and causing
 repeat work in this case. I don’t know how to get around this.</p>
 </dd></dl>
 
-<dl class="class">
+<dl class="py class">
 <dt id="atmos_flux_inversion.linalg.SelfAdjointLinearOperator">
-<em class="property">class </em><code class="descclassname">atmos_flux_inversion.linalg.</code><code class="descname">SelfAdjointLinearOperator</code><span class="sig-paren">(</span><em>dtype</em>, <em>shape</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#SelfAdjointLinearOperator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.SelfAdjointLinearOperator" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">atmos_flux_inversion.linalg.</code><code class="sig-name descname">SelfAdjointLinearOperator</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#SelfAdjointLinearOperator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.SelfAdjointLinearOperator" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">atmos_flux_inversion.linalg_interface.DaskLinearOperator</span></code></p>
 <p>Self-adjoint linear operators.</p>
 <p>Provides <code class="xref py py-meth docutils literal notranslate"><span class="pre">_rmatvec()</span></code> and <code class="xref py py-meth docutils literal notranslate"><span class="pre">_adjoint()</span></code> methods.</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="atmos_flux_inversion.linalg.kron">
-<code class="descclassname">atmos_flux_inversion.linalg.</code><code class="descname">kron</code><span class="sig-paren">(</span><em>matrix1</em>, <em>matrix2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#kron"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.kron" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.linalg.</code><code class="sig-name descname">kron</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">matrix1</span></em>, <em class="sig-param"><span class="n">matrix2</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#kron"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.kron" title="Permalink to this definition">¶</a></dt>
 <dd><p>Kronecker product of two matrices.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>matrix1</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>N</em><em>]</em>) – One of the matrixes for the product</li>
-<li><strong>matrix2</strong> (<em>array_like</em><em>[</em><em>J</em><em>, </em><em>K</em><em>]</em>) – The other matrix for the product</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>matrix1</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>N</em><em>]</em>) – One of the matrixes for the product</p></li>
+<li><p><strong>matrix2</strong> (<em>array_like</em><em>[</em><em>J</em><em>, </em><em>K</em><em>]</em>) – The other matrix for the product</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The kronecker product of the matrices</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">array_like[M*J, N*K]</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The kronecker product of the matrices</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>array_like[M*J, N*K]</p>
+</dd>
+</dl>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.linalg.kron.html#scipy.linalg.kron" title="(in SciPy v1.4.1)"><code class="xref py py-func docutils literal notranslate"><span class="pre">scipy.linalg.kron()</span></code></a></dt>
-<dd>Where I got the overview of the implementation.</dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.linalg.kron.html#scipy.linalg.kron" title="(in SciPy v1.5.2)"><code class="xref py py-func docutils literal notranslate"><span class="pre">scipy.linalg.kron()</span></code></a></dt><dd><p>Where I got the overview of the implementation.</p>
+</dd>
 </dl>
 </div>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="atmos_flux_inversion.linalg.linop_solve">
-<code class="descclassname">atmos_flux_inversion.linalg.</code><code class="descname">linop_solve</code><span class="sig-paren">(</span><em>operator</em>, <em>arr</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#linop_solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.linop_solve" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.linalg.</code><code class="sig-name descname">linop_solve</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">operator</span></em>, <em class="sig-param"><span class="n">arr</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#linop_solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.linop_solve" title="Permalink to this definition">¶</a></dt>
 <dd><p>Solve <cite>operator &#64; x = arr</cite>.</p>
 <p>deal with arr possibly having multiple columns.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>operator</strong> (<em>LinearOperator</em>) – </li>
-<li><strong>arr</strong> (<em>array_like</em>) – </li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>operator</strong> (<em>LinearOperator</em>) – </p></li>
+<li><p><strong>arr</strong> (<em>array_like</em>) – </p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The solution to the linear equation.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">array_like</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The solution to the linear equation.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>array_like</p>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="atmos_flux_inversion.linalg.matrix_sqrt">
-<code class="descclassname">atmos_flux_inversion.linalg.</code><code class="descname">matrix_sqrt</code><span class="sig-paren">(</span><em>mat</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#matrix_sqrt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.matrix_sqrt" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.linalg.</code><code class="sig-name descname">matrix_sqrt</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">mat</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#matrix_sqrt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.matrix_sqrt" title="Permalink to this definition">¶</a></dt>
 <dd><p>Find a matrix S such that S.T &#64; S == mat.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>mat</strong> (<em>array_like</em><em> or </em><em>LinearOperator</em>) – The square matrix for which the square root is desired</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A matrix such that S.T &#64; S == mat</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">array_like or LinearOperator</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
-<li><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> – if mat is not symmetric</li>
-<li><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#TypeError" title="(in Python v3.4)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">TypeError</span></code></a> – if mat is of an unrecognized type</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>mat</strong> (<em>array_like</em><em> or </em><em>LinearOperator</em>) – The square matrix for which the square root is desired</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A matrix such that S.T &#64; S == mat</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>array_like or LinearOperator</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><strong>ValueError</strong></a> – if mat is not symmetric</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#TypeError" title="(in Python v3.4)"><strong>TypeError</strong></a> – if mat is of an unrecognized type</p></li>
 </ul>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="atmos_flux_inversion.linalg.schmidt_decomposition">
-<code class="descclassname">atmos_flux_inversion.linalg.</code><code class="descname">schmidt_decomposition</code><span class="sig-paren">(</span><em>vector</em>, <em>dim1</em>, <em>dim2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#schmidt_decomposition"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.schmidt_decomposition" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.linalg.</code><code class="sig-name descname">schmidt_decomposition</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">vector</span></em>, <em class="sig-param"><span class="n">dim1</span></em>, <em class="sig-param"><span class="n">dim2</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#schmidt_decomposition"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.schmidt_decomposition" title="Permalink to this definition">¶</a></dt>
 <dd><p>Decompose a state vector into a sum of Kronecker products.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>vector</strong> (<em>array_like</em><em>[</em><em>dim1 * dim2</em><em>]</em>) – </li>
-<li><strong>dim2</strong> (<em>dim1</em><em>,</em>) – </li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>vector</strong> (<em>array_like</em><em>[</em><em>dim1 * dim2</em><em>]</em>) – </p></li>
+<li><p><strong>dim2</strong> (<em>dim1</em><em>,</em>) – </p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The rows form the separate vectors.
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The rows form the separate vectors.
 The weights are guaranteed to be greater than zero</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">tuple of (weights, unit_vecs[dim1], unit_vecs[dim2]</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> – if <cite>vector</cite> isn’t actually a vector.</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple of (weights, unit_vecs[dim1], unit_vecs[dim2]</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><strong>ValueError</strong></a> – if <cite>vector</cite> isn’t actually a vector.</p>
+</dd>
+</dl>
 <p class="rubric">Notes</p>
 <p>Algorithm from stackexchange:
 <a class="reference external" href="https://physics.stackexchange.com/questions/251522/how-do-you-find-a-schmidt-basis-and-how-can-the-schmidt-decomposition-be-used-f">https://physics.stackexchange.com/questions/251522/how-do-you-find-a-schmidt-basis-and-how-can-the-schmidt-decomposition-be-used-f</a>
@@ -332,39 +308,36 @@ Also from Mathematica code I wrote based on description in the green
 Quantum Computation book in the reading library</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="atmos_flux_inversion.linalg.solve">
-<code class="descclassname">atmos_flux_inversion.linalg.</code><code class="descname">solve</code><span class="sig-paren">(</span><em>arr1</em>, <em>arr2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.solve" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.linalg.</code><code class="sig-name descname">solve</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">arr1</span></em>, <em class="sig-param"><span class="n">arr2</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/linalg.html#solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.linalg.solve" title="Permalink to this definition">¶</a></dt>
 <dd><p>Solve arr1 &#64; x = arr2 for x.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>arr1</strong> (<em>array_like</em><em>[</em><em>N</em><em>, </em><em>N</em><em>]</em>) – A square matrix</li>
-<li><strong>arr2</strong> (<em>array_like</em><em>[</em><em>N</em><em>]</em>) – A vector</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arr1</strong> (<em>array_like</em><em>[</em><em>N</em><em>, </em><em>N</em><em>]</em>) – A square matrix</p></li>
+<li><p><strong>arr2</strong> (<em>array_like</em><em>[</em><em>N</em><em>]</em>) – A vector</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The solution to the linear equation</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">array_like[N]</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
-<li><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> – if the dimensions do not match up</li>
-<li><code class="xref py py-exc docutils literal notranslate"><span class="pre">LinAlgError</span></code> – if <cite>arr1</cite> is not square</li>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The solution to the linear equation</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>array_like[N]</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><strong>ValueError</strong></a> – if the dimensions do not match up</p></li>
+<li><p><strong>LinAlgError</strong> – if <cite>arr1</cite> is not square</p></li>
 </ul>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 </dd></dl>
 
 </div>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
@@ -384,17 +357,15 @@ Quantum Computation book in the reading library</p>
     </ul>
    </div>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -414,13 +385,14 @@ Quantum Computation book in the reading library</p>
         <li class="right" >
           <a href="atmos_flux_inversion.wrapper.html" title="atmos_flux_inversion.wrapper module"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" >atmos_flux_inversion package</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" >atmos_flux_inversion package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">atmos_flux_inversion.linalg module</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2018–2020, The Pennsylvania State University.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.2.
     </div>
   </body>
 </html>

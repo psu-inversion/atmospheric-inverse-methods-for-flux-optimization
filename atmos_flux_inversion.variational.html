@@ -1,20 +1,20 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>atmos_flux_inversion.variational module &#8212; Inversions 1.0.0rc3 documentation</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>atmos_flux_inversion.variational module &#8212; Inversions 1.0.0 documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -36,8 +36,9 @@
         <li class="right" >
           <a href="atmos_flux_inversion.optimal_interpolation.html" title="atmos_flux_inversion.optimal_interpolation module"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" accesskey="U">atmos_flux_inversion package</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" accesskey="U">atmos_flux_inversion package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">atmos_flux_inversion.variational module</a></li> 
       </ul>
     </div>  
 
@@ -49,20 +50,20 @@
   <div class="section" id="module-atmos_flux_inversion.variational">
 <span id="atmos-flux-inversion-variational-module"></span><h1>atmos_flux_inversion.variational module<a class="headerlink" href="#module-atmos_flux_inversion.variational" title="Permalink to this headline">¶</a></h1>
 <p>Functions implementing 3D-Var.</p>
-<dl class="docutils">
-<dt>Signatures follow the functions in</dt>
-<dd><a class="reference internal" href="atmos_flux_inversion.optimal_interpolation.html#module-atmos_flux_inversion.optimal_interpolation" title="atmos_flux_inversion.optimal_interpolation"><code class="xref py py-mod docutils literal notranslate"><span class="pre">atmos_flux_inversion.optimal_interpolation</span></code></a></dd>
+<dl class="simple">
+<dt>Signatures follow the functions in</dt><dd><p><a class="reference internal" href="atmos_flux_inversion.optimal_interpolation.html#module-atmos_flux_inversion.optimal_interpolation" title="atmos_flux_inversion.optimal_interpolation"><code class="xref py py-mod docutils literal notranslate"><span class="pre">atmos_flux_inversion.optimal_interpolation</span></code></a></p>
+</dd>
 </dl>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Forces in-memory computations.  BFGS method requires this, and there
+<p class="admonition-title">Note</p>
+<p>Forces in-memory computations.  BFGS method requires this, and there
 are odd shape-mismatch errors if I just change to dask arrays.
 Conjugate gradient solvers may work better for dask arrays if we drop
 the covariance matrix from the return values.</p>
 </div>
-<dl class="function">
+<dl class="py function">
 <dt id="atmos_flux_inversion.variational.incr_chol">
-<code class="descclassname">atmos_flux_inversion.variational.</code><code class="descname">incr_chol</code><span class="sig-paren">(</span><em>background</em>, <em>background_covariance</em>, <em>observations</em>, <em>observation_covariance</em>, <em>observation_operator</em>, <em>reduced_background_covariance=None</em>, <em>reduced_observation_operator=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/variational.html#incr_chol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.variational.incr_chol" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.variational.</code><code class="sig-name descname">incr_chol</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">background</span></em>, <em class="sig-param"><span class="n">background_covariance</span></em>, <em class="sig-param"><span class="n">observations</span></em>, <em class="sig-param"><span class="n">observation_covariance</span></em>, <em class="sig-param"><span class="n">observation_operator</span></em>, <em class="sig-param"><span class="n">reduced_background_covariance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">reduced_observation_operator</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/variational.html#incr_chol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.variational.incr_chol" title="Permalink to this definition">¶</a></dt>
 <dd><p>Feed everything to scipy’s minimizer.</p>
 <p>Use the change from the background to try to avoid precision loss.
 Also use Cholesky factorization of the covariances to speed
@@ -76,45 +77,41 @@ specify the posterior distribution for the state in the
 Bayesian framework.  If these are not satisfied, these still
 form the Generalized Least Squares estimates for the state and
 an estimated uncertainty.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>background</strong> (<em>array_like</em><em>[</em><em>N</em><em>]</em>) – The background state estimate.</li>
-<li><strong>background_covariance</strong> (<em>array_like</em><em>[</em><em>N</em><em>, </em><em>N</em><em>]</em>) – Covariance of background state estimate across
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>background</strong> (<em>array_like</em><em>[</em><em>N</em><em>]</em>) – The background state estimate.</p></li>
+<li><p><strong>background_covariance</strong> (<em>array_like</em><em>[</em><em>N</em><em>, </em><em>N</em><em>]</em>) – Covariance of background state estimate across
 realizations/ensemble members.  “Ensemble” is here
 interpreted in the sense used in statistical mechanics or
 frequentist statistics, and may not be derived from a
-sample as in meteorological ensemble Kalman filters</li>
-<li><strong>observations</strong> (<em>array_like</em><em>[</em><em>M</em><em>]</em>) – The observations constraining the background estimate.</li>
-<li><strong>observation_covariance</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>M</em><em>]</em>) – Covariance of observations across realizations/ensemble
-members.  “Ensemble” again has the statistical meaning.</li>
-<li><strong>observation_operator</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>N</em><em>]</em>) – The relationship between the state and the observations.</li>
-<li><strong>reduced_background_covariance</strong> (<em>array_like</em><em>[</em><em>Nred</em><em>, </em><em>Nred</em><em>]</em><em>, </em><em>optional</em>) – The covariance for a smaller state space, usually obtained by
+sample as in meteorological ensemble Kalman filters</p></li>
+<li><p><strong>observations</strong> (<em>array_like</em><em>[</em><em>M</em><em>]</em>) – The observations constraining the background estimate.</p></li>
+<li><p><strong>observation_covariance</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>M</em><em>]</em>) – Covariance of observations across realizations/ensemble
+members.  “Ensemble” again has the statistical meaning.</p></li>
+<li><p><strong>observation_operator</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>N</em><em>]</em>) – The relationship between the state and the observations.</p></li>
+<li><p><strong>reduced_background_covariance</strong> (<em>array_like</em><em>[</em><em>Nred</em><em>, </em><em>Nred</em><em>]</em><em>, </em><em>optional</em>) – The covariance for a smaller state space, usually obtained by
 reducing resolution in space and time.  Note that
-<cite>reduced_observation_operator</cite> must also be provided</li>
-<li><strong>reduced_observation_operator</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>Nred</em><em>]</em><em>, </em><em>optional</em>) – The relationship between the reduced state space and the
+<cite>reduced_observation_operator</cite> must also be provided</p></li>
+<li><p><strong>reduced_observation_operator</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>Nred</em><em>]</em><em>, </em><em>optional</em>) – The relationship between the reduced state space and the
 observations.  Note that <cite>reduced_background_covariance</cite>
-must also be provided.</li>
+must also be provided.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><ul class="simple">
-<li><strong>analysis</strong> (<em>array_like[N]</em>) – Analysis state estimate</li>
-<li><strong>analysis_covariance</strong> (<em>array_like[Nred, Nred] or array_like[N, N]</em>) – Estimated uncertainty of analysis across
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>analysis</strong> (<em>array_like[N]</em>) – Analysis state estimate</p></li>
+<li><p><strong>analysis_covariance</strong> (<em>array_like[Nred, Nred] or array_like[N, N]</em>) – Estimated uncertainty of analysis across
 realizations/ensemble members.  Calculated using
 reduced_background_covariance and
-reduced_observation_operator if possible</li>
+reduced_observation_operator if possible</p></li>
 </ul>
 </p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ConvergenceError</span></code> – If iterative solver does not converge</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference internal" href="atmos_flux_inversion.html#atmos_flux_inversion.ConvergenceError" title="atmos_flux_inversion.ConvergenceError"><strong>ConvergenceError</strong></a> – If iterative solver does not converge</p>
+</dd>
+</dl>
 <p class="rubric">Notes</p>
 <p>minimizes</p>
 <div class="math notranslate nohighlight">
@@ -125,9 +122,9 @@ reduced_observation_operator if possible</li>
 <p>where <span class="math notranslate nohighlight">\(x = x_0 + dx\)</span></p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="atmos_flux_inversion.variational.incremental">
-<code class="descclassname">atmos_flux_inversion.variational.</code><code class="descname">incremental</code><span class="sig-paren">(</span><em>background</em>, <em>background_covariance</em>, <em>observations</em>, <em>observation_covariance</em>, <em>observation_operator</em>, <em>reduced_background_covariance=None</em>, <em>reduced_observation_operator=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/variational.html#incremental"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.variational.incremental" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.variational.</code><code class="sig-name descname">incremental</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">background</span></em>, <em class="sig-param"><span class="n">background_covariance</span></em>, <em class="sig-param"><span class="n">observations</span></em>, <em class="sig-param"><span class="n">observation_covariance</span></em>, <em class="sig-param"><span class="n">observation_operator</span></em>, <em class="sig-param"><span class="n">reduced_background_covariance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">reduced_observation_operator</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/variational.html#incremental"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.variational.incremental" title="Permalink to this definition">¶</a></dt>
 <dd><p>Feed everything to scipy’s minimizer.</p>
 <p>Use the change from the background to try to avoid precision loss.</p>
 <p>Assumes everything follows a multivariate normal distribution
@@ -139,45 +136,41 @@ specify the posterior distribution for the state in the
 Bayesian framework.  If these are not satisfied, these still
 form the Generalized Least Squares estimates for the state and
 an estimated uncertainty.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>background</strong> (<em>array_like</em><em>[</em><em>N</em><em>]</em>) – The background state estimate.</li>
-<li><strong>background_covariance</strong> (<em>array_like</em><em>[</em><em>N</em><em>, </em><em>N</em><em>]</em>) – Covariance of background state estimate across
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>background</strong> (<em>array_like</em><em>[</em><em>N</em><em>]</em>) – The background state estimate.</p></li>
+<li><p><strong>background_covariance</strong> (<em>array_like</em><em>[</em><em>N</em><em>, </em><em>N</em><em>]</em>) – Covariance of background state estimate across
 realizations/ensemble members.  “Ensemble” is here
 interpreted in the sense used in statistical mechanics or
 frequentist statistics, and may not be derived from a
-sample as in meteorological ensemble Kalman filters</li>
-<li><strong>observations</strong> (<em>array_like</em><em>[</em><em>M</em><em>]</em>) – The observations constraining the background estimate.</li>
-<li><strong>observation_covariance</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>M</em><em>]</em>) – Covariance of observations across realizations/ensemble
-members.  “Ensemble” again has the statistical meaning.</li>
-<li><strong>observation_operator</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>N</em><em>]</em>) – The relationship between the state and the observations.</li>
-<li><strong>reduced_background_covariance</strong> (<em>array_like</em><em>[</em><em>Nred</em><em>, </em><em>Nred</em><em>]</em><em>, </em><em>optional</em>) – The covariance for a smaller state space, usually obtained by
+sample as in meteorological ensemble Kalman filters</p></li>
+<li><p><strong>observations</strong> (<em>array_like</em><em>[</em><em>M</em><em>]</em>) – The observations constraining the background estimate.</p></li>
+<li><p><strong>observation_covariance</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>M</em><em>]</em>) – Covariance of observations across realizations/ensemble
+members.  “Ensemble” again has the statistical meaning.</p></li>
+<li><p><strong>observation_operator</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>N</em><em>]</em>) – The relationship between the state and the observations.</p></li>
+<li><p><strong>reduced_background_covariance</strong> (<em>array_like</em><em>[</em><em>Nred</em><em>, </em><em>Nred</em><em>]</em><em>, </em><em>optional</em>) – The covariance for a smaller state space, usually obtained by
 reducing resolution in space and time.  Note that
-<cite>reduced_observation_operator</cite> must also be provided</li>
-<li><strong>reduced_observation_operator</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>Nred</em><em>]</em><em>, </em><em>optional</em>) – The relationship between the reduced state space and the
+<cite>reduced_observation_operator</cite> must also be provided</p></li>
+<li><p><strong>reduced_observation_operator</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>Nred</em><em>]</em><em>, </em><em>optional</em>) – The relationship between the reduced state space and the
 observations.  Note that <cite>reduced_background_covariance</cite>
-must also be provided.</li>
+must also be provided.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><ul class="simple">
-<li><strong>analysis</strong> (<em>array_like[N]</em>) – Analysis state estimate</li>
-<li><strong>analysis_covariance</strong> (<em>array_like[Nred, Nred] or array_like[N, N]</em>) – Estimated uncertainty of analysis across
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>analysis</strong> (<em>array_like[N]</em>) – Analysis state estimate</p></li>
+<li><p><strong>analysis_covariance</strong> (<em>array_like[Nred, Nred] or array_like[N, N]</em>) – Estimated uncertainty of analysis across
 realizations/ensemble members.  Calculated using
 reduced_background_covariance and
-reduced_observation_operator if possible</li>
+reduced_observation_operator if possible</p></li>
 </ul>
 </p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ConvergenceError</span></code> – If iterative solver does not converge</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference internal" href="atmos_flux_inversion.html#atmos_flux_inversion.ConvergenceError" title="atmos_flux_inversion.ConvergenceError"><strong>ConvergenceError</strong></a> – If iterative solver does not converge</p>
+</dd>
+</dl>
 <p class="rubric">Notes</p>
 <p>minimizes</p>
 <div class="math notranslate nohighlight">
@@ -188,9 +181,9 @@ reduced_observation_operator if possible</li>
 <p>where <span class="math notranslate nohighlight">\(x = x_0 + dx\)</span></p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="atmos_flux_inversion.variational.simple">
-<code class="descclassname">atmos_flux_inversion.variational.</code><code class="descname">simple</code><span class="sig-paren">(</span><em>background</em>, <em>background_covariance</em>, <em>observations</em>, <em>observation_covariance</em>, <em>observation_operator</em>, <em>reduced_background_covariance=None</em>, <em>reduced_observation_operator=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/variational.html#simple"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.variational.simple" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">atmos_flux_inversion.variational.</code><code class="sig-name descname">simple</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">background</span></em>, <em class="sig-param"><span class="n">background_covariance</span></em>, <em class="sig-param"><span class="n">observations</span></em>, <em class="sig-param"><span class="n">observation_covariance</span></em>, <em class="sig-param"><span class="n">observation_operator</span></em>, <em class="sig-param"><span class="n">reduced_background_covariance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">reduced_observation_operator</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/atmos_flux_inversion/variational.html#simple"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#atmos_flux_inversion.variational.simple" title="Permalink to this definition">¶</a></dt>
 <dd><p>Feed everything to scipy’s minimizer.</p>
 <p>Assumes everything follows a multivariate normal distribution
 with the specified covariance matrices.  Under this assumption
@@ -201,45 +194,41 @@ specify the posterior distribution for the state in the
 Bayesian framework.  If these are not satisfied, these still
 form the Generalized Least Squares estimates for the state and
 an estimated uncertainty.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>background</strong> (<em>array_like</em><em>[</em><em>N</em><em>]</em>) – The background state estimate.</li>
-<li><strong>background_covariance</strong> (<em>array_like</em><em>[</em><em>N</em><em>, </em><em>N</em><em>]</em>) – Covariance of background state estimate across
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>background</strong> (<em>array_like</em><em>[</em><em>N</em><em>]</em>) – The background state estimate.</p></li>
+<li><p><strong>background_covariance</strong> (<em>array_like</em><em>[</em><em>N</em><em>, </em><em>N</em><em>]</em>) – Covariance of background state estimate across
 realizations/ensemble members.  “Ensemble” is here
 interpreted in the sense used in statistical mechanics or
 frequentist statistics, and may not be derived from a
-sample as in meteorological ensemble Kalman filters</li>
-<li><strong>observations</strong> (<em>array_like</em><em>[</em><em>M</em><em>]</em>) – The observations constraining the background estimate.</li>
-<li><strong>observation_covariance</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>M</em><em>]</em>) – Covariance of observations across realizations/ensemble
-members.  “Ensemble” again has the statistical meaning.</li>
-<li><strong>observation_operator</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>N</em><em>]</em>) – The relationship between the state and the observations.</li>
-<li><strong>reduced_background_covariance</strong> (<em>array_like</em><em>[</em><em>Nred</em><em>, </em><em>Nred</em><em>]</em><em>, </em><em>optional</em>) – The covariance for a smaller state space, usually obtained by
+sample as in meteorological ensemble Kalman filters</p></li>
+<li><p><strong>observations</strong> (<em>array_like</em><em>[</em><em>M</em><em>]</em>) – The observations constraining the background estimate.</p></li>
+<li><p><strong>observation_covariance</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>M</em><em>]</em>) – Covariance of observations across realizations/ensemble
+members.  “Ensemble” again has the statistical meaning.</p></li>
+<li><p><strong>observation_operator</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>N</em><em>]</em>) – The relationship between the state and the observations.</p></li>
+<li><p><strong>reduced_background_covariance</strong> (<em>array_like</em><em>[</em><em>Nred</em><em>, </em><em>Nred</em><em>]</em><em>, </em><em>optional</em>) – The covariance for a smaller state space, usually obtained by
 reducing resolution in space and time.  Note that
-<cite>reduced_observation_operator</cite> must also be provided</li>
-<li><strong>reduced_observation_operator</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>Nred</em><em>]</em><em>, </em><em>optional</em>) – The relationship between the reduced state space and the
+<cite>reduced_observation_operator</cite> must also be provided</p></li>
+<li><p><strong>reduced_observation_operator</strong> (<em>array_like</em><em>[</em><em>M</em><em>, </em><em>Nred</em><em>]</em><em>, </em><em>optional</em>) – The relationship between the reduced state space and the
 observations.  Note that <cite>reduced_background_covariance</cite>
-must also be provided.</li>
+must also be provided.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><ul class="simple">
-<li><strong>analysis</strong> (<em>array_like[N]</em>) – Analysis state estimate</li>
-<li><strong>analysis_covariance</strong> (<em>array_like[Nred, Nred] or array_like[N, N]</em>) – Estimated uncertainty of analysis across
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>analysis</strong> (<em>array_like[N]</em>) – Analysis state estimate</p></li>
+<li><p><strong>analysis_covariance</strong> (<em>array_like[Nred, Nred] or array_like[N, N]</em>) – Estimated uncertainty of analysis across
 realizations/ensemble members.  Calculated using
 reduced_background_covariance and
-reduced_observation_operator if possible</li>
+reduced_observation_operator if possible</p></li>
 </ul>
 </p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ConvergenceError</span></code> – If iterative solver does not converge</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference internal" href="atmos_flux_inversion.html#atmos_flux_inversion.ConvergenceError" title="atmos_flux_inversion.ConvergenceError"><strong>ConvergenceError</strong></a> – If iterative solver does not converge</p>
+</dd>
+</dl>
 <p class="rubric">Notes</p>
 <p>minimizes</p>
 <div class="math notranslate nohighlight">
@@ -252,6 +241,7 @@ reduced_observation_operator if possible</li>
 </div>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
@@ -271,17 +261,15 @@ reduced_observation_operator if possible</li>
     </ul>
    </div>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -301,13 +289,14 @@ reduced_observation_operator if possible</li>
         <li class="right" >
           <a href="atmos_flux_inversion.optimal_interpolation.html" title="atmos_flux_inversion.optimal_interpolation module"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" >atmos_flux_inversion package</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Inversions 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="atmos_flux_inversion.html" >atmos_flux_inversion package</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">atmos_flux_inversion.variational module</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2018–2020, The Pennsylvania State University.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.1.2.
     </div>
   </body>
 </html>
