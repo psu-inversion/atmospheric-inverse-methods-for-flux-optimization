@@ -131,30 +131,31 @@ probability density <span class="math notranslate nohighlight">\(\vec{x}_a\)</sp
 <div class="math notranslate nohighlight">
 \[\begin{split}P(\vec{x} | \vec{y}) &amp;= (2 \pi)^{-\frac{N}{2}} \det(A)^{-\frac{1}{2}}
     \exp[-\frac{1}{2} (\vec{x} - \vec{x}_a)^T A^{-1} (\vec{x} - \vec{x}_a)] \\
-&amp;\propto \exp\{-\frac{1}{2} [\vec{x} - (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)]^T
-    (B^{-1} + H R^{-1} H^T) [\vec{x} - (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)] \\
+&amp;\propto \exp\{-\frac{1}{2} [\vec{x} - (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)]^T \\
+&amp;\qquad\qquad (B^{-1} + H R^{-1} H^T) [\vec{x} - (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)] \\
 &amp;= \exp\{-\frac{1}{2} [
-    \vec{x}^T (B^{-1} + H R^{-1} H^T) \vec{x} +
-    (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)^T  (B^{-1} + H R^{-1} H^T)^{-T} (B^{-1} + H R^{-1} H^T) (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b) -
-    (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)^T  (B^{-1} + H R^{-1} H^T)^{-T} (B^{-1} + H R^{-1} H^T) \vec{x} -
-    \vec{x} (B^{-1} + H R^{-1} H^T) (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)
+    \vec{x}^T (B^{-1} + H R^{-1} H^T) \vec{x} + \\
+&amp;\qquad\qquad (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)^T  (B^{-1} + H R^{-1} H^T)^{-T} (B^{-1} + H R^{-1} H^T) \\
+&amp;\qquad\qquad (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b) - \\
+&amp;\qquad\qquad (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)^T  (B^{-1} + H R^{-1} H^T)^{-T} (B^{-1} + H R^{-1} H^T) \vec{x} - \\
+&amp;\qquad\qquad \vec{x} (B^{-1} + H R^{-1} H^T) (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)
 ]\}\end{split}\]</div>
 <p>Simplifying this and using the symmetry of <span class="math notranslate nohighlight">\(B\)</span> and <span class="math notranslate nohighlight">\(R\)</span> gives</p>
 <div class="math notranslate nohighlight">
 \[\begin{split} P(\vec{x} | \vec{y}) &amp;\propto \exp\{-\frac{1}{2} [
-     \vec{x}^T (B^{-1} + H R^{-1} H^T) \vec{x} +
-     (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)^T (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b) -
-     (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)^T \vec{x} -
-     \vec{x} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)
+     \vec{x}^T (B^{-1} + H R^{-1} H^T) \vec{x} + \\
+ &amp;\qquad\qquad (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)^T (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b) - \\
+ &amp;\qquad\qquad (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)^T \vec{x} - \\
+ &amp;\qquad\qquad \vec{x} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)
  ]\} \\
  &amp;= \exp[-\frac{1}{2}
      (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)^T (B^{-1} + H R^{-1} H^T)^{-1} (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)
- ]
- \exp\{-\frac{1}{2} [
+ ] \\
+ &amp;\quad \exp\{-\frac{1}{2} [
      \vec{x}^T (B^{-1} + H R^{-1} H^T) \vec{x} -
      (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)^T \vec{x} -
      \vec{x}^T (H^T R^{-1} \vec{y} + B^{-1} \vec{x}_b)
-]\}
+]\} \\
 &amp;\propto \exp\{-\frac{1}{2} [
     \vec{x}^T (B^{-1} + H R^{-1} H^T) \vec{x}
     - \vec{y}^T R^{-1} H \vec{x} - \vec{x}_b^T B^{-1} \vec{x}
