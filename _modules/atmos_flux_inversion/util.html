@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>atmos_flux_inversion.util &#8212; Inversions 1.0.0rc3 documentation</title>
+    <title>atmos_flux_inversion.util &#8212; Inversions 1.0.0 documentation</title>
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     
@@ -15,6 +15,8 @@
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"extensions": ["tex2jax.js"], "jax": ["input/TeX", "output/HTML-CSS"], "TeX": {"extensions": ["AMSmath.js"]}})</script>
     
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -28,7 +30,7 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Inversions 1.0.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="../atmos_flux_inversion.html" accesskey="U">atmos_flux_inversion</a> &#187;</li> 
       </ul>
@@ -46,15 +48,15 @@
 <span class="sd">output.  Others map similar functionality across the various methods</span>
 <span class="sd">to accomplish that end.</span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">absolute_import</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
 <span class="kn">import</span> <span class="nn">functools</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">atleast_1d</span><span class="p">,</span> <span class="n">atleast_2d</span>
-<span class="kn">from</span> <span class="nn">scipy.sparse.linalg</span> <span class="k">import</span> <span class="n">LinearOperator</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">atleast_1d</span><span class="p">,</span> <span class="n">atleast_2d</span>
+<span class="kn">from</span> <span class="nn">scipy.sparse.linalg</span> <span class="kn">import</span> <span class="n">LinearOperator</span>
 
-<span class="kn">from</span> <span class="nn">.linalg</span> <span class="k">import</span> <span class="n">DaskKroneckerProductOperator</span><span class="p">,</span> <span class="n">kron</span><span class="p">,</span> <span class="n">solve</span>
-<span class="kn">from</span> <span class="nn">.linalg_interface</span> <span class="k">import</span> <span class="n">ProductLinearOperator</span><span class="p">,</span> <span class="n">tolinearoperator</span>
+<span class="kn">from</span> <span class="nn">.linalg</span> <span class="kn">import</span> <span class="n">DaskKroneckerProductOperator</span><span class="p">,</span> <span class="n">kron</span><span class="p">,</span> <span class="n">solve</span>
+<span class="kn">from</span> <span class="nn">.linalg_interface</span> <span class="kn">import</span> <span class="n">ProductLinearOperator</span><span class="p">,</span> <span class="n">tolinearoperator</span>
 
 <span class="n">ARRAY_TYPES</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,)</span>
 <span class="sd">&quot;&quot;&quot;Array types for determining Kronecker product type.</span>
@@ -105,7 +107,7 @@
              <span class="n">operator1</span><span class="o">.</span><span class="n">size</span> <span class="o">*</span> <span class="n">operator2</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="n">MAX_EXPLICIT_ARRAY</span><span class="p">)):</span>
             <span class="k">return</span> <span class="n">kron</span><span class="p">(</span><span class="n">operator1</span><span class="p">,</span> <span class="n">operator2</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">DaskKroneckerProductOperator</span><span class="p">(</span><span class="n">operator1</span><span class="p">,</span> <span class="n">operator2</span><span class="p">)</span>
-    <span class="kn">from</span> <span class="nn">atmos_flux_inversion.linalg</span> <span class="k">import</span> <span class="n">SchmidtKroneckerProduct</span>
+    <span class="kn">from</span> <span class="nn">atmos_flux_inversion.linalg</span> <span class="kn">import</span> <span class="n">SchmidtKroneckerProduct</span>
     <span class="k">return</span> <span class="n">SchmidtKroneckerProduct</span><span class="p">(</span><span class="n">operator1</span><span class="p">,</span> <span class="n">operator2</span><span class="p">)</span></div>
 
 
@@ -289,7 +291,7 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Inversions 1.0.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="../atmos_flux_inversion.html" >atmos_flux_inversion</a> &#187;</li> 
       </ul>

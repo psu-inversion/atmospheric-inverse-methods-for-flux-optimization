@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>atmos_flux_inversion.variational &#8212; Inversions 1.0.0rc3 documentation</title>
+    <title>atmos_flux_inversion.variational &#8212; Inversions 1.0.0 documentation</title>
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     
@@ -15,6 +15,8 @@
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"extensions": ["tex2jax.js"], "jax": ["input/TeX", "output/HTML-CSS"], "TeX": {"extensions": ["AMSmath.js"]}})</script>
     
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -28,7 +30,7 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Inversions 1.0.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="../atmos_flux_inversion.html" accesskey="U">atmos_flux_inversion</a> &#187;</li> 
       </ul>
@@ -57,11 +59,11 @@
 <span class="c1"># I believe scipy&#39;s minimizer requires things that give boolean true</span>
 <span class="c1"># or false from the objective, rather than a yet-to-be-realized dask</span>
 <span class="c1"># array.</span>
-<span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">asarray</span>
-<span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">zeros_like</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">asarray</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">zeros_like</span>
 
-<span class="kn">from</span> <span class="nn">atmos_flux_inversion</span> <span class="k">import</span> <span class="n">ConvergenceError</span><span class="p">,</span> <span class="n">MAX_ITERATIONS</span><span class="p">,</span> <span class="n">GRAD_TOL</span>
-<span class="kn">from</span> <span class="nn">atmos_flux_inversion.util</span> <span class="k">import</span> <span class="n">solve</span><span class="p">,</span> <span class="n">method_common</span>
+<span class="kn">from</span> <span class="nn">atmos_flux_inversion</span> <span class="kn">import</span> <span class="n">ConvergenceError</span><span class="p">,</span> <span class="n">MAX_ITERATIONS</span><span class="p">,</span> <span class="n">GRAD_TOL</span>
+<span class="kn">from</span> <span class="nn">atmos_flux_inversion.util</span> <span class="kn">import</span> <span class="n">solve</span><span class="p">,</span> <span class="n">method_common</span>
 
 
 <div class="viewcode-block" id="simple"><a class="viewcode-back" href="../../atmos_flux_inversion.variational.html#atmos_flux_inversion.variational.simple">[docs]</a><span class="nd">@method_common</span>
@@ -472,7 +474,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">innovations</span> <span class="o">=</span> <span class="n">observations</span> <span class="o">-</span> <span class="n">observation_operator</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">background</span><span class="p">)</span>
 
-    <span class="kn">from</span> <span class="nn">scipy.linalg</span> <span class="k">import</span> <span class="n">cho_factor</span><span class="p">,</span> <span class="n">cho_solve</span>
+    <span class="kn">from</span> <span class="nn">scipy.linalg</span> <span class="kn">import</span> <span class="n">cho_factor</span><span class="p">,</span> <span class="n">cho_solve</span>
 
     <span class="c1"># factor the covariances to make the matrix inversions faster</span>
     <span class="n">bg_cov_chol_u</span> <span class="o">=</span> <span class="n">cho_factor</span><span class="p">(</span><span class="n">background_covariance</span><span class="p">)</span>
@@ -594,7 +596,7 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">Inversions 1.0.0rc3 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Inversions 1.0.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
           <li class="nav-item nav-item-2"><a href="../atmos_flux_inversion.html" >atmos_flux_inversion</a> &#187;</li> 
       </ul>
