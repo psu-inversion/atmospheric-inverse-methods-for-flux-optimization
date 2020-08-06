@@ -57,8 +57,10 @@ are trying to minimize is the trace of the covariance matrix of
 
    \DeclareMathOperator{\Cov}{Cov}
    \Cov[\vec{x}_a, \vec{x}_a] &= \Cov[(I - A_2 H) \vec{x}_b + A_2 \vec{y}, (I - A_2 H) \vec{x}_b + A_2 \vec{y}] \\
-   &= \Cov[(I - A_2 H) \vec{x}_b, (I - A_2 H) \vec{x}_b] + \Cov[(I - A_2 H) \vec{x}_b, A_2 \vec{y}] + \Cov[A_2 \vec{y}, (I - A_2 H) \vec{x}_b] + \Cov[A_2 \vec{y}, A_2 \vec{y}] \\
-   &= (I - A_2 H) \Cov[\vec{x}_b, \vec{x}_b] (I - A_2 H)^T + (I - A_2 H) \Cov[\vec{x}_b, \vec{y}] A_2^T + A_2 \Cov[\vec{y}, \vec{x}_b] (I - A_2 H)^T + A_2 \Cov[\vec{y}, \vec{y}] A_2^T \\
+   &= \Cov[(I - A_2 H) \vec{x}_b, (I - A_2 H) \vec{x}_b] + \Cov[(I - A_2 H) \vec{x}_b, A_2 \vec{y}] + \\
+   &\qquad\qquad \Cov[A_2 \vec{y}, (I - A_2 H) \vec{x}_b] + \Cov[A_2 \vec{y}, A_2 \vec{y}] \\
+   &= (I - A_2 H) \Cov[\vec{x}_b, \vec{x}_b] (I - A_2 H)^T + (I - A_2 H) \Cov[\vec{x}_b, \vec{y}] A_2^T + \\
+   &\qquad\qquad A_2 \Cov[\vec{y}, \vec{x}_b] (I - A_2 H)^T + A_2 \Cov[\vec{y}, \vec{y}] A_2^T \\
    &= (I - A_2 H) B (I - H^T A_2^T) + 0 + 0 + A_2 T A_2^T \\
    &= B - B H^T A_2^T - A_2 H B + A_2 H B H^T A_2^T + A_2 R A_2^T
 
