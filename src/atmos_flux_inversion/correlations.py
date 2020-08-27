@@ -327,7 +327,10 @@ class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):
         array_like[N, K]
         """
         _shape = self._underlying_shape
-        fields = asarray(mat).reshape(_shape + (-1,))
+        fields = mat.reshape(_shape + (-1,))
+
+        if not isinstance(fields, np.ndarray):
+            fields = fields.todense()
 
         spectral_fields = self._fft(fields)
         spectral_fields *= self._corr_fourier[..., np.newaxis]

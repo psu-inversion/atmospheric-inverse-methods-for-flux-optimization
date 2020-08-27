@@ -67,7 +67,7 @@ def kronecker_product(operator1, operator2):
     return SchmidtKroneckerProduct(operator1, operator2)
 
 
-def method_common(inversion_method):
+def method_common(inversion_method):  # noqa: C901
     """Wrap method to validate args.
 
     Can also deal with posterior uncertainty for a reduced-resolution
@@ -83,6 +83,12 @@ def method_common(inversion_method):
     function
         The wrapped function.
     """
+    try:
+        from sparse import COO
+    except ImportError:
+        # Probably a terrible default, but it works.
+        COO = LinearOperator
+
     @functools.wraps(inversion_method)
     def wrapper(background, background_covariance,
                 observations, observation_covariance,
@@ -144,6 +150,8 @@ def method_common(inversion_method):
             `reduced_observation_operator` is provided
         """
         _LinearOperator = LinearOperator  # noqa: C0103
+        _COO = COO
+        _ndarray = np.ndarray
         background = atleast_1d(background)
         if not isinstance(background_covariance, _LinearOperator):
             background_covariance = atleast_2d(background_covariance)
@@ -152,21 +160,41 @@ def method_common(inversion_method):
         if not isinstance(observation_covariance, _LinearOperator):
             observation_covariance = atleast_2d(observation_covariance)
 
-        if not isinstance(observation_operator, _LinearOperator):
+        if not isinstance(observation_operator, (_LinearOperator, _COO)):
             observation_operator = atleast_2d(observation_operator)
 
+        if ((isinstance(background_covariance, _ndarray) and
+             isinstance(observation_operator, _COO))):
+            try:
+                observation_operator = observation_operator.todense()
+            except AttributeError:
+                pass
+
+        if (
+            (reduced_background_covariance is None and
+             reduced_observation_operator is not None) or
+            (reduced_background_covariance is not None and
+             reduced_observation_operator is None)
+        ):
+            raise ValueError("Need reduced versions of both B and H")
+
         if reduced_background_covariance is not None:
-            if not isinstance(reduced_background_covariance, LinearOperator):
+            if not isinstance(reduced_background_covariance, _LinearOperator):
                 reduced_background_covariance = atleast_2d(
                     reduced_background_covariance)
 
-            if reduced_observation_operator is None:
-                raise ValueError("Need reduced versions of both B and H")
-            if not isinstance(reduced_observation_operator, LinearOperator):
+            if not isinstance(reduced_observation_operator,
+                              (_LinearOperator, _COO)):
                 reduced_observation_operator = atleast_2d(
                     reduced_observation_operator)
-        elif reduced_observation_operator is not None:
-            raise ValueError("Need reduced versions of both B and H")
+
+            if ((isinstance(reduced_background_covariance, _ndarray) and
+                 isinstance(reduced_observation_operator, _COO))):
+                try:
+                    reduced_observation_operator = (
+                        reduced_observation_operator.todense())
+                except AttributeError:
+                    pass
 
         analysis_estimate, analysis_covariance = (
             inversion_method(background, background_covariance,

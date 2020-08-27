@@ -35,6 +35,11 @@ import pyfftw
 
 import pandas as pd
 import xarray
+try:
+    import sparse
+    HAVE_SPARSE = True
+except ImportError:
+    HAVE_SPARSE = False
 
 import atmos_flux_inversion.optimal_interpolation
 import atmos_flux_inversion.correlations
@@ -1222,6 +1227,18 @@ class TestCorrelations(unittest2.TestCase):
         np_tst.assert_allclose(op.dot(np.eye(*mat.shape)),
                                mat)
 
+    @unittest2.skipUnless(HAVE_SPARSE, "sparse not installed")
+    def test_sparse(self):
+        """Test HomogeneousIsotropicCorrelations work on sparse.COO."""
+        array = 2. ** -np.arange(6)
+        op = (atmos_flux_inversion.correlations.
+              HomogeneousIsotropicCorrelation.
+              from_array(array, False))
+        mat = scipy.linalg.toeplitz(array)
+
+        np_tst.assert_allclose(op.dot(sparse.eye(*mat.shape)),
+                               mat)
+
 
 class TestSchmidtKroneckerProduct(unittest2.TestCase):
     """Test the Schmidt Kronecker product implementation for LinearOperators.
@@ -1353,7 +1370,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
     def test_identical_submatrices(self):
         """Test whether the implementation will generate identical blocks."""
         mat1 = np.ones((3, 3))
-        mat2 = ((1, .5, .25), (.5, 1, .5), (.25, .5, 1))
+        mat2 = np.array(((1, .5, .25), (.5, 1, .5), (.25, .5, 1)))
 
         np_tst.assert_allclose(
             atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
@@ -1362,7 +1379,7 @@ class TestYMKroneckerProduct(unittest2.TestCase):
 
     def test_constant_blocks(self):
         """Test whether the implementation will produce constant blocks."""
-        mat1 = ((1, .5, .25), (.5, 1, .5), (.25, .5, 1))
+        mat1 = np.array(((1, .5, .25), (.5, 1, .5), (.25, .5, 1)))
         mat2 = np.ones((3, 3))
 
         np_tst.assert_allclose(
@@ -1384,6 +1401,21 @@ class TestYMKroneckerProduct(unittest2.TestCase):
 
         np_tst.assert_allclose(
             operator.dot(epr_state),
+            matrix.dot(epr_state))
+
+    @unittest2.skipUnless(HAVE_SPARSE, "sparse not installed")
+    def test_sparse(self):
+        """Test that DaskKroneckerProductOperator works on sparse.COO."""
+        sigmax = np.array(((0, 1), (1, 0)))
+        sigmaz = np.array(((1, 0), (0, -1)))
+
+        operator = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
+            sigmax, sigmaz)
+        matrix = scipy.linalg.kron(sigmax, sigmaz)
+        epr_state = np.array((0, .7071, -.7071, 0))
+
+        np_tst.assert_allclose(
+            operator.dot(sparse.COO(epr_state)),
             matrix.dot(epr_state))
 
     def test_transpose(self):
@@ -1482,6 +1514,19 @@ class TestYMKroneckerProduct(unittest2.TestCase):
             product.quadratic_form,
             test_vec[:-1])
 
+    @unittest2.skipUnless(HAVE_SPARSE, "sparse not installed")
+    def test_quadratic_form_sparse(self):
+        """Test that quadratic_form works on sparse.COO."""
+        matrix1 = scipy.linalg.toeplitz(3. ** -np.arange(4))
+        matrix2 = scipy.linalg.toeplitz(5. ** -np.arange(5))
+
+        product = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
+            matrix1, matrix2)
+        tester = sparse.eye(product.shape[0])
+        dense_product = scipy.linalg.kron(matrix1, matrix2)
+        np_tst.assert_allclose(product.quadratic_form(tester),
+                               dense_product)
+
     def test_matrix_linop(self):
         """Test that the implementation works with MatrixLinearOperator."""
         test_sizes = (4, 5)
@@ -1533,6 +1578,42 @@ class TestYMKroneckerProduct(unittest2.TestCase):
         self.assertRaises(
             ValueError,
             kron_op(np.array([[1, 1], [0, 1]]), np.eye(3)).sqrt)
+
+    @unittest2.skipUnless(HAVE_SPARSE, "sparse not installed")
+    def test_sparse_first_argument(self):
+        """Test sparse.COO in the first position."""
+        row = np.exp(-np.arange(20))
+        row[row < 0.005] = 0
+        matrix1 = scipy.linalg.toeplitz(row)
+        operator1 = sparse.COO(matrix1)
+        operator2 = sparse.eye(15)
+
+        kron_op = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
+            operator1, operator2)
+        kron_mat = scipy.linalg.kron(matrix1, operator2.todense())
+
+        np_tst.assert_allclose(
+            kron_op.dot(np.eye(kron_op.shape[0])),
+            kron_mat)
+        np_tst.assert_allclose(
+            kron_op.dot(sparse.eye(kron_op.shape[0])).todense(),
+            kron_mat)
+
+    @unittest2.skipUnless(HAVE_SPARSE, "sparse not installed")
+    @unittest2.expectedFailure
+    def test_sparse_kron_quadratic_form(self):
+        """Test that quadratic form of all sparse works."""
+        row = np.exp(-np.arange(20))
+        row[row < 0.005] = 0
+        matrix1 = scipy.linalg.toeplitz(row)
+        operator1 = sparse.COO(row)
+        operator2 = sparse.eye(15)
+        kron_op = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
+            operator1, operator2)
+        kron_mat = scipy.linalg.kron(matrix1, operator2.todense())
+        np_tst.assert_allclose(
+            kron_op.quadratic_form(sparse.eye(kron_op.shape[0])).todense(),
+            kron_mat)
 
 
 class TestUtilKroneckerProduct(unittest2.TestCase):
@@ -1808,7 +1889,16 @@ class TestUtilToLinearOperator(unittest2.TestCase):
                       scipy.sparse.identity(8), np.arange(10)):
             with self.subTest(trial=trial):
                 self.assertIsInstance(tolinearoperator(trial),
-                                      LinearOperator)
+                                      MatrixLinearOperator)
+
+    @unittest2.skipUnless(HAVE_SPARSE, "sparse not installed")
+    def test_tolinearoperator_sparse(self):
+        """Test that tolinearoperator works with sparse.COO."""
+        test_op = tolinearoperator(sparse.eye(20))
+        self.assertIsInstance(
+            test_op, LinearOperator)
+        self.assertSequenceEqual(
+            test_op.shape, (20, 20))
 
 
 class TestUtilKron(unittest2.TestCase):
@@ -1869,6 +1959,9 @@ class TestHomogeneousInversions(unittest2.TestCase):
             # matrices don't do this.
             obs_op.toarray()
         )
+
+        if HAVE_SPARSE:
+            self.obs_op += (sparse.COO(obs_op.toarray()),)
 
     def test_combinations_produce_answer(self):
         """Test that background error as a LinearOperator doesn't crash."""
@@ -1932,7 +2025,7 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
                 np_tst.assert_allclose(result, vectors[:stop, :stop])
 
     def test_off_diagonal(self):
-        """Test a case with off-diagonal elements."""
+        """Test a case with off-diagonal elements in the operator."""
         mat1 = scipy.linalg.toeplitz(3.**-np.arange(5))
         mat2 = scipy.linalg.toeplitz(2.**-np.arange(10))
 
@@ -1946,6 +2039,23 @@ class TestKroneckerQuadraticForm(unittest2.TestCase):
         np_tst.assert_allclose(
             linop_kron.quadratic_form(test_arry),
             test_arry.T.dot(scipy_kron.dot(test_arry)))
+
+    @unittest2.skipUnless(HAVE_SPARSE, "sparse not installed")
+    def test_coo(self):
+        """Test that `sparse.COO` works for the operator."""
+        mat1 = scipy.linalg.toeplitz(3.**-np.arange(5))
+        mat2 = scipy.linalg.toeplitz(2.**-np.arange(10))
+
+        scipy_kron = scipy.linalg.kron(mat1, mat2)
+        linop_kron = atmos_flux_inversion.linalg.DaskKroneckerProductOperator(
+            mat1, mat2
+        )
+
+        test_arry = sparse.eye(50, 20)
+
+        np_tst.assert_allclose(
+            linop_kron.quadratic_form(test_arry),
+            test_arry.T.dot(scipy_kron.dot(test_arry.todense())))
 
     def test_failure_modes(self):
         """Test the failure modes of YMKron.quadratic_form."""
